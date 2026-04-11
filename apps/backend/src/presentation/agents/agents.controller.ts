@@ -1,0 +1,223 @@
+import {
+  Controller, Get, Post, Patch, Delete,
+  Body, Param, Query, UseGuards,
+} from '@nestjs/common'
+import {
+  IsString, IsOptional, IsEnum, MinLength,
+  IsArray, IsNumber, IsBoolean, Min, Max,
+} from 'class-validator'
+import { AgentsService } from '../../features/agents/agents.service'
+import { JwtGuard } from '../../shared/guards/jwt.guard'
+import { AgentStatus, AgentType } from '../../core/entities/Agent'
+
+// =============================================
+// DTOs
+// =============================================
+
+const DEFAULT_AGENT_MODEL = 'gpt-4o-mini'
+
+class CreateAgentDto {
+  @IsString()
+  @MinLength(2)
+  name!: string
+
+  @IsOptional()
+  @IsString()
+  description?: string
+
+  @IsOptional()
+  @IsString()
+  model?: string
+
+  @IsOptional()
+  @IsString()
+  systemPrompt?: string
+
+  @IsOptional()
+  @IsString()
+  personality?: string
+
+  @IsOptional()
+  @IsString()
+  actionPrompt?: string
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  temperature?: number
+
+  @IsOptional()
+  @IsNumber()
+  @Min(50)
+  @Max(2000)
+  maxTokens?: number
+
+  @IsOptional()
+  @IsBoolean()
+  limitTurns?: boolean
+
+  @IsOptional()
+  @IsNumber()
+  @Min(2)
+  @Max(50)
+  maxTurns?: number
+
+  @IsOptional()
+  @IsBoolean()
+  fallbackEnabled?: boolean
+
+  @IsOptional()
+  @IsString()
+  fallbackMessage?: string
+
+  @IsOptional()
+  @IsArray()
+  tools?: string[]
+
+  @IsOptional()
+  @IsString()
+  channelId?: string
+
+  @IsOptional()
+  @IsNumber()
+  @Min(5)
+  @Max(100)
+  historyLimit?: number
+
+  @IsOptional()
+  @IsEnum(['ATIVO', 'PASSIVO'])
+  agentType?: AgentType
+}
+
+class UpdateAgentDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  name?: string
+
+  @IsOptional()
+  @IsString()
+  description?: string
+
+  @IsOptional()
+  @IsString()
+  model?: string
+
+  @IsOptional()
+  @IsString()
+  systemPrompt?: string
+
+  @IsOptional()
+  @IsString()
+  personality?: string
+
+  @IsOptional()
+  @IsString()
+  actionPrompt?: string
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  temperature?: number
+
+  @IsOptional()
+  @IsNumber()
+  @Min(50)
+  @Max(2000)
+  maxTokens?: number
+
+  @IsOptional()
+  @IsBoolean()
+  limitTurns?: boolean
+
+  @IsOptional()
+  @IsNumber()
+  @Min(2)
+  @Max(50)
+  maxTurns?: number
+
+  @IsOptional()
+  @IsBoolean()
+  fallbackEnabled?: boolean
+
+  @IsOptional()
+  @IsString()
+  fallbackMessage?: string
+
+  @IsOptional()
+  @IsArray()
+  tools?: string[]
+
+  @IsOptional()
+  @IsString()
+  channelId?: string
+
+  @IsOptional()
+  @IsNumber()
+  @Min(5)
+  @Max(100)
+  historyLimit?: number
+
+  @IsOptional()
+  @IsEnum(['ATIVO', 'PASSIVO'])
+  agentType?: AgentType
+}
+
+class UpdateStatusDto {
+  @IsEnum(['ACTIVE', 'PAUSED'])
+  status!: Extract<AgentStatus, 'ACTIVE' | 'PAUSED'>
+}
+
+class TestAgentDto {
+  @IsString()
+  @MinLength(1)
+  message!: string
+}
+
+// =============================================
+// Controller
+// =============================================
+
+@Controller('agents')
+@UseGuards(JwtGuard)
+export class AgentsController {
+  constructor(private readonly svc: AgentsService) {}
+
+  @Get()
+  findAll(@Query('type') type?: string) {
+    const agentType = (type === 'ATIVO' || type === 'PASSIVO') ? type as AgentType : undefined
+    return this.svc.findAll(agentType)
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.svc.findById(id)
+  }
+
+  @Post()
+  create(@Body() dto: CreateAgentDto) {
+    return this.svc.create({ ...dto, model: dto.model || DEFAULT_AGENT_MODEL })
+  }
+
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() dto: UpdateAgentDto) {
+    return this.svc.update(id, dto)
+  }
+
+  @Patch(':id/status')
+  updateStatus(@Param('id') id: string, @Body() dto: UpdateStatusDto) {
+    return this.svc.updateStatus(id, dto.status)
+  }
+
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.svc.remove(id)
+  }
+
+  @Post(':id/test')
+  test(@Param('id') id: string, @Body() dto: TestAgentDto) {
+    return this.svc.test(id, dto.message)
+  }
+}

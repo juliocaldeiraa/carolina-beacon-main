@@ -1,0 +1,738 @@
+// Beacon Platform — Prisma Schema
+// Multi-tenant: todas as tabelas possuem tenantId (Pool Isolation)
+// Ref: SPEC.md §4, PRD — Modelo Multi-Tenant
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================
+// TENANT
+// =============================================
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  plan      String   @default("free")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  agents        Agent[]
+  users         User[]
+  conversations Conversation[]
+  metrics       Metric[]
+  broadcasts    Broadcast[]
+  campaigns     Campaign[]
+
+  @@map("tenants")
+}
+
+// =============================================
+// USER
+// =============================================
+model User {
+  id           String   @id @default(uuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email        String   @unique
+  passwordHash String
+  name         String?
+  role         Role     @default(SUPORTE)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId])
+  @@map("users")
+}
+
+// =============================================
+// CONTACT — Banco de contatos unificado
+// =============================================
+model Contact {
+  id            String    @id @default(uuid())
+  tenantId      String    @map("tenant_id")
+  name          String?
+  phone         String
+  email         String?
+  notes         String?   @db.Text
+  tags          Json      @default("[]")
+  channelId     String?   @map("channel_id")
+  convCount     Int       @default(0) @map("conv_count")
+  lastContactAt DateTime? @map("last_contact_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@unique([tenantId, phone])
+  @@index([tenantId])
+  @@map("contacts")
+}
+
+// =============================================
+// AGENT
+// =============================================
+model Agent {
+  id              String      @id @default(uuid())
+  tenantId        String
+  tenant          Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?
+  model           String      // ex: "claude-sonnet-4-6", "gpt-4o"
+  status          AgentStatus @default(ACTIVE)
+  systemPrompt    String?     @db.Text              // legado — usar personality + actionPrompt
+  personality     String?     @db.Text              // quem a IA é e como se comporta
+  actionPrompt    String?     @db.Text @map("action_prompt")  // o que a IA deve fazer nessa conversa
+  temperature     Float       @default(0.6)          // 0.0–1.0
+  maxTokens       Int         @default(300)          @map("max_tokens")
+  limitTurns      Boolean     @default(false)        @map("limit_turns")
+  maxTurns        Int         @default(8)            @map("max_turns")
+  fallbackEnabled Boolean     @default(true)         @map("fallback_enabled")
+  fallbackMessage String?     @db.Text               @map("fallback_message")
+  tools           Json?       // array de tool names registradas
+  channelId       String?     @map("channel_id")     // canal vinculado para auto-resposta
+  historyLimit    Int         @default(20)  @map("history_limit")   // qtd de msgs de contexto enviadas à IA (5–100)
+  agentType       AgentType   @default(PASSIVO) @map("agent_type") // ATIVO: vendedor proativo | PASSIVO: atendimento inbound
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  deletedAt       DateTime?   // soft delete
+
+  conversations Conversation[]
+  metrics       Metric[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("agents")
+}
+
+// =============================================
+// CONVERSATION
+// =============================================
+model Conversation {
+  id            String    @id @default(uuid())
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agentId       String
+  agent         Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  channelId     String?   @map("channel_id")
+  contactPhone  String?   @map("contact_phone")
+  contactName   String?   @map("contact_name")
+  status        String    @default("OPEN") // OPEN | IN_PROGRESS | RESOLVED | CLOSED
+  humanTakeover Boolean   @default(false) @map("human_takeover") // bloqueia IA — atendimento humano ativo
+  startedAt     DateTime  @default(now())
+  endedAt       DateTime?
+  turns         Int       @default(0)
+  lastMessageAt DateTime? @map("last_message_at")
+
+  messages Message[]
+  metric   Metric?
+
+  @@index([tenantId])
+  @@index([agentId])
+  @@index([channelId])
+  @@map("conversations")
+}
+
+// =============================================
+// MESSAGE
+// =============================================
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           MessageRole
+  content        String       @db.Text
+  inputTokens    Int?
+  outputTokens   Int?
+  latencyMs      Int?
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId])
+  @@map("messages")
+}
+
+// =============================================
+// METRIC — Observabilidade (SPEC §4 + PRD Dashboard)
+// =============================================
+model Metric {
+  id             String    @id @default(uuid())
+  tenantId       String
+  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agentId        String
+  agent          Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  conversationId String?   @unique
+  conversation   Conversation? @relation(fields: [conversationId], references: [id])
+
+  // Performance (PRD — Categoria Performance)
+  latencyMs      Int?
+  ttftMs         Int?     // Time To First Token
+  successRate    Float?
+  fallbackRate   Float?
+
+  // Financial (PRD — Categoria Financeiro)
+  inputTokens    Int?
+  outputTokens   Int?
+  costUsd        Float?
+
+  // Quality (PRD — Categoria Qualidade)
+  sentimentScore     Float?   // -1 a 1
+  hallucinationScore Float?   // 0 a 1 (menor = melhor)
+  userRating         Int?     // 1-5
+  relevanceScore     Float?   // 0 a 1
+
+  // Engagement (PRD — Categoria Engajamento)
+  turnsCount Int?
+
+  recordedAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([agentId])
+  @@index([recordedAt])
+  @@map("metrics")
+}
+
+// =============================================
+// BROADCAST
+// =============================================
+model Broadcast {
+  id                       String          @id @default(uuid())
+  tenantId                 String
+  tenant                   Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agentId                  String?         // nullable — não necessário para campanhas sem IA
+  channelId                String?         @map("channel_id")
+  name                     String
+  template                 String          @db.Text
+  audience                 Json            // lista de contatos: "nome|telefone"
+  status                   BroadcastStatus @default(DRAFT)
+  // Timing randomizado anti-ban
+  messageDelayMinSeconds   Int             @default(3)  @map("message_delay_min_seconds")
+  messageDelayMaxSeconds   Int             @default(8)  @map("message_delay_max_seconds")
+  batchSizeMin             Int             @default(20) @map("batch_size_min")
+  batchSizeMax             Int             @default(30) @map("batch_size_max")
+  batchIntervalMinMinutes  Int             @default(30) @map("batch_interval_min_minutes")
+  batchIntervalMaxMinutes  Int             @default(45) @map("batch_interval_max_minutes")
+  sentAt                   DateTime?
+  createdAt                DateTime        @default(now())
+  updatedAt                DateTime        @updatedAt
+
+  @@index([tenantId])
+  @@map("broadcasts")
+}
+
+// =============================================
+// CRM
+// =============================================
+model CrmPipeline {
+  id        String    @id @default(uuid())
+  name      String
+  stages    Json      // string[] — ex: ["Novo Lead", "Qualificado", "Proposta", "Fechado Ganho", "Fechado Perdido"]
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  cards CrmCard[]
+
+  @@map("crm_pipelines")
+}
+
+model CrmCard {
+  id             String      @id @default(uuid())
+  pipelineId     String      @map("pipeline_id")
+  pipeline       CrmPipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  title          String
+  contactName    String      @map("contact_name")
+  contactPhone   String?     @map("contact_phone")
+  stage          String
+  priority       String      @default("NORMAL") // LOW | NORMAL | HIGH | URGENT
+  conversationId String?     @map("conversation_id")
+  notes          String?     @db.Text
+  movedByAi      Boolean     @default(false) @map("moved_by_ai")
+  aiNotes        String?     @map("ai_notes")
+  followupStep   Int?        @map("followup_step")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+
+  @@index([pipelineId])
+  @@map("crm_cards")
+}
+
+// =============================================
+// AI PROVIDERS — Provedores de API de IA
+// =============================================
+model AiProvider {
+  id        String   @id @default(uuid())
+  name      String
+  type      String   // ANTHROPIC | OPENAI | GROQ | OPENAI_COMPATIBLE
+  apiKey    String   @map("api_key")
+  baseUrl   String?  @map("base_url")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("ai_providers")
+}
+
+// =============================================
+// WEBHOOKS — Webhooks de saída (outgoing)
+// =============================================
+model Webhook {
+  id              String    @id @default(uuid())
+  name            String
+  url             String
+  events          Json      @default("[]") // string[]
+  secret          String?
+  isActive        Boolean   @default(true) @map("is_active")
+  lastTriggeredAt DateTime? @map("last_triggered_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@map("webhooks")
+}
+
+// =============================================
+// CHANNEL — Canais de mensagem (WhatsApp/Telegram/Instagram)
+// =============================================
+model Channel {
+  id            String    @id @default(uuid())
+  name          String
+  type          String    // ChannelType: EVOLUTION_API | ZAPI | WHATSAPP_OFFICIAL | TELEGRAM | INSTAGRAM
+  phoneNumber   String?   @map("phone_number")
+  status        String    @default("UNKNOWN") // ChannelStatus: CONNECTED | DISCONNECTED | BLOCKED | UNKNOWN
+  config        Json      @default("{}") // { instanceUrl, apiKey, token, instanceName, etc. }
+  lastCheckedAt DateTime? @map("last_checked_at")
+  blockedAt     DateTime? @map("blocked_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("channels")
+}
+
+// =============================================
+// ENUMS
+// =============================================
+enum AgentStatus {
+  ACTIVE
+  PAUSED
+  DRAFT
+  DELETED
+}
+
+enum AgentType {
+  ATIVO
+  PASSIVO
+}
+
+enum Role {
+  ADMIN
+  EQUIPE
+  SUPORTE
+  COMERCIAL
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+enum BroadcastStatus {
+  DRAFT
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+// =============================================
+// AUTOMAÇÕES
+// =============================================
+enum AutomationStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model Automation {
+  id                   String          @id @default(uuid())
+  tenantId             String          @map("tenant_id")
+  name                 String
+  status               AutomationStatus @default(INACTIVE)
+  sourceTable          String          @default("lead_many_insta") @map("source_table")
+  filterStatus         String          @default("ebook_enviado")   @map("filter_status")
+  minHoursAfterCapture Int             @default(12)                @map("min_hours_after_capture")
+  channelId            String?         @map("channel_id")
+  // Números de teste persistidos (evitam redigitar a cada teste)
+  testPhones           Json            @default("[]")  @map("test_phones")
+  // Templates múltiplos (até 4) — substitui messageTemplate
+  messageTemplates     Json            @default("[]")  @map("message_templates")
+  messageTemplate      String?         @db.Text        @map("message_template")  // legado
+  // Agente vinculado para IA conversacional
+  linkedAgentId        String?         @map("linked_agent_id")
+  aiPrompt             String?         @db.Text        @map("ai_prompt")          // legado
+  startHour            Int             @default(6)  @map("start_hour")
+  endHour              Int             @default(21) @map("end_hour")
+  // Ranges de lote (minutos)
+  batchIntervalMinMinutes Int?         @map("batch_interval_min_minutes")
+  batchIntervalMaxMinutes Int?         @map("batch_interval_max_minutes")
+  batchIntervalHours   Int             @default(2)  @map("batch_interval_hours")  // legado
+  batchSizeMin         Int?            @map("batch_size_min")
+  batchSizeMax         Int?            @map("batch_size_max")
+  batchSize            Int             @default(30) @map("batch_size")             // legado
+  // IA conversacional — canal e modelo próprios
+  aiChannelId          String?         @map("ai_channel_id")
+  aiModel              String?         @default("claude-haiku-4-5-20251001") @map("ai_model")
+  // Multi-canal fallback: canal primário + canais de backup (anti-queda)
+  primaryChannelId     String?         @map("primary_channel_id")
+  fallbackChannelIds   Json            @default("[]") @map("fallback_channel_ids") // string[] — ordem de prioridade
+  // Follow-up sequencial — etapas após o contato inicial (só se não converteu)
+  // Formato: [{ afterHours: 24, templates: ["Oi {nome}..."] }, ...]
+  followupSteps        Json            @default("[]") @map("followup_steps")
+  followupEnabled      Boolean         @default(true)  @map("followup_enabled")
+  // Timing de resposta — sobrescreve ChannelAgent (null = usa ChannelAgent ou default)
+  debounceMs           Int?            @map("debounce_ms")
+  sendDelayMs          Int?            @map("send_delay_ms")
+  fragmentDelayMs      Int?            @map("fragment_delay_ms")
+  // Lista de exclusão — audiência negativa (ex: compradores)
+  useExclusionList      Boolean         @default(false) @map("use_exclusion_list")
+  exclusionFilterStatus String?                         @map("exclusion_filter_status")
+  // Handoff para humano com dupla confirmação
+  humanHandoffEnabled   Boolean         @default(false) @map("human_handoff_enabled")
+  humanHandoffPhone     String?                         @map("human_handoff_phone")
+  humanHandoffMessage   String?         @db.Text        @map("human_handoff_message")
+  // Delay anti-ban entre mensagens do lote (ms) — null = usa padrão 80–160s
+  dispatchDelayMinMs    Int?                            @map("dispatch_delay_min_ms")
+  dispatchDelayMaxMs    Int?                            @map("dispatch_delay_max_ms")
+  lastBatchAt          DateTime?       @map("last_batch_at")
+  totalSent            Int             @default(0)  @map("total_sent")
+  totalReplied         Int             @default(0)  @map("total_replied")
+  totalConverted       Int             @default(0)  @map("total_converted")
+  createdAt            DateTime        @default(now()) @map("created_at")
+  updatedAt            DateTime        @updatedAt     @map("updated_at")
+  logs                 AutomationLog[]
+  dispatchLogs         AutomationDispatchLog[]
+
+  @@index([tenantId])
+  @@map("automations")
+}
+
+model AutomationLog {
+  id           String     @id @default(uuid())
+  automationId String     @map("automation_id")
+  automation   Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  executedAt   DateTime   @default(now()) @map("executed_at")
+  sent         Int        @default(0)
+  skipped      Int        @default(0)
+  errors       Int        @default(0)
+  reason       String?
+  notes        String?
+
+  @@index([automationId])
+  @@map("automation_logs")
+}
+
+model AutomationDispatchLog {
+  id           String     @id @default(cuid())
+  automationId String     @map("automation_id")
+  automation   Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  phone        String
+  name         String?
+  message      String?
+  status       String     // 'sent' | 'error' | 'skipped'
+  errorMsg     String?    @map("error_msg")
+  channelId    String?    @map("channel_id")
+  channelName  String?    @map("channel_name")
+  step         Int        @default(0)
+  executedAt   DateTime   @default(now()) @map("executed_at")
+
+  @@index([automationId])
+  @@map("automation_dispatch_logs")
+}
+
+model LeadExclusionList {
+  id            String   @id @default(dbgenerated("gen_random_uuid()::text"))
+  nome          String?
+  whatsapp      String
+  whatsappLimpo String?  @map("whatsapp_limpo")
+  status        String?
+  campanha      String?
+  origem        String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt      @map("updated_at")
+
+  @@index([whatsapp])
+  @@index([whatsappLimpo])
+  @@index([status])
+  @@map("lead_exclusion_list")
+}
+
+// Tabela existente no Supabase criada pelo ManyChat — sem migration
+model LeadManyInsta {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()"))
+  nome                 String
+  whatsapp             String
+  whatsappLimpo        String?   @map("whatsapp_limpo")
+  instagramUsername    String?   @map("instagram_username")
+  origem               String?
+  campanha             String?
+  status               String?
+  dataCaptura          DateTime? @map("data_captura")
+  dataFollowupPrevisto DateTime? @map("data_followup_previsto")
+  dataFollowupEnviado  DateTime? @map("data_followup_enviado")
+  dataLinkEnviado      DateTime? @map("data_link_enviado")
+  dataConversao        DateTime? @map("data_conversao")
+  historicoCId         Json      @default("[]") @map("historico_conversa_whats")
+  mensagemEnviada           String?   @db.Text        @map("mensagem_enviada")       // template exato enviado na abordagem inicial
+  tentativasFollowup        Int       @default(0)     @map("tentativas_followup")
+  lastDispatchAutomationId  String?                   @map("last_dispatch_automation_id") // automação que fez o último disparo
+  linkEnviado          Boolean   @default(false) @map("link_enviado")
+  converteu            Boolean   @default(false) @map("converteu")
+  tags                 String[]
+  notas                String?
+  metadata             Json?     // campos customizados { key: value }
+  lista                String?   // segmento/página de lista
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt      @map("updated_at")
+
+  @@map("lead_many_insta")
+}
+
+model LeadFieldDef {
+  id        String   @id @default(dbgenerated("gen_random_uuid()::text"))
+  key       String   @unique
+  label     String
+  fieldType String   @default("text") @map("field_type")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  @@map("lead_field_defs")
+}
+
+// =============================================
+// CHANNEL AGENT — Vincula canal + agente + modelo para IA conversacional
+// =============================================
+model ChannelAgent {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  name      String
+  channelId String   @map("channel_id")
+  agentId   String   @map("agent_id")
+  llmModel                String   @default("claude-haiku-4-5-20251001") @map("llm_model")
+  isActive                Boolean  @default(true)  @map("is_active")
+  debounceMs              Int      @default(3000)  @map("debounce_ms")               // ms de espera para juntar msgs consecutivas
+  fragmentDelayMs         Int      @default(1200)  @map("fragment_delay_ms")          // ms entre fragmentos da resposta
+  humanTakeoverTimeoutMin Int      @default(0)     @map("human_takeover_timeout_min") // 0 = sem timeout; >0 = minutos até IA retomar
+  sendDelayMs             Int      @default(0)     @map("send_delay_ms")              // ms de atraso humanizado antes de enviar
+  allowGroups             Boolean  @default(false) @map("allow_groups")               // responder mensagens de grupos
+  triggerMode             String   @default("always") @map("trigger_mode")            // "always" | "keywords"
+  triggerKeywords         Json     @default("[]")  @map("trigger_keywords")           // palavras-chave que ativam a IA
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt      @map("updated_at")
+
+  @@index([tenantId])
+  @@map("channel_agents")
+}
+
+// =============================================
+// INGESTION LOG — Rastreabilidade do pipeline de entrada
+// =============================================
+model IngestionLog {
+  id             String   @id @default(uuid())
+  tenantId       String   @map("tenant_id")
+  channelId      String?  @map("channel_id")
+  channelName    String?  @map("channel_name")
+  contactPhone   String?  @map("contact_phone")
+  contactName    String?  @map("contact_name")
+  messagePreview String?  @map("message_preview")
+  status         String   // received | processing | completed | no_agent | ai_error | parse_error | human_takeover | automation | send_error
+  step           String?
+  errorMsg       String?  @map("error_msg")
+  model          String?
+  latencyMs      Int?     @map("latency_ms")
+  rawPayload     Json?    @map("raw_payload")
+  messageId      String?  @map("message_id")  // idempotency key — evita reprocessar webhook re-entregue
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([channelId])
+  @@index([messageId])
+  @@map("ingestion_logs")
+}
+
+// =============================================
+// CENTRAL AI CONFIG — IA auxiliar para tarefas de background
+// =============================================
+model CentralAiConfig {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  name      String   @default("Principal")
+  provider  String   @default("ANTHROPIC") // ANTHROPIC | OPENAI | GOOGLE
+  model     String   @default("claude-haiku-4-5-20251001")
+  apiKey    String   @map("api_key")
+  isActive  Boolean  @default(false) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt     @map("updated_at")
+
+  @@index([tenantId])
+  @@map("central_ai_config")
+}
+
+// =============================================
+// CAMPAIGNS — Sistema de disparo avançado
+// =============================================
+
+enum CampaignStatus {
+  DRAFT
+  RUNNING
+  PAUSED
+  COMPLETED
+  FAILED
+}
+
+enum LeadStatus {
+  PENDING
+  QUEUED
+  SENT
+  REPLIED
+  ERROR
+  OPTED_OUT
+}
+
+model Campaign {
+  id            String         @id @default(uuid())
+  tenantId      String         @map("tenant_id")
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  channelId     String?        @map("channel_id")   // FK ao Channel (instância WhatsApp)
+  agentId       String?        @map("agent_id")     // Agente IA vinculado (opcional) — responde quando lead responde
+  name          String
+  status        CampaignStatus @default(DRAFT)
+  delayMinSec   Int            @default(120)        @map("delay_min_sec")   // min 120 — enforçado na app + CHECK constraint
+  delayMaxSec   Int            @default(180)        @map("delay_max_sec")
+  rotationMode  String         @default("RANDOM")   @map("rotation_mode")  // RANDOM | SEQUENTIAL
+  varLabels     Json           @default("[]")       @map("var_labels")     // rótulos das variáveis: ["Nome","Empresa","..."]
+  scheduledAt        DateTime? @map("scheduled_at")
+  completedAt        DateTime? @map("completed_at")
+  // Janela de disparo — evita envios fora do horário comercial
+  scheduleEnabled    Boolean   @default(false)      @map("schedule_enabled")
+  scheduleStartHour  Int       @default(8)          @map("schedule_start_hour")  // 0-23 no timezone abaixo
+  scheduleEndHour    Int       @default(18)         @map("schedule_end_hour")
+  scheduleDays       Json      @default("[1,2,3,4,5]") @map("schedule_days")     // 0=Dom 1=Seg … 6=Sáb
+  scheduleTimezone   String    @default("America/Sao_Paulo") @map("schedule_timezone")
+  totalLeads    Int            @default(0)          @map("total_leads")
+  sentCount     Int            @default(0)          @map("sent_count")
+  errorCount    Int            @default(0)          @map("error_count")
+  createdAt     DateTime       @default(now())      @map("created_at")
+  updatedAt     DateTime       @updatedAt           @map("updated_at")
+
+  templates CampaignTemplate[]
+  leads     CampaignLead[]
+  shares    CrmShare[]
+
+  @@index([tenantId])
+  @@map("campaigns")
+}
+
+model CampaignTemplate {
+  id          String   @id @default(uuid())
+  campaignId  String   @map("campaign_id")
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  // INITIAL = mensagem inicial | FOLLOW_UP = follow-up agendado
+  type        String   @default("INITIAL")   @map("type")
+  // Array JSON de variações do spintext: [["Olá {{1}}!", "Segundo parágrafo"], ["Variação 2"]]
+  variations  Json     @default("[]")
+  // Ordem sequencial: 0=inicial, 1=follow-up 1, 2=follow-up 2, etc.
+  order       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  followUpRule FollowUpRule?
+  dispatchLogs CampaignDispatchLog[]
+
+  @@index([campaignId])
+  @@map("campaign_templates")
+}
+
+model CampaignLead {
+  id            String     @id @default(uuid())
+  tenantId      String     @map("tenant_id")
+  campaignId    String     @map("campaign_id")
+  campaign      Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  phone         String
+  var1          String?    @map("var_1")
+  var2          String?    @map("var_2")
+  var3          String?    @map("var_3")
+  var4          String?    @map("var_4")
+  var5          String?    @map("var_5")
+  status          LeadStatus @default(PENDING)
+  kanbanColumn    String     @default("AGUARDANDO")  @map("kanban_column")
+  followUpCount   Int        @default(0)             @map("follow_up_count")   // quantos follow-ups já foram enviados
+  conversionValue Decimal?                           @map("conversion_value")  // valor registrado ao converter
+  lastMessageAt   DateTime?  @map("last_message_at")
+  nextActionAt    DateTime?  @map("next_action_at")  // agendamento de follow-up
+  notes           String?    @db.Text
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt      @map("updated_at")
+
+  dispatchLogs     CampaignDispatchLog[]
+  inboundMessages  CampaignInboundMessage[]
+
+  @@unique([campaignId, phone])
+  @@index([tenantId])
+  @@index([campaignId, status])
+  @@index([nextActionAt])
+  @@map("campaign_leads")
+}
+
+model FollowUpRule {
+  id                   String     @id @default(uuid())
+  templateId           String     @unique   @map("template_id")
+  template             CampaignTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  triggerAfterMinutes  Int        @default(1440)   @map("trigger_after_minutes")  // padrão: 24h
+  triggerOnStatus      LeadStatus @default(SENT)   @map("trigger_on_status")
+  isActive             Boolean    @default(true)   @map("is_active")
+  createdAt            DateTime   @default(now())  @map("created_at")
+
+  @@map("follow_up_rules")
+}
+
+model CampaignDispatchLog {
+  id              String   @id @default(uuid())
+  leadId          String   @map("lead_id")
+  lead            CampaignLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  templateId      String?  @map("template_id")
+  template        CampaignTemplate? @relation(fields: [templateId], references: [id])
+  messageSent     String   @db.Text  @map("message_sent")  // mensagem final após substituição
+  variationIdx    Int      @map("variation_idx")
+  status          String   // SUCCESS | FAILED
+  errorMsg        String?  @map("error_msg")
+  evolutionMsgId  String?  @map("evolution_msg_id")
+  sentAt          DateTime @default(now()) @map("sent_at")
+
+  @@index([leadId])
+  @@map("campaign_dispatch_logs")
+}
+
+model CampaignInboundMessage {
+  id         String   @id @default(uuid())
+  leadId     String   @map("lead_id")
+  lead       CampaignLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  content    String   @db.Text
+  fromPhone  String   @map("from_phone")
+  receivedAt DateTime @default(now()) @map("received_at")
+
+  @@index([leadId])
+  @@map("campaign_inbound_messages")
+}
+
+model CrmShare {
+  id           String   @id @default(uuid())
+  campaignId   String   @map("campaign_id")
+  campaign     Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  username     String   @unique
+  passwordHash String   @map("password_hash")
+  label        String?
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("crm_shares")
+}
