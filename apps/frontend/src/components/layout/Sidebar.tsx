@@ -45,7 +45,6 @@ const navItems: NavItem[] = [
   { to: '/contacts',      icon: Users,          label: 'Contatos',         roles: 'all' },
   { to: '/campaigns',     icon: Megaphone,      label: 'Campanhas',        roles: ['ADMIN', 'EQUIPE', 'COMERCIAL'] },
   { to: '/crm',           icon: Kanban,         label: 'CRM',              roles: ['ADMIN', 'EQUIPE', 'COMERCIAL'] },
-  { to: '/broadcast',     icon: Radio,          label: 'Broadcast',        roles: ['ADMIN', 'EQUIPE', 'COMERCIAL'] },
   { to: '/vendedor',      icon: TrendingUp,     label: 'Vendedor',         roles: ['ADMIN', 'EQUIPE'] },
   { to: '/settings',      icon: Settings,       label: 'Configurações',    roles: ['ADMIN'] },
 ]

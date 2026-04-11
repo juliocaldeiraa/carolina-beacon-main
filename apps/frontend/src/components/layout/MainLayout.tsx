@@ -121,8 +121,8 @@ export function MainLayout() {
               <Route path="/contacts"         element={<ContactsPage />} />
               <Route path="/contacts/:id"     element={<ContactDetail />} />
 
-              {/* Broadcast (envio rápido) */}
-              <Route path="/broadcast"        element={<BroadcastManager />} />
+              {/* Broadcast redireciona para Campanhas */}
+              <Route path="/broadcast"        element={<Navigate to="/campaigns" replace />} />
 
               {/* Campanhas (disparo avançado) */}
               <Route path="/campaigns"        element={<CampaignsPage />} />
