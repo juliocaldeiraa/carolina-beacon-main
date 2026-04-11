@@ -40,7 +40,7 @@ class ListLeadsQuery {
 }
 
 function tenantId(req: any): string {
-  return req.user?.tenantId ?? process.env.DEFAULT_TENANT_ID!
+  return req.user?.tenantId
 }
 
 @Controller('campaigns/:campaignId/leads')

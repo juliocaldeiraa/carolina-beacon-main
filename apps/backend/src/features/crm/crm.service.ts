@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common'
 import { PrismaService } from '../../infrastructure/database/prisma/prisma.service'
+import * as bcrypt from 'bcryptjs'
 
 export interface CreateCardDto {
   pipelineId:   string
@@ -136,6 +137,81 @@ export class CrmService {
     const card = await this.prisma.crmCard.findUnique({ where: { id } })
     if (!card) throw new NotFoundException('Card não encontrado')
     await this.prisma.crmCard.delete({ where: { id } })
+  }
+
+  // ─── Kanban de Leads (Campanhas) ────────────────────────────────────────────
+
+  async findLeadsForKanban(tenantId: string, filters?: { campaignId?: string; search?: string }) {
+    const where: any = { tenantId }
+    if (filters?.campaignId) where.campaignId = filters.campaignId
+    if (filters?.search) {
+      where.OR = [
+        { phone: { contains: filters.search } },
+        { var1:  { contains: filters.search, mode: 'insensitive' } },
+      ]
+    }
+
+    return this.prisma.campaignLead.findMany({
+      where,
+      include: { campaign: { select: { id: true, name: true } } },
+      orderBy: { updatedAt: 'desc' },
+    })
+  }
+
+  async updateLeadKanban(leadId: string, tenantId: string, kanbanColumn: string, conversionValue?: string) {
+    const lead = await this.prisma.campaignLead.findFirst({
+      where: { id: leadId, tenantId },
+    })
+    if (!lead) throw new NotFoundException('Lead não encontrado')
+    return this.prisma.campaignLead.update({
+      where: { id: leadId },
+      data:  {
+        kanbanColumn,
+        ...(conversionValue != null
+          ? { conversionValue: parseFloat(conversionValue.replace(',', '.')) }
+          : {}),
+      },
+      include: { campaign: { select: { id: true, name: true } } },
+    })
+  }
+
+  // ─── Shares (Acesso Externo ao CRM) ───────────────────────────────────────
+
+  async listShares(tenantId: string) {
+    return this.prisma.crmShare.findMany({
+      where: { campaign: { tenantId }, isActive: true },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true, username: true, label: true, campaignId: true, createdAt: true,
+        campaign: { select: { id: true, name: true } },
+      },
+    })
+  }
+
+  async createShare(tenantId: string, campaignId: string, label?: string) {
+    const campaign = await this.prisma.campaign.findFirst({
+      where: { id: campaignId, tenantId },
+    })
+    if (!campaign) throw new NotFoundException('Campanha não encontrada')
+
+    const slug = Math.random().toString(36).slice(2, 8)
+    const username = `acesso-${slug}`
+    const raw = Math.random().toString(36).slice(2, 6).toUpperCase()
+    const plainPassword = `Acesso@${raw}`
+    const passwordHash = await bcrypt.hash(plainPassword, 10)
+
+    const share = await this.prisma.crmShare.create({
+      data: { campaignId, username, passwordHash, label: label ?? campaign.name },
+    })
+    return { id: share.id, username, password: plainPassword, label: share.label, campaignId }
+  }
+
+  async deleteShare(shareId: string, tenantId: string) {
+    const share = await this.prisma.crmShare.findFirst({
+      where: { id: shareId, campaign: { tenantId } },
+    })
+    if (!share) throw new NotFoundException('Acesso não encontrado')
+    await this.prisma.crmShare.update({ where: { id: shareId }, data: { isActive: false } })
   }
 
   // ─── Integração Automações ─────────────────────────────────────────────────

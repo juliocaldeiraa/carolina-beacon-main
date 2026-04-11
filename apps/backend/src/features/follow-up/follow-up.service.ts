@@ -32,7 +32,14 @@ export class FollowUpService {
     private readonly dispatch:  DispatchService,
   ) {}
 
-  async createWithTemplate(campaignId: string, dto: CreateFollowUpWithTemplateDto) {
+  private async validateCampaignOwnership(campaignId: string, tenantId: string) {
+    const campaign = await this.prisma.campaign.findFirst({ where: { id: campaignId, tenantId } })
+    if (!campaign) throw new NotFoundException('Campanha não encontrada')
+    return campaign
+  }
+
+  async createWithTemplate(campaignId: string, dto: CreateFollowUpWithTemplateDto, tenantId?: string) {
+    if (tenantId) await this.validateCampaignOwnership(campaignId, tenantId)
     if (dto.order < 1 || dto.order > MAX_FOLLOW_UPS) {
       throw new BadRequestException(`order deve ser entre 1 e ${MAX_FOLLOW_UPS}`)
     }
@@ -69,7 +76,8 @@ export class FollowUpService {
     })
   }
 
-  async deleteByOrder(campaignId: string, order: number) {
+  async deleteByOrder(campaignId: string, order: number, tenantId?: string) {
+    if (tenantId) await this.validateCampaignOwnership(campaignId, tenantId)
     const template = await this.prisma.campaignTemplate.findFirst({
       where: { campaignId, type: 'FOLLOW_UP', order },
     })
@@ -77,7 +85,8 @@ export class FollowUpService {
     await this.prisma.campaignTemplate.delete({ where: { id: template.id } })
   }
 
-  async findByCampaign(campaignId: string) {
+  async findByCampaign(campaignId: string, tenantId?: string) {
+    if (tenantId) await this.validateCampaignOwnership(campaignId, tenantId)
     return this.prisma.followUpRule.findMany({
       where:   { template: { campaignId } },
       include: { template: true },

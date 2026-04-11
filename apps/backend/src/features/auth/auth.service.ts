@@ -21,7 +21,7 @@ export class AuthService {
       throw new UnauthorizedException('Credenciais inválidas')
     }
 
-    const payload = { sub: user.id, role: user.role }
+    const payload = { sub: user.id, role: user.role, tenantId: user.tenantId }
 
     const accessToken = this.jwt.sign(payload)
     const refreshToken = this.jwt.sign(payload, {
@@ -33,9 +33,10 @@ export class AuthService {
       accessToken,
       refreshToken,
       user: {
-        id:    user.id,
-        email: user.email,
-        role:  user.role,
+        id:       user.id,
+        email:    user.email,
+        role:     user.role,
+        tenantId: user.tenantId,
       },
     }
   }

@@ -1,280 +1,410 @@
 /**
- * CrmPage — Kanban Board de CRM
- * IA move os cards automaticamente; humanos visualizam e podem mover manualmente
+ * CrmPage — Kanban de leads com movimentação automática e manual
+ *
+ * Auto (sistema):
+ *   - MENSAGEM_ENVIADA: quando o disparo é feito
+ *   - RESPONDEU:        quando o lead responde via WhatsApp (webhook)
+ *   - SEM_INTERESSE:    após 3 follow-ups sem resposta
+ *
+ * Manual (humano):
+ *   - EM_CONTATO: move após abordar o lead
+ *   - AGENDADO:   move quando agenda uma reunião/ligação
+ *   - CONVERTIDO: move quando fecha + registra valor de conversão
+ *   - SEM_INTERESSE: pode mover manualmente também
  */
 
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  Kanban, Plus, Bot, ChevronRight, ChevronLeft, Trash2,
-  PhoneCall, User, MessageSquare, AlertTriangle,
+  Phone, ChevronLeft, ChevronRight, Loader2, Search,
+  Megaphone, Bot, TrendingUp, X, Share2, Trash2, Copy, Check,
 } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
-import { Modal } from '@/components/ui/Modal'
-import {
-  usePipelines, usePipeline, useCreateCard, useUpdateCard, useDeleteCard,
-} from './hooks/useCrm'
-import type { CrmCard } from '@/services/crm'
-import { cn } from '@/lib/utils'
+import { api } from '@/services/api'
+import { campaignsApi, type Lead } from '@/services/campaigns-api'
 
-// ─── Priority config ────────────────────────────────────────────────────────────
+// ─── Tipos ───────────────────────────────────────────────────────────────────
 
-const PRIORITY_CONFIG: Record<string, {
-  label: string
-  variant: 'active' | 'default' | 'draft' | 'error'
-}> = {
-  LOW:    { label: 'Baixa',   variant: 'default' },
-  NORMAL: { label: 'Normal',  variant: 'draft' },
-  HIGH:   { label: 'Alta',    variant: 'active' },
-  URGENT: { label: 'Urgente', variant: 'error' },
+interface LeadWithCampaign extends Lead {
+  campaign: { id: string; name: string }
 }
 
-// ─── Card component ─────────────────────────────────────────────────────────────
+// ─── Configuração das colunas ─────────────────────────────────────────────────
 
-function KanbanCard({
-  card, stages, onMove, onDelete,
+const COLUMNS = [
+  {
+    key:        'MENSAGEM_ENVIADA',
+    label:      'Mensagem Enviada',
+    dot:        'bg-blue-400',
+    bg:         'bg-blue-50',
+    border:     'border-blue-100',
+    auto:       true,
+    description: 'Sistema move automaticamente ao enviar',
+  },
+  {
+    key:        'RESPONDEU',
+    label:      'Respondeu',
+    dot:        'bg-purple-500',
+    bg:         'bg-purple-50',
+    border:     'border-purple-100',
+    auto:       true,
+    description: 'Sistema move quando o lead responde',
+  },
+  {
+    key:        'EM_CONTATO',
+    label:      'Em Contato',
+    dot:        'bg-cyan-500',
+    bg:         'bg-cyan-50',
+    border:     'border-cyan-100',
+    auto:       false,
+    description: 'Mova quando iniciar o contato ativo',
+  },
+  {
+    key:        'AGENDADO',
+    label:      'Agendado',
+    dot:        'bg-amber-500',
+    bg:         'bg-amber-50',
+    border:     'border-amber-100',
+    auto:       false,
+    description: 'Mova quando agendar reunião/ligação',
+  },
+  {
+    key:        'CONVERTIDO',
+    label:      'Convertido',
+    dot:        'bg-green-500',
+    bg:         'bg-green-50',
+    border:     'border-green-100',
+    auto:       false,
+    requiresValue: true,
+    description: 'Mova quando fechar — informe o valor',
+  },
+  {
+    key:        'SEM_INTERESSE',
+    label:      'Sem Interesse',
+    dot:        'bg-red-400',
+    bg:         'bg-red-50',
+    border:     'border-red-100',
+    auto:       true,
+    description: 'Auto após 3 FUs sem resposta, ou manual',
+  },
+] as const
+
+type ColKey = typeof COLUMNS[number]['key']
+
+const LEAD_STATUS_COLORS: Record<Lead['status'], string> = {
+  PENDING:   'bg-gray-100 text-gray-500',
+  QUEUED:    'bg-blue-50 text-blue-600',
+  SENT:      'bg-green-50 text-green-700',
+  REPLIED:   'bg-purple-50 text-purple-700',
+  ERROR:     'bg-red-50 text-red-600',
+  OPTED_OUT: 'bg-orange-50 text-orange-600',
+}
+
+const LEAD_STATUS_LABELS: Record<Lead['status'], string> = {
+  PENDING:   'Pendente',
+  QUEUED:    'Na fila',
+  SENT:      'Enviado',
+  REPLIED:   'Respondeu',
+  ERROR:     'Erro',
+  OPTED_OUT: 'Saiu',
+}
+
+// ─── API helpers ──────────────────────────────────────────────────────────────
+
+const crmApi = {
+  listLeads: (params?: { campaignId?: string; search?: string }) =>
+    api.get<LeadWithCampaign[]>('/crm/leads', { params }).then((r) => r.data),
+
+  moveToColumn: (id: string, kanbanColumn: string, conversionValue?: string) =>
+    api.patch<LeadWithCampaign>(`/crm/leads/${id}/column`, {
+      kanbanColumn,
+      ...(conversionValue ? { conversionValue } : {}),
+    }).then((r) => r.data),
+}
+
+// ─── Modal de conversão ───────────────────────────────────────────────────────
+
+function ConversionModal({
+  lead,
+  onConfirm,
+  onClose,
+  isPending,
 }: {
-  card: CrmCard
-  stages: string[]
-  onMove: (stage: string) => void
-  onDelete: () => void
+  lead:      LeadWithCampaign
+  onConfirm: (value: string) => void
+  onClose:   () => void
+  isPending: boolean
 }) {
-  const [showActions, setShowActions] = useState(false)
-  const currentIdx = stages.indexOf(card.stage)
-  const priority = PRIORITY_CONFIG[card.priority] ?? PRIORITY_CONFIG.NORMAL
+  const [raw, setRaw] = useState('')
+
+  // Mascara: apenas dígitos → formata como moeda
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, '')
+    setRaw(digits)
+  }
+
+  const displayValue = raw
+    ? (parseInt(raw, 10) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })
+    : ''
+
+  const numericValue = raw ? (parseInt(raw, 10) / 100).toFixed(2).replace('.', ',') : ''
 
   return (
     <div
-      className="bg-beacon-surface-2 rounded-lg border border-[rgba(255,255,255,0.07)] shadow-surface p-3 space-y-2.5 cursor-pointer hover:border-[rgba(255,255,255,0.15)] transition-all"
-      onClick={() => setShowActions((v) => !v)}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
     >
-      {/* Title + AI badge */}
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-xs font-semibold text-white leading-snug">{card.title}</p>
-        {card.movedByAi && (
-          <span
-            title={card.aiNotes ?? 'Movido pela IA'}
-            className="shrink-0 flex items-center gap-0.5 text-[10px] text-[#00b4d8] bg-[#00b4d8]/15 px-1.5 py-0.5 rounded-full"
-          >
-            <Bot className="w-2.5 h-2.5" aria-hidden="true" />
-            IA
-          </span>
-        )}
-      </div>
-
-      {/* Contact info */}
-      <div className="space-y-1">
-        <p className="flex items-center gap-1.5 text-xs text-white/50">
-          <User className="w-3 h-3 shrink-0" aria-hidden="true" />
-          {card.contactName}
-        </p>
-        {card.contactPhone && (
-          <p className="flex items-center gap-1.5 text-xs text-white/50">
-            <PhoneCall className="w-3 h-3 shrink-0" aria-hidden="true" />
-            {card.contactPhone}
-          </p>
-        )}
-        {card.conversationId && (
-          <p className="flex items-center gap-1.5 text-xs text-[#00b4d8]">
-            <MessageSquare className="w-3 h-3 shrink-0" aria-hidden="true" />
-            Ver conversa
-          </p>
-        )}
-      </div>
-
-      {/* Priority + follow-up badges */}
-      <div className="flex items-center gap-1.5 flex-wrap">
-        <Badge variant={priority.variant} className="text-[10px] px-1.5 py-0">
-          {priority.label}
-        </Badge>
-        {card.followupStep != null && card.followupStep > 0 && (
-          <span className={cn(
-            'text-[10px] px-1.5 py-0 rounded-full font-medium',
-            card.followupStep === 1 && 'bg-amber-500/20 text-amber-400',
-            card.followupStep === 2 && 'bg-orange-500/20 text-orange-400',
-            (card.followupStep ?? 0) >= 3 && 'bg-red-500/20 text-red-400',
-          )}>
-            Follow-up {card.followupStep}
-          </span>
-        )}
-      </div>
-
-      {/* Actions (on click) */}
-      {showActions && (
-        <div className="pt-2 border-t border-[rgba(255,255,255,0.07)] flex items-center gap-1.5 flex-wrap">
-          {currentIdx > 0 && (
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden">
+        {/* Header verde */}
+        <div className="bg-gradient-to-br from-green-500 to-emerald-600 px-6 pt-6 pb-5">
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center mb-3">
+                <TrendingUp className="w-5 h-5 text-white" />
+              </div>
+              <h2 className="text-white font-bold text-lg leading-tight">Registrar conversão</h2>
+              <p className="text-green-100 text-sm mt-0.5">Mover lead para Convertido</p>
+            </div>
             <button
-              onClick={(e) => { e.stopPropagation(); onMove(stages[currentIdx - 1]) }}
-              className="flex items-center gap-0.5 text-[11px] text-white/50 bg-white/8 hover:bg-white/12 px-2 py-1 rounded transition-colors"
+              onClick={onClose}
+              className="w-8 h-8 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors"
             >
-              <ChevronLeft className="w-3 h-3" /> Voltar
+              <X className="w-4 h-4 text-white" />
             </button>
-          )}
-          {currentIdx < stages.length - 1 && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onMove(stages[currentIdx + 1]) }}
-              className="flex items-center gap-0.5 text-[11px] text-beacon-primary bg-beacon-primary/10 hover:bg-beacon-primary/20 px-2 py-1 rounded transition-colors"
-            >
-              Avançar <ChevronRight className="w-3 h-3" />
-            </button>
-          )}
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete() }}
-            className="ml-auto text-red-400 hover:bg-red-500/10 p-1 rounded transition-colors"
-            aria-label="Remover card"
-          >
-            <Trash2 className="w-3 h-3" />
-          </button>
+          </div>
         </div>
+
+        <div className="p-6 space-y-5">
+          {/* Lead info */}
+          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-2xl">
+            <div className="w-9 h-9 rounded-xl bg-green-100 flex items-center justify-center shrink-0">
+              <span className="text-green-700 font-bold text-sm">
+                {(lead.var1 ?? lead.phone).slice(0, 1).toUpperCase()}
+              </span>
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-900 truncate">{lead.var1 ?? lead.phone}</p>
+              <p className="text-xs text-gray-400 truncate">{lead.campaign.name}</p>
+            </div>
+          </div>
+
+          {/* Input de valor */}
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Valor da venda
+            </label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-semibold text-sm">
+                R$
+              </span>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={displayValue}
+                onChange={handleChange}
+                placeholder="0,00"
+                autoFocus
+                className="w-full pl-10 pr-4 py-3.5 text-lg font-bold text-gray-900 bg-gray-50
+                           border-2 border-gray-100 rounded-2xl focus:outline-none focus:border-green-400
+                           focus:bg-white transition-all tabular-nums"
+              />
+            </div>
+            <p className="text-[11px] text-gray-400">Opcional — deixe vazio se não quiser registrar valor</p>
+          </div>
+
+          {/* Botões */}
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={onClose}
+              disabled={isPending}
+              className="flex-1 py-3 text-sm font-medium text-gray-600 bg-gray-100
+                         hover:bg-gray-200 rounded-2xl transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={() => onConfirm(numericValue)}
+              disabled={isPending}
+              className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold text-white
+                         bg-gradient-to-r from-green-500 to-emerald-600
+                         hover:from-green-600 hover:to-emerald-700
+                         rounded-2xl shadow-lg shadow-green-200 transition-all disabled:opacity-50"
+            >
+              {isPending
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : <TrendingUp className="w-4 h-4" />
+              }
+              Confirmar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Card ────────────────────────────────────────────────────────────────────
+
+function LeadCard({
+  lead,
+  onMoveRequest,
+  isMoving,
+}: {
+  lead:          LeadWithCampaign
+  onMoveRequest: (lead: LeadWithCampaign, colKey: ColKey) => void
+  isMoving:      boolean
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const currentIdx = COLUMNS.findIndex((c) => c.key === lead.kanbanColumn)
+
+  const displayName = lead.var1 ?? lead.phone
+  const prevCol     = currentIdx > 0 ? COLUMNS[currentIdx - 1] : null
+  const nextCol     = currentIdx < COLUMNS.length - 1 ? COLUMNS[currentIdx + 1] : null
+
+  return (
+    <div
+      onClick={() => setExpanded((v) => !v)}
+      className="bg-white border border-gray-100 rounded-xl p-3 space-y-2 cursor-pointer
+                 hover:border-gray-300 hover:shadow-sm transition-all select-none"
+    >
+      {/* Nome + status */}
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-sm font-semibold text-gray-900 leading-tight truncate">{displayName}</p>
+        <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${LEAD_STATUS_COLORS[lead.status]}`}>
+          {LEAD_STATUS_LABELS[lead.status]}
+        </span>
+      </div>
+
+      {/* Telefone */}
+      <p className="flex items-center gap-1.5 text-xs text-gray-500 font-mono">
+        <Phone className="w-3 h-3 shrink-0" />
+        {lead.phone}
+      </p>
+
+      {/* Campanha */}
+      <p className="flex items-center gap-1.5 text-xs text-gray-400 truncate">
+        <Megaphone className="w-3 h-3 shrink-0" />
+        {lead.campaign.name}
+      </p>
+
+      {/* Badges: follow-ups + conversão */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {lead.followUpCount > 0 && (
+          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+            lead.followUpCount >= 3
+              ? 'bg-red-50 text-red-500'
+              : lead.followUpCount === 2
+              ? 'bg-orange-50 text-orange-500'
+              : 'bg-amber-50 text-amber-600'
+          }`}>
+            {lead.followUpCount === 1 ? '1 FU' : `${lead.followUpCount} FUs`}
+          </span>
+        )}
+        {lead.conversionValue && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-green-50 text-green-700">
+            R$ {Number(lead.conversionValue).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+          </span>
+        )}
+      </div>
+
+      {/* Última mensagem */}
+      {lead.lastMessageAt && (
+        <p className="text-[10px] text-gray-300">
+          {new Date(lead.lastMessageAt).toLocaleDateString('pt-BR')}
+        </p>
       )}
 
-      {/* AI notes */}
-      {card.movedByAi && card.aiNotes && showActions && (
-        <div className="bg-[#00b4d8]/10 rounded-lg px-2 py-1.5 text-[10px] text-[#00b4d8]">
-          <Bot className="w-2.5 h-2.5 inline mr-1" />
-          {card.aiNotes}
+      {/* Ações (expandido) */}
+      {expanded && (
+        <div
+          className="pt-2 border-t border-gray-100 flex items-center gap-1.5 flex-wrap"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {prevCol && (
+            <button
+              onClick={() => onMoveRequest(lead, prevCol.key as ColKey)}
+              disabled={isMoving}
+              className="flex items-center gap-0.5 text-[11px] text-gray-500 bg-gray-100 hover:bg-gray-200
+                         px-2 py-1 rounded-lg transition-colors disabled:opacity-50"
+            >
+              {isMoving ? <Loader2 className="w-3 h-3 animate-spin" /> : <ChevronLeft className="w-3 h-3" />}
+              {prevCol.label}
+            </button>
+          )}
+          {nextCol && (
+            <button
+              onClick={() => onMoveRequest(lead, nextCol.key as ColKey)}
+              disabled={isMoving}
+              className="flex items-center gap-0.5 text-[11px] text-white bg-beacon-primary hover:bg-beacon-hover
+                         px-2 py-1 rounded-lg transition-colors disabled:opacity-50 ml-auto"
+            >
+              {nextCol.label}
+              {isMoving ? <Loader2 className="w-3 h-3 animate-spin" /> : <ChevronRight className="w-3 h-3" />}
+            </button>
+          )}
+          {/* Mover para Sem Interesse diretamente (exceto se já estiver lá) */}
+          {lead.kanbanColumn !== 'SEM_INTERESSE' && lead.kanbanColumn !== 'CONVERTIDO' && (
+            <button
+              onClick={() => onMoveRequest(lead, 'SEM_INTERESSE')}
+              disabled={isMoving}
+              className="text-[10px] text-red-400 hover:text-red-600 px-2 py-1 rounded-lg
+                         hover:bg-red-50 transition-colors"
+            >
+              Sem interesse
+            </button>
+          )}
         </div>
       )}
     </div>
   )
 }
 
-// ─── Add card form ──────────────────────────────────────────────────────────────
-
-const cardSchema = z.object({
-  title:        z.string().min(2, 'Mínimo 2 caracteres'),
-  contactName:  z.string().min(2, 'Mínimo 2 caracteres'),
-  contactPhone: z.string().optional(),
-  stage:        z.string(),
-  priority:     z.enum(['LOW', 'NORMAL', 'HIGH', 'URGENT']),
-  notes:        z.string().optional(),
-})
-type CardFormValues = z.infer<typeof cardSchema>
-
-function AddCardForm({
-  pipelineId, stages, defaultStage, onClose,
-}: {
-  pipelineId: string
-  stages: string[]
-  defaultStage: string
-  onClose: () => void
-}) {
-  const { mutate: create, isPending } = useCreateCard()
-
-  const { register, handleSubmit, formState: { errors } } = useForm<CardFormValues>({
-    resolver: zodResolver(cardSchema),
-    defaultValues: { stage: defaultStage, priority: 'NORMAL' },
-  })
-
-  function onSubmit(values: CardFormValues) {
-    create(
-      { pipelineId, ...values, contactPhone: values.contactPhone || undefined },
-      { onSuccess: onClose },
-    )
-  }
-
-  const labelClass = 'block text-xs font-medium text-white/70 mb-1'
-  const inputClass = cn(
-    'w-full text-sm text-white/85 bg-beacon-surface border border-[rgba(255,255,255,0.08)] rounded-lg px-3 py-2',
-    'focus:outline-none focus:border-[#00b4d8]/60 focus:shadow-[0_0_0_3px_rgba(0,180,216,0.10)] placeholder:text-white/25',
-  )
-  const errorClass = 'text-xs text-red-500 mt-1'
-
-  return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <div>
-        <label htmlFor="card-title" className={labelClass}>Título *</label>
-        <input id="card-title" {...register('title')} className={inputClass} placeholder="Ex: Felipe Santos - Interesse Plano Pro" />
-        {errors.title && <p className={errorClass}>{errors.title.message}</p>}
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label htmlFor="card-contact" className={labelClass}>Nome do Contato *</label>
-          <input id="card-contact" {...register('contactName')} className={inputClass} placeholder="Felipe Santos" />
-          {errors.contactName && <p className={errorClass}>{errors.contactName.message}</p>}
-        </div>
-        <div>
-          <label htmlFor="card-phone" className={labelClass}>Telefone</label>
-          <input id="card-phone" {...register('contactPhone')} className={inputClass} placeholder="+55 11 99999-9999" />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label htmlFor="card-stage" className={labelClass}>Stage inicial *</label>
-          <select id="card-stage" {...register('stage')} className={inputClass}>
-            {stages.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="card-priority" className={labelClass}>Prioridade *</label>
-          <select id="card-priority" {...register('priority')} className={inputClass}>
-            <option value="LOW">Baixa</option>
-            <option value="NORMAL">Normal</option>
-            <option value="HIGH">Alta</option>
-            <option value="URGENT">Urgente</option>
-          </select>
-        </div>
-      </div>
-
-      <div>
-        <label htmlFor="card-notes" className={labelClass}>Observações</label>
-        <textarea id="card-notes" {...register('notes')} rows={2} className={inputClass} placeholder="Informações adicionais..." />
-      </div>
-
-      <div className="flex gap-3 justify-end pt-2">
-        <Button type="button" variant="secondary" onClick={onClose} disabled={isPending}>Cancelar</Button>
-        <Button type="submit" variant="primary" loading={isPending}>Criar Card</Button>
-      </div>
-    </form>
-  )
-}
-
-// ─── Kanban column ──────────────────────────────────────────────────────────────
+// ─── Coluna ───────────────────────────────────────────────────────────────────
 
 function KanbanColumn({
-  stage, cards, stages,
+  col,
+  leads,
+  onMoveRequest,
+  movingId,
 }: {
-  stage: string
-  cards: CrmCard[]
-  stages: string[]
+  col:           typeof COLUMNS[number]
+  leads:         LeadWithCampaign[]
+  onMoveRequest: (lead: LeadWithCampaign, colKey: ColKey) => void
+  movingId:      string | null
 }) {
-  const { mutate: updateCard } = useUpdateCard()
-  const { mutate: deleteCard } = useDeleteCard()
-
-  const isFinal = stage.toLowerCase().includes('fechado') || stage.toLowerCase().includes('closed')
-
   return (
-    <div className={cn(
-      'flex flex-col rounded-xl border min-w-[260px] max-w-[280px] bg-white/5',
-      isFinal ? 'border-dashed border-[rgba(255,255,255,0.1)]' : 'border-[rgba(255,255,255,0.07)]',
-    )}>
-      {/* Column header */}
-      <div className="px-3 py-2.5 flex items-center justify-between border-b border-[rgba(255,255,255,0.07)]">
-        <span className="text-xs font-semibold text-white truncate">{stage}</span>
-        <span className="text-xs text-white/60 bg-white/8 border border-[rgba(255,255,255,0.1)] rounded-full px-2 py-0.5 shrink-0 ml-2">
-          {cards.length}
-        </span>
+    <div className={`flex flex-col rounded-xl border min-w-[260px] max-w-[280px] ${col.bg} ${col.border}`}>
+      {/* Header */}
+      <div className="px-3 py-2.5 border-b border-inherit">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full ${col.dot}`} />
+            <span className="text-xs font-semibold text-gray-700">{col.label}</span>
+            {col.auto && (
+              <span title="Movido automaticamente pelo sistema">
+                <Bot className="w-3 h-3 text-gray-400" />
+              </span>
+            )}
+          </div>
+          <span className="text-xs text-gray-400 bg-white border border-gray-200 rounded-full px-2 py-0.5">
+            {leads.length}
+          </span>
+        </div>
+        <p className="text-[10px] text-gray-400 mt-0.5">{col.description}</p>
       </div>
 
       {/* Cards */}
-      <div className="flex-1 p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-280px)]">
-        {cards.length === 0 ? (
-          <div className="flex items-center justify-center h-16 text-xs text-white/30">
-            Sem cards
+      <div className="flex-1 p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-260px)]">
+        {leads.length === 0 ? (
+          <div className="flex items-center justify-center h-16 text-xs text-gray-300">
+            Nenhum lead
           </div>
         ) : (
-          cards.map((card) => (
-            <KanbanCard
-              key={card.id}
-              card={card}
-              stages={stages}
-              onMove={(newStage) => updateCard({ id: card.id, data: { stage: newStage, movedByAi: false } })}
-              onDelete={() => deleteCard(card.id)}
+          leads.map((lead) => (
+            <LeadCard
+              key={lead.id}
+              lead={lead}
+              onMoveRequest={onMoveRequest}
+              isMoving={movingId === lead.id}
             />
           ))
         )}
@@ -283,111 +413,319 @@ function KanbanColumn({
   )
 }
 
-// ─── Main component ─────────────────────────────────────────────────────────────
+// ─── Share Modal ──────────────────────────────────────────────────────────────
+
+interface ShareItem {
+  id: string
+  username: string
+  label: string
+  campaignId: string
+  createdAt: string
+  campaign: { id: string; name: string }
+}
+
+interface CreatedCredentials {
+  username: string
+  password: string
+  label: string
+}
+
+function ShareModal({
+  campaigns,
+  onClose,
+}: {
+  campaigns: Array<{ id: string; name: string }>
+  onClose: () => void
+}) {
+  const qc = useQueryClient()
+  const [selectedCampaignId, setSelectedCampaignId] = useState(campaigns[0]?.id ?? '')
+  const [labelInput, setLabelInput] = useState('')
+  const [credentials, setCredentials] = useState<CreatedCredentials | null>(null)
+  const [copied, setCopied] = useState<string | null>(null)
+
+  const { data: shares = [], isLoading } = useQuery<ShareItem[]>({
+    queryKey: ['crm-shares'],
+    queryFn: () => api.get('/crm/shares').then(r => r.data),
+  })
+
+  const createMutation = useMutation({
+    mutationFn: (data: { campaignId: string; label?: string }) =>
+      api.post('/crm/shares', data).then(r => r.data),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ['crm-shares'] })
+      setCredentials({ username: data.username, password: data.password, label: data.label })
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/crm/shares/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['crm-shares'] }),
+  })
+
+  const handleCopy = (text: string, key: string) => {
+    navigator.clipboard.writeText(text)
+    setCopied(key)
+    setTimeout(() => setCopied(null), 2000)
+  }
+
+  const sharedUrl = 'https://disparador.juliocaldeira.com.br/shared'
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg space-y-4 p-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Share2 className="w-5 h-5 text-[#f06529]" />
+            <h2 className="font-semibold text-gray-900">Acessos Compartilhados</h2>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Credentials dialog after creation */}
+        {credentials && (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-3">
+            <p className="text-sm font-semibold text-green-800">Acesso criado! Compartilhe as credenciais:</p>
+            {[
+              { label: 'URL', value: sharedUrl, key: 'url' },
+              { label: 'Usuário', value: credentials.username, key: 'user' },
+              { label: 'Senha', value: credentials.password, key: 'pass' },
+            ].map(({ label, value, key }) => (
+              <div key={key} className="flex items-center justify-between gap-2 bg-white rounded-lg px-3 py-2 border border-green-100">
+                <div>
+                  <p className="text-[10px] text-gray-400">{label}</p>
+                  <p className="text-xs font-mono text-gray-800">{value}</p>
+                </div>
+                <button
+                  onClick={() => handleCopy(value, key)}
+                  className="text-gray-400 hover:text-gray-600 shrink-0"
+                >
+                  {copied === key ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
+            ))}
+            <button
+              onClick={() => setCredentials(null)}
+              className="text-xs text-green-700 hover:underline"
+            >
+              Fechar aviso
+            </button>
+          </div>
+        )}
+
+        {/* New share form */}
+        {!credentials && (
+          <div className="border border-gray-100 rounded-xl p-4 space-y-3">
+            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Novo acesso</p>
+            <div className="space-y-1">
+              <label className="text-xs text-gray-500">Campanha</label>
+              <select
+                value={selectedCampaignId}
+                onChange={e => setSelectedCampaignId(e.target.value)}
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#f06529]"
+              >
+                {campaigns.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-gray-500">Etiqueta (opcional)</label>
+              <input
+                type="text"
+                value={labelInput}
+                onChange={e => setLabelInput(e.target.value)}
+                placeholder="Ex: Equipe Vendas"
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#f06529]"
+              />
+            </div>
+            <button
+              onClick={() => createMutation.mutate({ campaignId: selectedCampaignId, label: labelInput || undefined })}
+              disabled={createMutation.isPending || !selectedCampaignId}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-[#f06529] hover:bg-[#d4521e] rounded-lg disabled:opacity-50"
+            >
+              {createMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+              Gerar acesso
+            </button>
+          </div>
+        )}
+
+        {/* Existing shares list */}
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Acessos ativos</p>
+          {isLoading ? (
+            <div className="text-xs text-gray-400 py-2">Carregando...</div>
+          ) : shares.length === 0 ? (
+            <div className="text-xs text-gray-300 py-4 text-center">Nenhum acesso criado ainda</div>
+          ) : (
+            <div className="space-y-1.5 max-h-48 overflow-y-auto">
+              {shares.map(share => (
+                <div key={share.id} className="flex items-center justify-between gap-2 bg-gray-50 rounded-lg px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="text-xs font-mono text-gray-700 truncate">{share.username}</p>
+                    <p className="text-[10px] text-gray-400 truncate">{share.campaign.name} {share.label !== share.campaign.name ? `· ${share.label}` : ''}</p>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span className="text-[10px] text-gray-400">
+                      {new Date(share.createdAt).toLocaleDateString('pt-BR')}
+                    </span>
+                    <button
+                      onClick={() => deleteMutation.mutate(share.id)}
+                      disabled={deleteMutation.isPending}
+                      className="text-gray-300 hover:text-red-400 transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Página principal ─────────────────────────────────────────────────────────
 
 export function CrmPage() {
-  const { data: pipelines, isLoading: loadingPipelines } = usePipelines()
-  const [selectedPipelineId, setSelectedPipelineId] = useState<string | null>(null)
-  const [showAddCard, setShowAddCard] = useState(false)
-  const [addCardStage, setAddCardStage] = useState('')
+  const qc = useQueryClient()
+  const [search, setSearch]             = useState('')
+  const [campaignFilter, setCampaignFilter] = useState('')
+  const [movingId, setMovingId]         = useState<string | null>(null)
+  const [showShareModal, setShowShareModal] = useState(false)
 
-  const activePipelineId = selectedPipelineId ?? pipelines?.[0]?.id ?? null
-  const { data: pipeline, isLoading: loadingPipeline } = usePipeline(activePipelineId)
+  // Modal de conversão
+  const [conversionTarget, setConversionTarget] = useState<{
+    lead: LeadWithCampaign; targetCol: ColKey
+  } | null>(null)
 
-  const stages: string[] = (pipeline?.stages as unknown as string[]) ?? []
-  const allCards = pipeline?.cards ?? []
+  const { data: campaigns = [] } = useQuery({
+    queryKey: ['campaigns'],
+    queryFn:  campaignsApi.list,
+  })
 
-  const cardsByStage = stages.reduce<Record<string, CrmCard[]>>((acc, stage) => {
-    acc[stage] = allCards.filter((c) => c.stage === stage)
-    return acc
-  }, {})
+  const { data: leads = [], isLoading } = useQuery({
+    queryKey: ['crm-leads', campaignFilter, search],
+    queryFn:  () => crmApi.listLeads({
+      campaignId: campaignFilter || undefined,
+      search:     search || undefined,
+    }),
+    refetchInterval: 15_000,
+  })
 
-  if (loadingPipelines) {
-    return (
-      <div className="flex items-center justify-center h-40">
-        <div className="animate-pulse text-sm text-white/40">Carregando...</div>
-      </div>
-    )
+  const moveMutation = useMutation({
+    mutationFn: ({ id, col, value }: { id: string; col: string; value?: string }) =>
+      crmApi.moveToColumn(id, col, value),
+    onMutate:   ({ id }) => setMovingId(id),
+    onSettled:  () => {
+      setMovingId(null)
+      setConversionTarget(null)
+      qc.invalidateQueries({ queryKey: ['crm-leads'] })
+    },
+  })
+
+  // Solicitação de movimento — verifica se precisa de modal de conversão
+  const handleMoveRequest = (lead: LeadWithCampaign, targetCol: ColKey) => {
+    if (targetCol === 'CONVERTIDO') {
+      setConversionTarget({ lead, targetCol })
+    } else {
+      moveMutation.mutate({ id: lead.id, col: targetCol })
+    }
   }
+
+  // Normaliza coluna desconhecida (leads antigos com "AGUARDANDO") → MENSAGEM_ENVIADA
+  const normalizeCol = (col: string): ColKey => {
+    if (COLUMNS.some((c) => c.key === col)) return col as ColKey
+    return 'MENSAGEM_ENVIADA'
+  }
+
+  const leadsByCol = COLUMNS.reduce<Record<ColKey, LeadWithCampaign[]>>((acc, col) => {
+    acc[col.key] = leads.filter((l) => normalizeCol(l.kanbanColumn) === col.key)
+    return acc
+  }, {} as Record<ColKey, LeadWithCampaign[]>)
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Kanban className="w-5 h-5 text-beacon-primary" aria-hidden="true" />
-          {pipelines && pipelines.length > 1 && (
-            <select
-              value={activePipelineId ?? ''}
-              onChange={(e) => setSelectedPipelineId(e.target.value)}
-              className="text-sm border border-[rgba(255,255,255,0.08)] rounded-lg px-3 py-1.5 bg-beacon-surface text-white/85 focus:outline-none focus:border-[#00b4d8]/60"
-            >
-              {pipelines.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          )}
-          {pipeline && <span className="text-sm font-semibold text-white">{pipeline.name}</span>}
-          <span className="text-xs text-white/40">{allCards.length} cards</span>
-          {allCards.some((c) => c.movedByAi) && (
-            <span className="flex items-center gap-1 text-xs text-[#00b4d8] bg-[#00b4d8]/15 px-2 py-0.5 rounded-full">
-              <Bot className="w-3 h-3" />
-              {allCards.filter((c) => c.movedByAi).length} movidos pela IA
-            </span>
-          )}
+      {/* Filtros */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[180px] max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por nome ou telefone..."
+            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg
+                       focus:outline-none focus:ring-2 focus:ring-beacon-primary bg-white"
+          />
         </div>
 
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={() => { setAddCardStage(stages[0] ?? ''); setShowAddCard(true) }}
-          disabled={stages.length === 0}
+        <select
+          value={campaignFilter}
+          onChange={(e) => setCampaignFilter(e.target.value)}
+          className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white
+                     focus:outline-none focus:ring-2 focus:ring-beacon-primary"
         >
-          <Plus className="w-4 h-4" aria-hidden="true" />
-          Novo Card
-        </Button>
+          <option value="">Todas as campanhas</option>
+          {campaigns.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+
+        <div className="flex items-center gap-1.5 text-xs text-gray-400 ml-auto">
+          <Bot className="w-3.5 h-3.5" />
+          <span>= movido automaticamente</span>
+          {isLoading && <Loader2 className="w-4 h-4 animate-spin ml-2" />}
+        </div>
+
+        <button
+          onClick={() => setShowShareModal(true)}
+          className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+        >
+          <Share2 className="w-3.5 h-3.5" />
+          Compartilhar
+        </button>
       </div>
 
-      {/* Empty state */}
-      {!loadingPipeline && stages.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 gap-4">
-          <div className="w-16 h-16 rounded-full bg-white/8 flex items-center justify-center">
-            <AlertTriangle className="w-8 h-8 text-white/35" />
-          </div>
-          <p className="text-sm text-white/50">Nenhum pipeline configurado ainda</p>
-        </div>
-      )}
-
-      {/* Kanban board */}
-      {stages.length > 0 && (
-        <div className="flex gap-4 overflow-x-auto pb-4">
-          {stages.map((stage) => (
-            <KanbanColumn
-              key={stage}
-              stage={stage}
-              cards={cardsByStage[stage] ?? []}
-              stages={stages}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Add card modal */}
-      {pipeline && (
-        <Modal
-          open={showAddCard}
-          onClose={() => setShowAddCard(false)}
-          title="Novo Card"
-          description="Adicione um lead ou oportunidade ao pipeline"
-          size="lg"
-        >
-          <AddCardForm
-            pipelineId={pipeline.id}
-            stages={stages}
-            defaultStage={addCardStage}
-            onClose={() => setShowAddCard(false)}
+      {/* Kanban */}
+      <div className="flex gap-4 overflow-x-auto pb-4">
+        {COLUMNS.map((col) => (
+          <KanbanColumn
+            key={col.key}
+            col={col}
+            leads={leadsByCol[col.key] ?? []}
+            onMoveRequest={handleMoveRequest}
+            movingId={movingId}
           />
-        </Modal>
+        ))}
+      </div>
+
+      {/* Modal de conversão */}
+      {conversionTarget && (
+        <ConversionModal
+          lead={conversionTarget.lead}
+          isPending={moveMutation.isPending}
+          onClose={() => setConversionTarget(null)}
+          onConfirm={(value) =>
+            moveMutation.mutate({
+              id:    conversionTarget.lead.id,
+              col:   conversionTarget.targetCol,
+              value: value || undefined,
+            })
+          }
+        />
+      )}
+
+      {/* Modal de compartilhamento */}
+      {showShareModal && (
+        <ShareModal
+          campaigns={campaigns}
+          onClose={() => setShowShareModal(false)}
+        />
       )}
     </div>
   )
