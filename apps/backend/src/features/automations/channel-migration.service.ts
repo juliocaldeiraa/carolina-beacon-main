@@ -54,6 +54,7 @@ export class ChannelMigrationService {
           fallbackChannelIds:   Array.isArray((row as any).fallbackChannelIds) ? (row as any).fallbackChannelIds : [],
           messageTemplates:     Array.isArray(row.messageTemplates) ? (row.messageTemplates as string[]) : [],
           messageTemplate:      row.messageTemplate,
+          followupEnabled:      (row as any).followupEnabled ?? true,
           followupSteps:        Array.isArray((row as any).followupSteps) ? (row as any).followupSteps : [],
           linkedAgentId:        row.linkedAgentId,
           aiPrompt:             row.aiPrompt,
