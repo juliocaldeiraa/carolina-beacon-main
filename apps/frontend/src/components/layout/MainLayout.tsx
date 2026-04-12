@@ -24,7 +24,7 @@ import { ObservabilityDashboard } from '@/features/observability/ObservabilityDa
 import { InsightsPage }           from '@/features/insights/InsightsPage'
 import { Playground }             from '@/features/playground/Playground'
 import { ChannelManager }         from '@/features/channels/ChannelManager'
-import { BroadcastManager }       from '@/features/broadcast/BroadcastManager'
+// BroadcastManager removido — redirecionado para Campanhas
 import { CampaignsPage }         from '@/features/campaigns/CampaignsPage'
 import { CampaignCreatePage }    from '@/features/campaigns/CampaignCreatePage'
 import { CampaignDetailPage }    from '@/features/campaigns/CampaignDetailPage'

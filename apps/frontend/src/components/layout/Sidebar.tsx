@@ -13,7 +13,6 @@ import {
   Bot,
   BarChart3,
   BookOpen,
-  Radio,
   Megaphone,
   Smartphone,
   ExternalLink,
