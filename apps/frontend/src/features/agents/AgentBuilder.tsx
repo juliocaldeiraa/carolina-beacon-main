@@ -10,7 +10,6 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useQuery } from '@tanstack/react-query'
 import {
   ChevronLeft, ChevronRight, Check,
   Zap, MessageCircle, Headphones, ShoppingCart, User,
