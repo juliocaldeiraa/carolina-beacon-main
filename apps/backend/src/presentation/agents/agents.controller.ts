@@ -88,6 +88,17 @@ class CreateAgentDto {
   @IsOptional()
   @IsEnum(['ATIVO', 'PASSIVO'])
   agentType?: AgentType
+
+  @IsOptional() @IsBoolean() useEmojis?: boolean
+  @IsOptional() @IsBoolean() splitResponse?: boolean
+  @IsOptional() @IsBoolean() restrictTopics?: boolean
+  @IsOptional() @IsBoolean() signName?: boolean
+  @IsOptional() @IsString()  communicationTone?: string
+  @IsOptional() @IsNumber()  inactivityMinutes?: number
+  @IsOptional() @IsString()  inactivityAction?: string
+  @IsOptional() @IsString()  purpose?: string
+  @IsOptional() @IsString()  companyName?: string
+  @IsOptional() @IsString()  companyUrl?: string
 }
 
 class UpdateAgentDto {
@@ -163,6 +174,17 @@ class UpdateAgentDto {
   @IsOptional()
   @IsEnum(['ATIVO', 'PASSIVO'])
   agentType?: AgentType
+
+  @IsOptional() @IsBoolean() useEmojis?: boolean
+  @IsOptional() @IsBoolean() splitResponse?: boolean
+  @IsOptional() @IsBoolean() restrictTopics?: boolean
+  @IsOptional() @IsBoolean() signName?: boolean
+  @IsOptional() @IsString()  communicationTone?: string
+  @IsOptional() @IsNumber()  inactivityMinutes?: number
+  @IsOptional() @IsString()  inactivityAction?: string
+  @IsOptional() @IsString()  purpose?: string
+  @IsOptional() @IsString()  companyName?: string
+  @IsOptional() @IsString()  companyUrl?: string
 }
 
 class UpdateStatusDto {
