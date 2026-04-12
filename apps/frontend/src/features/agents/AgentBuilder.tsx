@@ -21,8 +21,7 @@ import { Input }    from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { useToast } from '@/components/ui/Toast'
 import { useCreateAgent, useUpdateAgent, useAgent } from './hooks/useAgents'
-import { api } from '@/services/api'
-import type { CreateAgentPayload, AgentType } from '@/types/agent'
+import type { AgentType } from '@/types/agent'
 import { cn } from '@/lib/utils'
 
 // ─── Schema ─────────────────────────────────────────────────────────────────
@@ -211,14 +210,14 @@ export function AgentBuilder({ mode = 'create' }: AgentBuilderProps) {
     try {
       if (mode === 'edit' && id) {
         await updateMutation.mutateAsync(payload)
-        toast({ title: 'Agente atualizado', variant: 'default' })
+        toast({ title: 'Agente atualizado', type: 'success' })
       } else {
         await createMutation.mutateAsync(payload)
-        toast({ title: 'Agente criado com sucesso!', variant: 'default' })
+        toast({ title: 'Agente criado com sucesso!', type: 'success' })
       }
       navigate('/agents')
     } catch (err: any) {
-      toast({ title: err?.response?.data?.message ?? 'Erro ao salvar agente', variant: 'destructive' })
+      toast({ title: err?.response?.data?.message ?? 'Erro ao salvar agente', type: 'error' })
     }
   }
 
