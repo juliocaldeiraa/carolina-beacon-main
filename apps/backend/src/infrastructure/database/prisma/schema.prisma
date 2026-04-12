@@ -97,16 +97,47 @@ model Agent {
   channelId       String?     @map("channel_id")     // canal vinculado para auto-resposta
   historyLimit    Int         @default(20)  @map("history_limit")   // qtd de msgs de contexto enviadas à IA (5–100)
   agentType       AgentType   @default(PASSIVO) @map("agent_type") // ATIVO: vendedor proativo | PASSIVO: atendimento inbound
+  // Configurações avançadas de conversa (inspiradas no GPT Maker)
+  useEmojis          Boolean  @default(true)       @map("use_emojis")
+  splitResponse      Boolean  @default(true)       @map("split_response")       // dividir resposta em partes
+  restrictTopics     Boolean  @default(false)      @map("restrict_topics")      // restringir temas permitidos
+  signName           Boolean  @default(false)      @map("sign_name")            // assinar nome nas respostas
+  communicationTone  String   @default("normal")   @map("communication_tone")   // formal | normal | casual
+  inactivityMinutes  Int      @default(10)         @map("inactivity_minutes")   // tempo de inatividade
+  inactivityAction   String   @default("close")    @map("inactivity_action")    // close | message | transfer
+  // Informações de trabalho
+  purpose            String   @default("support")  @map("purpose")              // support | sales | personal
+  companyName        String?                       @map("company_name")
+  companyUrl         String?                       @map("company_url")
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   deletedAt       DateTime?   // soft delete
 
   conversations Conversation[]
   metrics       Metric[]
+  trainings     AgentTraining[]
 
   @@index([tenantId])
   @@index([tenantId, status])
   @@map("agents")
+}
+
+// =============================================
+// AGENT TRAINING — Base de conhecimento do agente
+// =============================================
+model AgentTraining {
+  id        String   @id @default(uuid())
+  agentId   String   @map("agent_id")
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  type      String   // text | url | document
+  title     String?
+  content   String   @db.Text  // texto do treinamento ou URL
+  status    String   @default("ready") // pending | processing | ready | error
+  metadata  Json?    // { fileName, mimeType, charCount, etc. }
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([agentId])
+  @@map("agent_trainings")
 }
 
 // =============================================
