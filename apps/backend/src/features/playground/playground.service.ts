@@ -20,6 +20,9 @@ import { MessageSplitterService } from '@/infrastructure/ai-engine/message-split
 import { PrismaService }          from '@/infrastructure/database/prisma/prisma.service'
 import { IAgentRepository, AGENT_REPOSITORY } from '@/core/repositories/IAgentRepository'
 import { buildSystemPrompt }      from '@/core/entities/Agent'
+import { GoogleCalendarService }  from '@/infrastructure/google-calendar/google-calendar.service'
+import { TrainingsService }       from '@/features/agents/trainings.service'
+import { CALENDAR_TOOLS, CALENDAR_SYSTEM_PROMPT, executeCalendarTool } from '@/infrastructure/google-calendar/calendar-tools'
 
 export interface SessionMessage {
   role: 'user' | 'assistant'
@@ -63,6 +66,8 @@ export class PlaygroundService {
     private readonly splitter:  MessageSplitterService,
     private readonly prisma:    PrismaService,
     @Inject(AGENT_REPOSITORY) private readonly agentRepo: IAgentRepository,
+    private readonly calendarService: GoogleCalendarService,
+    private readonly trainingsService: TrainingsService,
   ) {}
 
   // ─── Gerenciamento de sessão ──────────────────────────────────────────────
@@ -108,17 +113,38 @@ export class PlaygroundService {
     ]
 
     const resolvedModel = model ?? agent.model
-    const systemPrompt  = buildSystemPrompt(agent)
+    let systemPrompt = buildSystemPrompt(agent) ?? ''
+
+    // Injetar training context
+    try {
+      const trainingCtx = await this.trainingsService.getTrainingContext(agentId)
+      if (trainingCtx) systemPrompt += `\n\n--- BASE DE CONHECIMENTO ---\n${trainingCtx}`
+    } catch {}
+
+    // Injetar calendar tools
+    let calendarIntegration: any = null
+    try { calendarIntegration = await this.calendarService.getIntegration(agentId) } catch {}
+
+    if (calendarIntegration?.isActive) {
+      systemPrompt += `\n\n${CALENDAR_SYSTEM_PROMPT}`
+    }
+
+    const tools = calendarIntegration?.isActive ? CALENDAR_TOOLS : undefined
+    const onToolCall = calendarIntegration?.isActive
+      ? (toolName: string, input: any) => executeCalendarTool(toolName, input, agentId, this.calendarService)
+      : undefined
 
     // Chama IA principal
     let result: Awaited<ReturnType<AiEngineService['complete']>>
     try {
       result = await this.aiEngine.complete({
         messages:    chatHistory,
-        systemPrompt,
+        systemPrompt: systemPrompt || undefined,
         model:       resolvedModel,
         temperature: agent.temperature,
         maxTokens:   agent.maxTokens,
+        tools,
+        onToolCall,
       })
     } catch (err) {
       this.logger.error(`Playground: IA falhou — ${err}`)
