@@ -25,12 +25,10 @@ class UpdateCalendarConfigDto {
 export class GoogleCalendarController {
   constructor(private readonly calendar: GoogleCalendarService) {}
 
-  /** Step 1: Redireciona para consent screen do Google */
+  /** Step 1: Redireciona para consent screen do Google (sem JWT — é um redirect do browser) */
   @Get('auth/:agentId')
-  @UseGuards(JwtGuard)
-  auth(@Param('agentId') agentId: string, @Req() req: any, @Res() res: Response) {
-    const tenantId = req.user?.tenantId
-    const url = this.calendar.getAuthUrl(agentId, tenantId)
+  auth(@Param('agentId') agentId: string, @Query('tenantId') tenantId: string, @Res() res: Response) {
+    const url = this.calendar.getAuthUrl(agentId, tenantId || 't1')
     res.redirect(url)
   }
 
