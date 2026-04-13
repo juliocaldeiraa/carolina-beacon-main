@@ -1,12 +1,15 @@
 /**
  * ConversationsPage — Inbox unificado de conversas
  * Layout 2 colunas: lista de conversas | mensagens da conversa selecionada
+ * Inclui painel de feedback para supervisão humana
  */
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   MessageSquare, Search, Phone, Bot, RefreshCw,
   CheckCircle, XCircle, Clock, UserCheck, UserX,
+  MessageCircle, Sparkles, Loader2, Send,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -14,6 +17,7 @@ import {
   useConversations, useConversation, useUpdateConversationStatus, useSetTakeover,
 } from './hooks/useConversations'
 import type { ConversationStatus } from '@/services/conversations'
+import { api } from '@/services/api'
 import { cn } from '@/lib/utils'
 
 // ─── Status config ─────────────────────────────────────────────────────────────
@@ -86,12 +90,15 @@ function ConvListItem({
   )
 }
 
-// ─── Message bubble ────────────────────────────────────────────────────────────
+// ─── Message bubble with feedback support ─────────────────────────────────────
 
-function MessageBubble({ role, content, createdAt }: {
+function MessageBubble({ role, content, createdAt, messageIndex, onFeedback, feedbackActive }: {
   role: 'USER' | 'ASSISTANT' | 'SYSTEM'
   content: string
   createdAt: string
+  messageIndex: number
+  onFeedback?: (index: number) => void
+  feedbackActive?: boolean
 }) {
   const isAI = role === 'ASSISTANT'
   const isSystem = role === 'SYSTEM'
@@ -105,18 +112,94 @@ function MessageBubble({ role, content, createdAt }: {
   }
 
   return (
-    <div className={cn('flex', isAI ? 'justify-start' : 'justify-end')}>
-      <div className={cn(
-        'max-w-[70%] rounded-2xl px-4 py-2.5 text-sm',
-        isAI
-          ? 'bg-beacon-surface-2 text-white/85 rounded-tl-sm'
-          : 'bg-beacon-primary text-white rounded-tr-sm',
-      )}>
-        <p className="whitespace-pre-wrap">{content}</p>
-        <p className={cn('text-[10px] mt-1', isAI ? 'text-white/40' : 'text-white/70')}>
-          {new Date(createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-        </p>
+    <div className={cn('flex group', isAI ? 'justify-start' : 'justify-end')}>
+      <div className="flex flex-col gap-1 max-w-[70%]">
+        <div className={cn(
+          'rounded-2xl px-4 py-2.5 text-sm relative',
+          isAI
+            ? 'bg-beacon-surface-2 text-white/85 rounded-tl-sm'
+            : 'bg-beacon-primary text-white rounded-tr-sm',
+          isAI && feedbackActive && 'ring-2 ring-amber-400/50',
+        )}>
+          <p className="whitespace-pre-wrap">{content}</p>
+          <p className={cn('text-[10px] mt-1', isAI ? 'text-white/40' : 'text-white/70')}>
+            {new Date(createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+          </p>
+        </div>
+        {/* Feedback button — only for AI messages */}
+        {isAI && onFeedback && (
+          <button
+            onClick={() => onFeedback(messageIndex)}
+            className={cn(
+              'self-start flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full transition-all',
+              feedbackActive
+                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                : 'text-white/25 hover:text-amber-400 hover:bg-amber-500/10 opacity-0 group-hover:opacity-100',
+            )}
+          >
+            <MessageCircle className="w-3 h-3" />
+            Feedback
+          </button>
+        )}
       </div>
+    </div>
+  )
+}
+
+// ─── Feedback input panel ─────────────────────────────────────────────────────
+
+function FeedbackPanel({ agentId, conversationId, messageIndex, onClose, onSuccess }: {
+  agentId: string
+  conversationId: string
+  messageIndex: number
+  onClose: () => void
+  onSuccess: () => void
+}) {
+  const [text, setText] = useState('')
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => { inputRef.current?.focus() }, [])
+
+  const submitFeedback = useMutation({
+    mutationFn: () => api.post(`/agents/${agentId}/feedbacks`, {
+      conversationId,
+      messageIndex,
+      feedbackText: text,
+    }),
+    onSuccess: () => {
+      setText('')
+      onSuccess()
+    },
+  })
+
+  return (
+    <div className="px-5 py-3 border-t border-amber-500/20 bg-amber-500/5">
+      <div className="flex items-center gap-2 mb-2">
+        <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+        <span className="text-xs font-semibold text-amber-400">Feedback na mensagem #{messageIndex + 1}</span>
+        <button onClick={onClose} className="ml-auto text-xs text-white/30 hover:text-white/60">Cancelar</button>
+      </div>
+      <div className="flex gap-2">
+        <textarea
+          ref={inputRef}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="O que poderia ser melhor nessa resposta?"
+          rows={2}
+          className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30 resize-none focus:outline-none focus:border-amber-500/40"
+        />
+        <Button
+          onClick={() => submitFeedback.mutate()}
+          disabled={!text.trim() || submitFeedback.isPending}
+          className="self-end bg-amber-500 hover:bg-amber-600 text-white"
+          size="sm"
+        >
+          {submitFeedback.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+        </Button>
+      </div>
+      <p className="text-[10px] text-white/25 mt-1.5">
+        A IA vai processar seu feedback e gerar uma regra de melhoria automaticamente.
+      </p>
     </div>
   )
 }
@@ -127,6 +210,8 @@ function ConversationDetail({ convId }: { convId: string }) {
   const { data: conv, isLoading } = useConversation(convId)
   const { mutate: updateStatus, isPending: updatingStatus } = useUpdateConversationStatus()
   const { mutate: setTakeover, isPending: updatingTakeover } = useSetTakeover()
+  const [feedbackIndex, setFeedbackIndex] = useState<number | null>(null)
+  const qc = useQueryClient()
 
   if (isLoading) {
     return (
@@ -212,12 +297,15 @@ function ConversationDetail({ convId }: { convId: string }) {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
         {conv.messages && conv.messages.length > 0 ? (
-          conv.messages.map((msg) => (
+          conv.messages.map((msg, idx) => (
             <MessageBubble
               key={msg.id}
               role={msg.role as 'USER' | 'ASSISTANT' | 'SYSTEM'}
               content={msg.content}
               createdAt={msg.createdAt}
+              messageIndex={idx}
+              onFeedback={(i) => setFeedbackIndex(feedbackIndex === i ? null : i)}
+              feedbackActive={feedbackIndex === idx}
             />
           ))
         ) : (
@@ -228,11 +316,28 @@ function ConversationDetail({ convId }: { convId: string }) {
         )}
       </div>
 
+      {/* Feedback panel */}
+      {feedbackIndex !== null && conv.agent && (
+        <FeedbackPanel
+          agentId={conv.agent.id}
+          conversationId={convId}
+          messageIndex={feedbackIndex}
+          onClose={() => setFeedbackIndex(null)}
+          onSuccess={() => {
+            setFeedbackIndex(null)
+            qc.invalidateQueries({ queryKey: ['conversations'] })
+          }}
+        />
+      )}
+
       {/* Footer info */}
       <div className="px-5 py-3 border-t border-[rgba(255,255,255,0.07)] bg-white/4">
         <p className="text-xs text-white/40">
           <span className="font-medium text-white">{conv.turns}</span> turnos ·
           Iniciada em {new Date(conv.startedAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+          {conv.agent && (
+            <span className="ml-2 text-white/25">· Passe o mouse nas respostas da IA para deixar feedback</span>
+          )}
         </p>
       </div>
     </div>
