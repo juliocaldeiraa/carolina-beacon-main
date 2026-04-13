@@ -1,5 +1,5 @@
 /**
- * Modal — Diálogo de confirmação e conteúdo (Dark UI)
+ * Modal — Healthcare design system
  */
 
 import { useEffect, useRef, ReactNode } from 'react'
@@ -38,30 +38,28 @@ export function Modal({ open, onClose, title, description, children, size = 'md'
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
       onClick={(e) => e.target === overlayRef.current && onClose()}
     >
       <div className={cn(
-        'w-full bg-beacon-surface rounded-xl border border-[rgba(255,255,255,0.08)]',
-        'shadow-[0_16px_64px_rgba(0,0,0,0.7)]',
+        'w-full bg-white rounded-2xl border border-gray-100 shadow-xl',
         sizeMap[size],
       )}>
-        {/* Header */}
         <div className="flex items-start justify-between p-6 pb-4">
           <div>
-            <h2 id="modal-title" className="text-base font-semibold text-white">
+            <h2 id="modal-title" className="text-base font-heading font-semibold text-[#134E4A]">
               {title}
             </h2>
             {description && (
-              <p className="text-sm text-white/50 mt-1">{description}</p>
+              <p className="text-sm text-gray-500 mt-1">{description}</p>
             )}
           </div>
           <button
             onClick={onClose}
-            className="text-white/30 hover:text-white transition-colors ml-4 shrink-0"
+            className="text-gray-300 hover:text-gray-500 transition-colors ml-4 shrink-0"
             aria-label="Fechar"
           >
             <X className="w-5 h-5" />

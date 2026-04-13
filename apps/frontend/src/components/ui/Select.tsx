@@ -1,5 +1,5 @@
 /**
- * Select — Campo de seleção (Dark UI)
+ * Select — Healthcare design system
  */
 
 import { forwardRef, SelectHTMLAttributes } from 'react'
@@ -16,9 +16,9 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     const selectId = id || label?.toLowerCase().replace(/\s+/g, '-')
 
     return (
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1.5">
         {label && (
-          <label htmlFor={selectId} className="text-sm font-medium text-white/70">
+          <label htmlFor={selectId} className="text-sm font-medium text-gray-700">
             {label}
           </label>
         )}
@@ -26,29 +26,20 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           ref={ref}
           id={selectId}
           className={cn(
-            'w-full px-3 py-2 text-sm text-white/85 bg-beacon-surface rounded-lg appearance-none',
-            'border border-[rgba(255,255,255,0.08)]',
+            'w-full px-3.5 py-2.5 text-sm text-[#134E4A] bg-white rounded-xl appearance-none',
+            'border border-gray-200',
             'transition-all duration-200',
-            'focus:outline-none focus:border-[#00b4d8]/60 focus:shadow-[0_0_0_3px_rgba(0,180,216,0.10)]',
-            error && 'border-red-500/60 focus:border-red-500/80',
-            props.disabled && 'opacity-40 cursor-not-allowed',
+            'focus:outline-none focus:border-[#0891B2] focus:ring-2 focus:ring-[#0891B2]/10',
+            error && 'border-red-300',
+            props.disabled && 'opacity-40 cursor-not-allowed bg-gray-50',
             className,
           )}
           {...props}
         >
-          {placeholder && (
-            <option value="" disabled>
-              {placeholder}
-            </option>
-          )}
+          {placeholder && <option value="" disabled>{placeholder}</option>}
           {children}
         </select>
-        {error && (
-          <p className="text-xs text-red-400 flex items-center gap-1">
-            <span aria-hidden="true">⚠</span>
-            {error}
-          </p>
-        )}
+        {error && <p className="text-xs text-red-500">{error}</p>}
       </div>
     )
   },

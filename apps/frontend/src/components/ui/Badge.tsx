@@ -1,5 +1,5 @@
 /**
- * Badge — Indicador de status/contagem (Dark UI)
+ * Badge — Healthcare design system
  */
 
 import { HTMLAttributes } from 'react'
@@ -12,19 +12,19 @@ interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 }
 
 const variantClasses: Record<BadgeVariant, string> = {
-  default:      'bg-white/8 text-white/70 border border-white/10',
-  notification: 'bg-beacon-primary/20 text-[#f06529] border border-beacon-primary/30',
-  active:       'bg-green-500/15 text-green-400 border border-green-500/20',
-  paused:       'bg-white/6 text-white/50 border border-white/10',
-  draft:        'bg-[#00b4d8]/15 text-[#00b4d8] border border-[#00b4d8]/20',
-  error:        'bg-red-500/15 text-red-400 border border-red-500/20',
+  default:      'bg-gray-100 text-gray-600 border border-gray-200',
+  notification: 'bg-[#0891B2]/10 text-[#0891B2] border border-[#0891B2]/20',
+  active:       'bg-emerald-50 text-emerald-700 border border-emerald-200',
+  paused:       'bg-amber-50 text-amber-700 border border-amber-200',
+  draft:        'bg-sky-50 text-sky-700 border border-sky-200',
+  error:        'bg-red-50 text-red-600 border border-red-200',
 }
 
 export function Badge({ variant = 'default', className, children, ...props }: BadgeProps) {
   return (
     <span
       className={cn(
-        'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
+        'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold',
         variantClasses[variant],
         className,
       )}

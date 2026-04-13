@@ -1,5 +1,5 @@
 /**
- * Button — Componente primário de ação (Dark UI)
+ * Button — Healthcare design system
  */
 
 import { forwardRef, ButtonHTMLAttributes } from 'react'
@@ -16,19 +16,19 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    'bg-beacon-primary text-white hover:bg-beacon-primary-hover active:bg-beacon-primary-hover shadow-glow-sm hover:shadow-glow focus-visible:outline-beacon-primary-hover',
+    'bg-[#0891B2] text-white hover:bg-[#0E7490] active:bg-[#155E75] shadow-sm hover:shadow-md',
   secondary:
-    'bg-beacon-surface-2 text-white/80 border border-[rgba(255,255,255,0.1)] hover:border-beacon-primary/40 hover:text-white focus-visible:outline-beacon-primary-hover',
+    'bg-white text-[#334155] border border-gray-200 hover:border-[#0891B2]/30 hover:text-[#0891B2] hover:bg-[#F0FDFA]',
   ghost:
-    'bg-transparent text-white/60 hover:text-white hover:bg-white/5 active:bg-white/10 focus-visible:outline-beacon-primary-hover',
+    'bg-transparent text-[#64748B] hover:text-[#0891B2] hover:bg-gray-50 active:bg-gray-100',
   danger:
-    'bg-red-600 text-white hover:bg-red-700 active:bg-red-800 shadow-[0_0_12px_rgba(239,68,68,0.3)] hover:shadow-[0_0_20px_rgba(239,68,68,0.4)] focus-visible:outline-red-600',
+    'bg-red-600 text-white hover:bg-red-700 active:bg-red-800',
 }
 
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: 'px-3 py-1.5 text-sm rounded-md',
-  md: 'px-4 py-2 text-sm rounded-lg',
-  lg: 'px-6 py-3 text-base rounded-lg',
+  sm: 'px-3 py-1.5 text-sm rounded-lg',
+  md: 'px-4 py-2 text-sm rounded-xl',
+  lg: 'px-6 py-3 text-base rounded-xl',
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -40,8 +40,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={isDisabled}
         className={cn(
-          'inline-flex items-center justify-center gap-2 font-medium transition-all duration-200',
-          'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2',
+          'inline-flex items-center justify-center gap-2 font-medium transition-all duration-200 cursor-pointer',
+          'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0891B2]',
           variantClasses[variant],
           sizeClasses[size],
           isDisabled && 'opacity-40 cursor-not-allowed pointer-events-none shadow-none',

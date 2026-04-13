@@ -1,13 +1,5 @@
 /**
- * FAB — Floating Action Button
- *
- * Spec: /Brand/Playbook de Layout e UX - Plataforma Beacon.md §3.3
- * - position: fixed, bottom 24px, right 24px
- * - bg: #f06529
- * - hover: bg #e34c26
- * - icon: #ffffff
- * - size: 56px, border-radius: 50%
- * - shadow: 0 4px 12px rgba(240,101,41,0.4)
+ * FAB — Floating Action Button (Healthcare)
  */
 
 import { Plus } from 'lucide-react'
@@ -25,12 +17,14 @@ export function FAB({ onClick, label = 'Criar novo', className }: FABProps) {
       onClick={onClick}
       className={cn(
         'fixed bottom-6 right-6 z-50',
-        'w-14 h-14 rounded-full',
-        'bg-beacon-primary hover:bg-beacon-primary-hover active:bg-beacon-primary-hover',
-        'text-white shadow-fab shadow-glow animate-glow',
+        'w-14 h-14 rounded-2xl',
+        'bg-gradient-to-br from-[#0891B2] to-[#0E7490]',
+        'text-white shadow-lg shadow-[#0891B2]/25',
         'flex items-center justify-center',
-        'transition-all duration-300',
-        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-beacon-primary-hover',
+        'transition-all duration-200',
+        'hover:shadow-xl hover:shadow-[#0891B2]/30 hover:scale-105',
+        'active:scale-95',
+        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0891B2]',
         className,
       )}
       aria-label={label}

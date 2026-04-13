@@ -1,5 +1,5 @@
 /**
- * Textarea — Campo de texto longo (Dark UI)
+ * Textarea — Healthcare design system
  */
 
 import { forwardRef, TextareaHTMLAttributes } from 'react'
@@ -16,9 +16,9 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     const inputId = id || label?.toLowerCase().replace(/\s+/g, '-')
 
     return (
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1.5">
         {label && (
-          <label htmlFor={inputId} className="text-sm font-medium text-white/70">
+          <label htmlFor={inputId} className="text-sm font-medium text-gray-700">
             {label}
           </label>
         )}
@@ -26,26 +26,19 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           ref={ref}
           id={inputId}
           className={cn(
-            'w-full px-3 py-2 text-sm text-white/85 bg-beacon-surface rounded-lg resize-y min-h-[100px]',
-            'border border-[rgba(255,255,255,0.08)]',
+            'w-full px-3.5 py-2.5 text-sm text-[#134E4A] bg-white rounded-xl resize-y min-h-[100px]',
+            'border border-gray-200',
             'transition-all duration-200',
-            'placeholder:text-white/25',
-            'focus:outline-none focus:border-[#00b4d8]/60 focus:shadow-[0_0_0_3px_rgba(0,180,216,0.10)]',
-            error && 'border-red-500/60 focus:border-red-500/80',
-            props.disabled && 'opacity-40 cursor-not-allowed',
+            'placeholder:text-gray-300',
+            'focus:outline-none focus:border-[#0891B2] focus:ring-2 focus:ring-[#0891B2]/10',
+            error && 'border-red-300 focus:border-red-400 focus:ring-red-100',
+            props.disabled && 'opacity-40 cursor-not-allowed bg-gray-50',
             className,
           )}
           {...props}
         />
-        {error && (
-          <p className="text-xs text-red-400 flex items-center gap-1">
-            <span aria-hidden="true">⚠</span>
-            {error}
-          </p>
-        )}
-        {hint && !error && (
-          <p className="text-xs text-white/40">{hint}</p>
-        )}
+        {error && <p className="text-xs text-red-500">{error}</p>}
+        {hint && !error && <p className="text-xs text-gray-400">{hint}</p>}
       </div>
     )
   },

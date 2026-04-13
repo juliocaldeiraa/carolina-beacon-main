@@ -1,5 +1,5 @@
 /**
- * Toast / Notification — Sistema de feedback ao usuário (Dark UI)
+ * Toast — Healthcare design system
  */
 
 import { useEffect, useState, createContext, useContext, useCallback } from 'react'
@@ -25,18 +25,21 @@ const ToastContext = createContext<ToastContextValue | null>(null)
 const typeConfig = {
   success: {
     icon: CheckCircle,
-    border: 'border-l-[#00c896]',
-    iconColor: 'text-[#00c896]',
+    border: 'border-l-emerald-500',
+    iconColor: 'text-emerald-500',
+    bg: 'bg-emerald-50',
   },
   error: {
     icon: XCircle,
     border: 'border-l-red-500',
-    iconColor: 'text-red-400',
+    iconColor: 'text-red-500',
+    bg: 'bg-red-50',
   },
   info: {
     icon: Info,
-    border: 'border-l-beacon-primary',
-    iconColor: 'text-beacon-primary',
+    border: 'border-l-[#0891B2]',
+    iconColor: 'text-[#0891B2]',
+    bg: 'bg-sky-50',
   },
 }
 
@@ -53,21 +56,21 @@ function ToastItem({ toast, onDismiss }: { toast: ToastMessage; onDismiss: (id: 
     <div
       role="alert"
       className={cn(
-        'flex items-start gap-3 bg-beacon-surface-2 rounded-xl shadow-surface p-4',
-        'border border-[rgba(255,255,255,0.08)] border-l-4 min-w-[300px] max-w-[400px]',
+        'flex items-start gap-3 bg-white rounded-xl shadow-lg p-4',
+        'border border-gray-100 border-l-4 min-w-[300px] max-w-[400px]',
         config.border,
       )}
     >
       <Icon className={cn('w-5 h-5 mt-0.5 shrink-0', config.iconColor)} />
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-white">{toast.title}</p>
+        <p className="text-sm font-semibold text-[#134E4A]">{toast.title}</p>
         {toast.message && (
-          <p className="text-xs text-white/55 mt-0.5">{toast.message}</p>
+          <p className="text-xs text-gray-500 mt-0.5">{toast.message}</p>
         )}
       </div>
       <button
         onClick={() => onDismiss(toast.id)}
-        className="text-white/30 hover:text-white transition-colors"
+        className="text-gray-300 hover:text-gray-500 transition-colors"
         aria-label="Fechar notificação"
       >
         <X className="w-4 h-4" />
