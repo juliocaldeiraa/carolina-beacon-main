@@ -131,7 +131,7 @@ export class PlaygroundService {
 
     const tools = calendarIntegration?.isActive ? CALENDAR_TOOLS : undefined
     const onToolCall = calendarIntegration?.isActive
-      ? (toolName: string, input: any) => executeCalendarTool(toolName, input, agentId, this.calendarService)
+      ? (toolName: string, input: any) => executeCalendarTool(toolName, input, agentId, this.calendarService, this.prisma)
       : undefined
 
     // Chama IA principal

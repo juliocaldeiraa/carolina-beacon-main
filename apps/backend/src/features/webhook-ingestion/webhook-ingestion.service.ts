@@ -546,7 +546,7 @@ export class WebhookIngestionService {
 
     const tools = calendarIntegration?.isActive ? CALENDAR_TOOLS : undefined
     const onToolCall = calendarIntegration?.isActive
-      ? (toolName: string, input: any) => executeCalendarTool(toolName, input, agentRow.id, this.calendarService)
+      ? (toolName: string, input: any) => executeCalendarTool(toolName, input, agentRow.id, this.calendarService, this.prisma)
       : undefined
 
     // 7. Chama IA (com timeout de segurança)

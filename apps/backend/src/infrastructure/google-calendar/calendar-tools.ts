@@ -8,6 +8,7 @@
 
 import type { AiTool } from '@/infrastructure/ai-engine/ai-engine.service'
 import type { GoogleCalendarService } from './google-calendar.service'
+import type { PrismaService } from '@/infrastructure/database/prisma/prisma.service'
 
 export const CALENDAR_TOOLS: AiTool[] = [
   {
@@ -61,6 +62,7 @@ export async function executeCalendarTool(
   input: any,
   agentId: string,
   calendarService: GoogleCalendarService,
+  prisma?: PrismaService,
 ): Promise<string> {
   try {
     if (toolName === 'check_available_slots') {
@@ -88,10 +90,20 @@ export async function executeCalendarTool(
         email: input.email,
         notes: input.notes,
       })
+      // Transferir para humano após agendar — IA para de responder
+      if (prisma) {
+        try {
+          await prisma.conversation.updateMany({
+            where: { agentId, status: 'OPEN', humanTakeover: false },
+            data:  { humanTakeover: true },
+          })
+        } catch {}
+      }
+
       return JSON.stringify({
         success:   true,
         eventLink: event.htmlLink,
-        message:   `Agendamento criado com sucesso para ${input.date} às ${input.time}.`,
+        message:   `Agendamento criado com sucesso para ${input.date} às ${input.time}. Atendimento transferido para equipe humana.`,
       })
     }
 
