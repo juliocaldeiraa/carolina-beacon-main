@@ -176,6 +176,9 @@ export class PlaygroundService {
     })
     this.sessions.set(sessionId, history)
 
+    // Persistir no banco para supervisão (feedback loop)
+    this.persistConversation(agentId, sessionId, message, result).catch(() => {})
+
     return {
       messages: splitMsgs,
       metadata: {
@@ -186,6 +189,59 @@ export class PlaygroundService {
       },
       session: history,
     }
+  }
+
+  // ─── Persistência para feedback loop ──────────────────────────────────────
+
+  private async persistConversation(
+    agentId: string,
+    sessionId: string,
+    userMessage: string,
+    aiResult: { content: string; inputTokens?: number; outputTokens?: number; latencyMs?: number },
+  ) {
+    const tenantId = process.env.DEFAULT_TENANT_ID!
+
+    // FindOrCreate conversa do playground usando sessionId como contactPhone
+    let conv = await this.prisma.conversation.findFirst({
+      where: { agentId, channelId: 'PLAYGROUND', contactPhone: sessionId },
+    })
+
+    if (!conv) {
+      conv = await this.prisma.conversation.create({
+        data: {
+          tenantId,
+          agentId,
+          channelId: 'PLAYGROUND',
+          contactPhone: sessionId,
+          contactName: 'Playground',
+          status: 'OPEN',
+        },
+      })
+    }
+
+    // Salvar mensagens
+    await this.prisma.message.createMany({
+      data: [
+        { conversationId: conv.id, role: 'USER', content: userMessage },
+        {
+          conversationId: conv.id,
+          role: 'ASSISTANT',
+          content: aiResult.content,
+          inputTokens: aiResult.inputTokens,
+          outputTokens: aiResult.outputTokens,
+          latencyMs: aiResult.latencyMs,
+        },
+      ],
+    })
+
+    // Atualizar contadores
+    await this.prisma.conversation.update({
+      where: { id: conv.id },
+      data: {
+        turns: { increment: 1 },
+        lastMessageAt: new Date(),
+      },
+    })
   }
 
   // ─── Listagens para seleção no playground ────────────────────────────────

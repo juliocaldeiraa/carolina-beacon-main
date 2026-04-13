@@ -351,7 +351,12 @@ export function ConversationsPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('')
 
-  const { data, isLoading } = useConversations({ search: search || undefined, status: statusFilter || undefined })
+  const isPlayground = statusFilter === 'PLAYGROUND'
+  const { data, isLoading } = useConversations({
+    search: search || undefined,
+    status: isPlayground ? undefined : (statusFilter || undefined),
+    channelId: isPlayground ? 'PLAYGROUND' : undefined,
+  })
 
   const conversations = data?.items ?? []
 
@@ -380,6 +385,7 @@ export function ConversationsPage() {
             <option value="IN_PROGRESS">Em andamento</option>
             <option value="RESOLVED">Resolvidas</option>
             <option value="CLOSED">Fechadas</option>
+            <option value="PLAYGROUND">Playground</option>
           </select>
         </div>
 
