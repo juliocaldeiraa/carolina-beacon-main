@@ -9,7 +9,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Pencil, ArrowLeft, Bot, Brain, Settings2, BookOpen, Play,
-  Trash2, Plus, FileText, Globe, Loader2, Send,
+  Trash2, Plus, FileText, Globe, Loader2, Send, Calendar, Link2, Unlink,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -19,13 +19,14 @@ import { api } from '@/services/api'
 const statusVariant = { ACTIVE: 'active', PAUSED: 'paused', DRAFT: 'draft', DELETED: 'error' } as const
 const statusLabel   = { ACTIVE: 'Ativo', PAUSED: 'Pausado', DRAFT: 'Rascunho', DELETED: 'Removido' }
 
-type Tab = 'profile' | 'trainings' | 'settings' | 'test'
+type Tab = 'profile' | 'trainings' | 'integrations' | 'settings' | 'test'
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
-  { id: 'profile',   label: 'Perfil',         icon: Bot },
-  { id: 'trainings', label: 'Treinamentos',   icon: BookOpen },
-  { id: 'settings',  label: 'Configurações',  icon: Settings2 },
-  { id: 'test',      label: 'Testar',         icon: Play },
+  { id: 'profile',      label: 'Perfil',         icon: Bot },
+  { id: 'trainings',    label: 'Treinamentos',   icon: BookOpen },
+  { id: 'integrations', label: 'Integrações',    icon: Calendar },
+  { id: 'settings',     label: 'Configurações',  icon: Settings2 },
+  { id: 'test',         label: 'Testar',         icon: Play },
 ]
 
 export function AgentDetail() {
@@ -56,6 +57,17 @@ export function AgentDetail() {
   const deleteTraining = useMutation({
     mutationFn: (tid: string) => api.delete(`/agents/${id}/trainings/${tid}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['trainings', id] }),
+  })
+
+  // Google Calendar Integration
+  const { data: calendarConfig } = useQuery({
+    queryKey: ['calendar-config', id],
+    queryFn: () => api.get(`/integrations/google/config/${id}`).then((r) => r.data).catch(() => null),
+    enabled: !!id,
+  })
+  const disconnectCalendar = useMutation({
+    mutationFn: () => api.delete(`/integrations/google/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['calendar-config', id] }),
   })
 
   // Testar
@@ -248,6 +260,72 @@ export function AgentDetail() {
                   </button>
                 </div>
               ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ─── Tab: Integrações ─── */}
+      {tab === 'integrations' && (
+        <div className="space-y-4">
+          {/* Google Calendar */}
+          <div className="bg-white/5 border border-white/10 rounded-xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
+                  <Calendar className="w-5 h-5 text-beacon-primary" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-white">Google Calendar</h3>
+                  <p className="text-xs text-white/40">
+                    {calendarConfig ? `Conectado: ${calendarConfig.calendarName}` : 'Não conectado'}
+                  </p>
+                </div>
+              </div>
+
+              {calendarConfig ? (
+                <button
+                  onClick={() => disconnectCalendar.mutate()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 text-red-400 rounded-lg text-xs font-medium hover:bg-red-500/30"
+                >
+                  <Unlink className="w-3.5 h-3.5" />
+                  Desconectar
+                </button>
+              ) : (
+                <a
+                  href={`/api/integrations/google/auth/${id}`}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-beacon-primary text-white rounded-lg text-sm font-medium hover:bg-beacon-hover transition-colors"
+                >
+                  <Link2 className="w-4 h-4" />
+                  Conectar
+                </a>
+              )}
+            </div>
+
+            {calendarConfig && (
+              <div className="space-y-3 border-t border-white/10 pt-4">
+                {[
+                  ['Calendário', calendarConfig.calendarName],
+                  ['Duração do slot', `${calendarConfig.slotDuration} min`],
+                  ['Google Meet', calendarConfig.googleMeet ? 'Ativado' : 'Desativado'],
+                  ['Título do evento', calendarConfig.eventTitle],
+                  ['Coletar nome', calendarConfig.collectName ? 'Sim' : 'Não'],
+                  ['Coletar email', calendarConfig.collectEmail ? 'Sim' : 'Não'],
+                  ['Coletar telefone', calendarConfig.collectPhone ? 'Sim' : 'Não'],
+                  ['Resumo da conversa', calendarConfig.sendSummary ? 'Sim' : 'Não'],
+                ].map(([label, value]) => (
+                  <div key={label} className="flex justify-between text-sm">
+                    <span className="text-white/40">{label}</span>
+                    <span className="text-white font-medium">{value}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {!calendarConfig && (
+              <p className="text-xs text-white/30 mt-2">
+                Conecte o Google Calendar para que o agente consulte horários e agende consultas automaticamente durante a conversa.
+              </p>
             )}
           </div>
         </div>

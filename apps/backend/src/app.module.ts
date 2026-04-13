@@ -20,6 +20,8 @@ import { InsightsModule }         from './features/insights/insights.module'
 import { CampaignsModule }         from './features/campaigns/campaigns.module'
 import { DispatchModule }          from './features/dispatch/dispatch.module'
 import { FollowUpModule }          from './features/follow-up/follow-up.module'
+import { GoogleCalendarModule }     from './infrastructure/google-calendar/google-calendar.module'
+import { GoogleCalendarController } from './presentation/integrations/google-calendar.controller'
 import { PrismaModule }           from './infrastructure/database/prisma/prisma.module'
 
 @Module({
@@ -46,6 +48,8 @@ import { PrismaModule }           from './infrastructure/database/prisma/prisma.
     CampaignsModule,
     DispatchModule,
     FollowUpModule,
+    GoogleCalendarModule,
   ],
+  controllers: [GoogleCalendarController],
 })
 export class AppModule {}

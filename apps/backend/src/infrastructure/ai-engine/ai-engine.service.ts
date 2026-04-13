@@ -1,9 +1,11 @@
 /**
  * AiEngineService — Motor de IA direto (Anthropic + OpenAI)
  *
- * Substitui o proxy LangGraph. Chama os SDKs de IA diretamente,
- * usando as chaves configuradas na tabela ai_providers.
- * Fallback: variáveis de ambiente ANTHROPIC_API_KEY / OPENAI_API_KEY.
+ * Suporta tool_use/function_calling:
+ * 1. Chama LLM com tools disponíveis
+ * 2. Se LLM responde com tool_use, executa via onToolCall callback
+ * 3. Passa resultado de volta ao LLM
+ * 4. Repete até LLM responder com texto final (máx 5 loops)
  */
 
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common'
@@ -16,12 +18,20 @@ export interface ChatMessage {
   content: string
 }
 
+export interface AiTool {
+  name: string
+  description: string
+  input_schema: Record<string, any>
+}
+
 export interface AiCompleteParams {
   messages: ChatMessage[]
   systemPrompt?: string
   model: string
-  temperature?: number  // 0.0–1.0, default 0.6
-  maxTokens?: number    // default 300
+  temperature?: number
+  maxTokens?: number
+  tools?: AiTool[]
+  onToolCall?: (name: string, input: any) => Promise<any>
 }
 
 export interface AiCompleteResult {
@@ -31,16 +41,15 @@ export interface AiCompleteResult {
   latencyMs: number
 }
 
+const MAX_TOOL_LOOPS = 5
+
 @Injectable()
 export class AiEngineService {
   private readonly logger = new Logger(AiEngineService.name)
 
   constructor(private readonly prisma: PrismaService) {}
 
-  // ─── Roteamento por modelo ────────────────────────────────────────────────
-
   async complete(params: AiCompleteParams): Promise<AiCompleteResult> {
-    // Prioridade 1: IA Central ativa (centralAiConfig) — fonte única de verdade
     const central = await this.prisma.centralAiConfig.findFirst({ where: { isActive: true } })
     if (central) {
       const centralParams = { ...params, model: central.model }
@@ -51,16 +60,15 @@ export class AiEngineService {
       }
     }
 
-    // Prioridade 2: roteamento legado por nome de modelo (ai_providers)
     const { model } = params
     if (model.startsWith('claude-')) return this.callAnthropic(params)
-    if (model.startsWith('gpt-') || model.startsWith('o1') || model.startsWith('o3')) return this.callOpenAI(params)
+    if (model.startsWith('gpt-') || model.startsWith('o1') || model.startsWith('o3') || model.startsWith('o4')) return this.callOpenAI(params)
 
     this.logger.warn(`Modelo desconhecido "${model}", tentando Anthropic como fallback`)
     return this.callAnthropic(params)
   }
 
-  // ─── Anthropic ────────────────────────────────────────────────────────────
+  // ─── Anthropic (com tool_use) ─────────────────────────────────────────────
 
   private async callAnthropic(params: AiCompleteParams): Promise<AiCompleteResult> {
     return this.callAnthropicWithKey(params, await this.getApiKey('ANTHROPIC'))
@@ -69,25 +77,88 @@ export class AiEngineService {
   private async callAnthropicWithKey(params: AiCompleteParams, apiKey: string): Promise<AiCompleteResult> {
     const client = new Anthropic({ apiKey })
     const start  = Date.now()
+    let totalInput  = 0
+    let totalOutput = 0
+
+    const anthropicTools = params.tools?.map((t) => ({
+      name:         t.name,
+      description:  t.description,
+      input_schema: t.input_schema,
+    }))
+
+    // Build initial messages
+    const messages: Anthropic.MessageParam[] = params.messages.map((m) => ({
+      role: m.role, content: m.content,
+    }))
 
     try {
-      const response = await client.messages.create({
-        model:       params.model,
-        max_tokens:  params.maxTokens ?? 300,
-        temperature: params.temperature ?? 0.6,
-        system:      params.systemPrompt || undefined,
-        messages:    params.messages.map((m) => ({ role: m.role, content: m.content })),
-      })
+      for (let loop = 0; loop < MAX_TOOL_LOOPS; loop++) {
+        const createParams: any = {
+          model:       params.model,
+          max_tokens:  params.maxTokens ?? 300,
+          temperature: params.temperature ?? 0.6,
+          system:      params.systemPrompt || undefined,
+          messages,
+        }
+        if (anthropicTools?.length) createParams.tools = anthropicTools
+        const response = await client.messages.create(createParams)
 
-      const content = response.content
-        .filter((b) => b.type === 'text')
-        .map((b) => (b as Anthropic.TextBlock).text)
-        .join('')
+        totalInput  += response.usage.input_tokens
+        totalOutput += response.usage.output_tokens
 
+        // Check if response has tool_use blocks
+        const toolUseBlocks = response.content.filter((b) => b.type === 'tool_use')
+        const textBlocks    = response.content.filter((b) => b.type === 'text')
+
+        // If no tool calls or no callback, return text
+        if (toolUseBlocks.length === 0 || !params.onToolCall) {
+          const content = textBlocks
+            .map((b) => (b as Anthropic.TextBlock).text)
+            .join('')
+
+          return {
+            content,
+            inputTokens:  totalInput,
+            outputTokens: totalOutput,
+            latencyMs:    Date.now() - start,
+          }
+        }
+
+        // Execute tool calls and continue the loop
+        // Add assistant message with tool_use
+        messages.push({ role: 'assistant', content: response.content })
+
+        // Execute each tool and add results
+        const toolResults: Anthropic.ToolResultBlockParam[] = []
+        for (const block of toolUseBlocks) {
+          const toolBlock = block as Anthropic.ToolUseBlock
+          this.logger.log(`Tool call: ${toolBlock.name}(${JSON.stringify(toolBlock.input)})`)
+
+          try {
+            const result = await params.onToolCall(toolBlock.name, toolBlock.input)
+            toolResults.push({
+              type:       'tool_result',
+              tool_use_id: toolBlock.id,
+              content:    typeof result === 'string' ? result : JSON.stringify(result),
+            })
+          } catch (err: any) {
+            toolResults.push({
+              type:       'tool_result',
+              tool_use_id: toolBlock.id,
+              content:    JSON.stringify({ error: err?.message ?? 'Tool execution failed' }),
+              is_error:   true,
+            })
+          }
+        }
+
+        messages.push({ role: 'user', content: toolResults })
+      }
+
+      // Max loops reached — return whatever we have
       return {
-        content,
-        inputTokens:  response.usage.input_tokens,
-        outputTokens: response.usage.output_tokens,
+        content: 'Desculpe, não consegui completar a operação. Tente novamente.',
+        inputTokens:  totalInput,
+        outputTokens: totalOutput,
         latencyMs:    Date.now() - start,
       }
     } catch (err: any) {
@@ -96,7 +167,7 @@ export class AiEngineService {
     }
   }
 
-  // ─── OpenAI ───────────────────────────────────────────────────────────────
+  // ─── OpenAI (com function_calling) ────────────────────────────────────────
 
   private async callOpenAI(params: AiCompleteParams): Promise<AiCompleteResult> {
     return this.callOpenAIWithKey(params, await this.getApiKey('OPENAI'))
@@ -105,27 +176,85 @@ export class AiEngineService {
   private async callOpenAIWithKey(params: AiCompleteParams, apiKey: string): Promise<AiCompleteResult> {
     const client = new OpenAI({ apiKey })
     const start  = Date.now()
+    let totalInput  = 0
+    let totalOutput = 0
+
+    const openaiTools: OpenAI.Chat.ChatCompletionTool[] | undefined = params.tools?.map((t) => ({
+      type: 'function' as const,
+      function: {
+        name:        t.name,
+        description: t.description,
+        parameters:  t.input_schema,
+      },
+    }))
 
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = []
     if (params.systemPrompt) {
       messages.push({ role: 'system', content: params.systemPrompt })
     }
-    messages.push(...params.messages.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })))
+    messages.push(...params.messages.map((m) => ({
+      role: m.role as 'user' | 'assistant', content: m.content,
+    })))
 
     try {
-      const response = await client.chat.completions.create({
-        model:       params.model,
-        messages,
-        temperature: params.temperature ?? 0.6,
-        max_tokens:  params.maxTokens   ?? 300,
-      })
+      for (let loop = 0; loop < MAX_TOOL_LOOPS; loop++) {
+        const response = await client.chat.completions.create({
+          model:       params.model,
+          messages,
+          temperature: params.temperature ?? 0.6,
+          max_tokens:  params.maxTokens   ?? 300,
+          ...(openaiTools?.length ? { tools: openaiTools } : {}),
+        })
 
-      const content = response.choices[0]?.message?.content ?? ''
+        totalInput  += response.usage?.prompt_tokens ?? 0
+        totalOutput += response.usage?.completion_tokens ?? 0
+
+        const choice = response.choices[0]
+        const msg    = choice?.message
+
+        // If no tool calls or no callback, return content
+        if (!msg?.tool_calls?.length || !params.onToolCall) {
+          return {
+            content:      msg?.content ?? '',
+            inputTokens:  totalInput,
+            outputTokens: totalOutput,
+            latencyMs:    Date.now() - start,
+          }
+        }
+
+        // Add assistant message with tool calls
+        messages.push(msg)
+
+        // Execute each tool call
+        for (const toolCall of msg.tool_calls) {
+          const fn = (toolCall as any).function
+          const fnName = fn.name
+          let fnArgs: any = {}
+          try { fnArgs = JSON.parse(fn.arguments) } catch {}
+
+          this.logger.log(`Tool call: ${fnName}(${JSON.stringify(fnArgs)})`)
+
+          try {
+            const result = await params.onToolCall(fnName, fnArgs)
+            messages.push({
+              role:         'tool',
+              tool_call_id: toolCall.id,
+              content:      typeof result === 'string' ? result : JSON.stringify(result),
+            })
+          } catch (err: any) {
+            messages.push({
+              role:         'tool',
+              tool_call_id: toolCall.id,
+              content:      JSON.stringify({ error: err?.message ?? 'Tool execution failed' }),
+            })
+          }
+        }
+      }
 
       return {
-        content,
-        inputTokens:  response.usage?.prompt_tokens ?? 0,
-        outputTokens: response.usage?.completion_tokens ?? 0,
+        content: 'Desculpe, não consegui completar a operação. Tente novamente.',
+        inputTokens:  totalInput,
+        outputTokens: totalOutput,
         latencyMs:    Date.now() - start,
       }
     } catch (err: any) {
@@ -137,26 +266,18 @@ export class AiEngineService {
   // ─── Busca de chave de API ────────────────────────────────────────────────
 
   private async getApiKey(type: 'ANTHROPIC' | 'OPENAI'): Promise<string> {
-    // 1. Busca provedor ativo na tabela ai_providers
     const provider = await this.prisma.aiProvider.findFirst({
       where: { type, isActive: true },
       orderBy: { createdAt: 'asc' },
     })
 
-    if (provider?.apiKey) {
-      this.logger.debug(`Usando chave de ai_providers (${type})`)
-      return provider.apiKey
-    }
+    if (provider?.apiKey) return provider.apiKey
 
-    // 2. Fallback: variável de ambiente
     const envKey = type === 'ANTHROPIC'
       ? process.env.ANTHROPIC_API_KEY
       : process.env.OPENAI_API_KEY
 
-    if (envKey) {
-      this.logger.debug(`Usando chave de env (${type})`)
-      return envKey
-    }
+    if (envKey) return envKey
 
     throw new ServiceUnavailableException(
       `Nenhuma chave de API ${type} configurada. Adicione em Configurações → Provedores de IA.`,

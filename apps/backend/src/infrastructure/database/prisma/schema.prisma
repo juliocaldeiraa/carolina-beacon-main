@@ -113,9 +113,10 @@ model Agent {
   updatedAt       DateTime    @updatedAt
   deletedAt       DateTime?   // soft delete
 
-  conversations Conversation[]
-  metrics       Metric[]
-  trainings     AgentTraining[]
+  conversations    Conversation[]
+  metrics          Metric[]
+  trainings        AgentTraining[]
+  calendarIntegration GoogleCalendarIntegration?
 
   @@index([tenantId])
   @@index([tenantId, status])
@@ -138,6 +139,35 @@ model AgentTraining {
 
   @@index([agentId])
   @@map("agent_trainings")
+}
+
+// =============================================
+// GOOGLE CALENDAR INTEGRATION
+// =============================================
+model GoogleCalendarIntegration {
+  id            String   @id @default(uuid())
+  tenantId      String   @map("tenant_id")
+  agentId       String   @unique @map("agent_id")
+  agent         Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  calendarId    String   @map("calendar_id")
+  calendarName  String   @map("calendar_name")
+  accessToken   String   @db.Text @map("access_token")
+  refreshToken  String   @db.Text @map("refresh_token")
+  tokenExpiry   DateTime @map("token_expiry")
+  slotDuration  Int      @default(30)  @map("slot_duration")
+  consultHours  Boolean  @default(true) @map("consult_hours")
+  restrictFull  Boolean  @default(false) @map("restrict_full")
+  eventTitle    String   @default("Consulta - {userName}") @map("event_title")
+  collectName   Boolean  @default(true) @map("collect_name")
+  collectEmail  Boolean  @default(false) @map("collect_email")
+  collectPhone  Boolean  @default(true) @map("collect_phone")
+  googleMeet    Boolean  @default(false) @map("google_meet")
+  sendSummary   Boolean  @default(true) @map("send_summary")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("google_calendar_integrations")
 }
 
 // =============================================

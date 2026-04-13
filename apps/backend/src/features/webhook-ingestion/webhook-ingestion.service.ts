@@ -27,6 +27,9 @@ import { ChannelSendService }     from '@/infrastructure/channel-send/channel-se
 import { ContactsService }        from '@/features/contacts/contacts.service'
 import { AutomationReplyHandlerService } from '@/features/automations/automation-reply-handler.service'
 import { CampaignInboundService } from '@/features/campaigns/campaign-inbound.service'
+import { TrainingsService } from '@/features/agents/trainings.service'
+import { GoogleCalendarService } from '@/infrastructure/google-calendar/google-calendar.service'
+import { CALENDAR_TOOLS, CALENDAR_SYSTEM_PROMPT, executeCalendarTool } from '@/infrastructure/google-calendar/calendar-tools'
 import { parseWebhookPayload }    from './webhook-ingestion.parser'
 import { buildSystemPrompt }      from '@/core/entities/Agent'
 import { brPhoneVariants }        from '@/shared/utils/phone.utils'
@@ -96,6 +99,8 @@ export class WebhookIngestionService {
     private readonly contacts:     ContactsService,
     private readonly automationReplyHandler: AutomationReplyHandlerService,
     private readonly campaignInbound: CampaignInboundService,
+    private readonly trainingsService: TrainingsService,
+    private readonly calendarService: GoogleCalendarService,
   ) {}
 
   // ─── Helpers de log ─────────────────────────────────────────────────────────
@@ -524,11 +529,25 @@ export class WebhookIngestionService {
       systemPrompt: agentRow.systemPrompt ?? undefined,
       agentType:    (agentRow as any).agentType ?? 'PASSIVO',
     })
-    const composedSystemPrompt = baseSystemPrompt
-      ? baseSystemPrompt
-          + (name ? `\n\nVocê está conversando com: ${name}` : '')
-          + (agentOverride?.extraSystemCtx ? `\n\n${agentOverride.extraSystemCtx}` : '')
-      : (name ? `Você está conversando com: ${name}` : undefined)
+    // 6b. Injeta training context + calendar tools
+    let trainingCtx = ''
+    try { trainingCtx = await this.trainingsService.getTrainingContext(agentRow.id) } catch {}
+
+    let calendarIntegration: any = null
+    try { calendarIntegration = await this.calendarService.getIntegration(agentRow.id) } catch {}
+
+    const composedSystemPrompt = [
+      baseSystemPrompt,
+      name ? `\nVocê está conversando com: ${name}` : '',
+      agentOverride?.extraSystemCtx ? `\n${agentOverride.extraSystemCtx}` : '',
+      trainingCtx ? `\n\n--- BASE DE CONHECIMENTO ---\n${trainingCtx}` : '',
+      calendarIntegration?.isActive ? `\n\n${CALENDAR_SYSTEM_PROMPT}` : '',
+    ].filter(Boolean).join('')
+
+    const tools = calendarIntegration?.isActive ? CALENDAR_TOOLS : undefined
+    const onToolCall = calendarIntegration?.isActive
+      ? (toolName: string, input: any) => executeCalendarTool(toolName, input, agentRow.id, this.calendarService)
+      : undefined
 
     // 7. Chama IA (com timeout de segurança)
     let aiResult: Awaited<ReturnType<AiEngineService['complete']>>
@@ -536,10 +555,12 @@ export class WebhookIngestionService {
       aiResult = await withTimeout(
         this.aiEngine.complete({
           messages,
-          systemPrompt: composedSystemPrompt,
+          systemPrompt: composedSystemPrompt || undefined,
           model:        resolvedModel,
           temperature:  agentRow.temperature ?? 0.6,
           maxTokens:    agentRow.maxTokens   ?? 300,
+          tools,
+          onToolCall,
         }),
         AI_TIMEOUT_MS,
         `aiEngine.complete [${phone}]`,
