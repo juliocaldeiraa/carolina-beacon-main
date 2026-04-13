@@ -32,11 +32,23 @@ services:
     build:
       context: ./apps/frontend
       dockerfile: Dockerfile
-    ports:
-      - '8080:80'
+    networks:
+      - otmizanet
     extra_hosts:
       - 'host.docker.internal:host-gateway'
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=otmizanet
+      - traefik.http.routers.beacon.entrypoints=websecure
+      - traefik.http.routers.beacon.rule=Host(`beacon.carolinapedrollo.com.br`)
+      - traefik.http.routers.beacon.tls.certresolver=letsencryptresolver
+      - traefik.http.routers.beacon.service=beacon
+      - traefik.http.services.beacon.loadbalancer.server.port=80
     restart: unless-stopped
 
 volumes:
   redis-data:
+
+networks:
+  otmizanet:
+    external: true
