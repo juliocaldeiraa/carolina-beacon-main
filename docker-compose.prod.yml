@@ -32,23 +32,11 @@ services:
     build:
       context: ./apps/frontend
       dockerfile: Dockerfile
-    networks:
-      - beacon-proxy
+    ports:
+      - '8080:80'
     extra_hosts:
       - 'host.docker.internal:host-gateway'
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=beacon-proxy
-      - traefik.http.routers.beacon.entrypoints=websecure
-      - traefik.http.routers.beacon.rule=Host(`beacon.carolinapedrollo.com.br`)
-      - traefik.http.routers.beacon.tls.certresolver=letsencryptresolver
-      - traefik.http.routers.beacon.service=beacon
-      - traefik.http.services.beacon.loadbalancer.server.port=80
     restart: unless-stopped
 
 volumes:
   redis-data:
-
-networks:
-  beacon-proxy:
-    external: true
