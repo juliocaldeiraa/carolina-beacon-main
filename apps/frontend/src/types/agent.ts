@@ -24,8 +24,32 @@ export interface Agent {
   tools?: string[]
   channelId?: string
   historyLimit: number
+  // Prompt engineering
+  purpose: string
+  companyName?: string
+  companyUrl?: string
+  communicationTone: string
+  useEmojis: boolean
+  splitResponse: boolean
+  restrictTopics: boolean
+  signName: boolean
+  conversationFlow?: string
+  inactivityMinutes: number
+  inactivityAction: string
   createdAt: string
   updatedAt: string
+}
+
+export interface AgentTraining {
+  id: string
+  agentId: string
+  type: string
+  title?: string
+  content: string
+  status: string
+  category: string
+  metadata?: Record<string, any>
+  createdAt: string
 }
 
 export interface CreateAgentPayload {
@@ -45,6 +69,17 @@ export interface CreateAgentPayload {
   tools?: string[]
   channelId?: string
   historyLimit?: number
+  purpose?: string
+  companyName?: string
+  companyUrl?: string
+  communicationTone?: string
+  useEmojis?: boolean
+  splitResponse?: boolean
+  restrictTopics?: boolean
+  signName?: boolean
+  conversationFlow?: string
+  inactivityMinutes?: number
+  inactivityAction?: string
 }
 
 export interface UpdateAgentPayload extends Partial<CreateAgentPayload> {}

@@ -10,6 +10,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Pencil, ArrowLeft, Bot, Brain, Settings2, BookOpen, Play,
   Trash2, Plus, FileText, Globe, Loader2, Send, Calendar, Link2, Unlink,
+  Upload, Sparkles, Tag,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -18,6 +19,17 @@ import { api } from '@/services/api'
 
 const statusVariant = { ACTIVE: 'active', PAUSED: 'paused', DRAFT: 'draft', DELETED: 'error' } as const
 const statusLabel   = { ACTIVE: 'Ativo', PAUSED: 'Pausado', DRAFT: 'Rascunho', DELETED: 'Removido' }
+
+const PURPOSE_LABELS: Record<string, string> = {
+  qualification: 'Qualificação',
+  qualification_scheduling: 'Qualificação + Agendamento',
+  qualification_scheduling_reminder: 'Qualif. + Agenda + Lembrete',
+  sales: 'Vendas',
+  support: 'Suporte / SAC',
+  reception: 'Recepção',
+  reactivation: 'Reativação',
+  survey: 'Pesquisa / NPS',
+}
 
 type Tab = 'profile' | 'trainings' | 'integrations' | 'settings' | 'test'
 
@@ -42,17 +54,49 @@ export function AgentDetail() {
     queryFn: () => api.get(`/agents/${id}/trainings`).then((r) => r.data),
     enabled: !!id,
   })
-  const [trainingType, setTrainingType] = useState<'text' | 'url'>('text')
+  const [trainingType, setTrainingType] = useState<'text' | 'url' | 'upload'>('text')
   const [trainingTitle, setTrainingTitle] = useState('')
   const [trainingContent, setTrainingContent] = useState('')
+  const [crawlEnabled, setCrawlEnabled] = useState(false)
+  const [useAiProcessing, setUseAiProcessing] = useState(true)
   const createTraining = useMutation({
     mutationFn: () => api.post(`/agents/${id}/trainings`, {
-      type: trainingType, title: trainingTitle || undefined, content: trainingContent,
+      type: trainingType === 'upload' ? 'document' : trainingType,
+      title: trainingTitle || undefined,
+      content: trainingContent,
     }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['trainings', id] })
       setTrainingTitle(''); setTrainingContent('')
     },
+  })
+  const processText = useMutation({
+    mutationFn: () => api.post(`/agents/${id}/trainings/process-text`, {
+      content: trainingContent, title: trainingTitle || undefined,
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['trainings', id] })
+      setTrainingTitle(''); setTrainingContent('')
+    },
+  })
+  const processUrl = useMutation({
+    mutationFn: () => api.post(`/agents/${id}/trainings/process-url`, {
+      url: trainingContent, crawl: crawlEnabled, maxPages: 5,
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['trainings', id] })
+      setTrainingTitle(''); setTrainingContent('')
+    },
+  })
+  const uploadFile = useMutation({
+    mutationFn: (file: File) => {
+      const form = new FormData()
+      form.append('file', file)
+      return api.post(`/agents/${id}/trainings/upload`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['trainings', id] }),
   })
   const deleteTraining = useMutation({
     mutationFn: (tid: string) => api.delete(`/agents/${id}/trainings/${tid}`),
@@ -157,9 +201,9 @@ export function AgentDetail() {
             {[
               ['Tipo', agent.agentType === 'ATIVO' ? 'Ativo (Vendas)' : 'Passivo (Chat IA)'],
               ['Modelo', agent.model],
-              ['Objetivo', (agent as any).purpose ?? 'support'],
-              ['Empresa', (agent as any).companyName ?? '—'],
-              ['Tom', (agent as any).communicationTone ?? 'normal'],
+              ['Objetivo', PURPOSE_LABELS[agent.purpose] ?? agent.purpose],
+              ['Empresa', agent.companyName ?? '—'],
+              ['Tom', agent.communicationTone ?? 'normal'],
               ['Criado', new Date(agent.createdAt).toLocaleString('pt-BR')],
             ].map(([label, value]) => (
               <div key={label} className="flex justify-between text-sm">
@@ -199,6 +243,7 @@ export function AgentDetail() {
             {[
               { id: 'text' as const, label: 'Texto', icon: FileText },
               { id: 'url' as const, label: 'Website', icon: Globe },
+              { id: 'upload' as const, label: 'Documento', icon: Upload },
             ].map((t) => (
               <button
                 key={t.id}
@@ -213,40 +258,110 @@ export function AgentDetail() {
             ))}
           </div>
 
-          {/* Form */}
-          <div className="bg-white/5 border border-white/10 rounded-xl p-5 space-y-3">
-            <h3 className="text-sm font-semibold text-white/70">
-              {trainingType === 'text' ? 'Novo treinamento via texto' : 'Novo treinamento via website'}
-            </h3>
-            <input
-              value={trainingTitle}
-              onChange={(e) => setTrainingTitle(e.target.value)}
-              placeholder="Título (opcional)"
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30"
-            />
-            <textarea
-              value={trainingContent}
-              onChange={(e) => setTrainingContent(e.target.value)}
-              placeholder={trainingType === 'text'
-                ? 'Escreva uma afirmação e tecle cadastrar...'
-                : 'Cole a URL de um website ou sitemap'}
-              rows={trainingType === 'text' ? 4 : 2}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30 resize-y"
-            />
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-white/30">{trainingContent.length} caracteres</span>
-              <Button
-                onClick={() => createTraining.mutate()}
-                disabled={!trainingContent.trim() || createTraining.isPending}
-                className="bg-beacon-primary"
-              >
-                {createTraining.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                Cadastrar
-              </Button>
+          {/* Form: Texto */}
+          {trainingType === 'text' && (
+            <div className="bg-white/5 border border-white/10 rounded-xl p-5 space-y-3">
+              <h3 className="text-sm font-semibold text-white/70">Novo treinamento via texto</h3>
+              <input
+                value={trainingTitle}
+                onChange={(e) => setTrainingTitle(e.target.value)}
+                placeholder="Título (opcional)"
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30"
+              />
+              <textarea
+                value={trainingContent}
+                onChange={(e) => setTrainingContent(e.target.value)}
+                placeholder="Cole ou escreva o conteúdo para treinar a IA..."
+                rows={5}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30 resize-y"
+              />
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-white/30">{trainingContent.length} caracteres</span>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input type="checkbox" checked={useAiProcessing} onChange={(e) => setUseAiProcessing(e.target.checked)}
+                      className="w-3.5 h-3.5 accent-beacon-primary rounded" />
+                    <span className="text-xs text-white/50 flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" /> Processar com IA
+                    </span>
+                  </label>
+                </div>
+                <Button
+                  onClick={() => useAiProcessing ? processText.mutate() : createTraining.mutate()}
+                  disabled={!trainingContent.trim() || processText.isPending || createTraining.isPending}
+                  className="bg-beacon-primary"
+                >
+                  {(processText.isPending || createTraining.isPending)
+                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                    : useAiProcessing ? <Sparkles className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                  {useAiProcessing ? 'Processar' : 'Cadastrar'}
+                </Button>
+              </div>
+              {useAiProcessing && (
+                <p className="text-xs text-white/25">A IA vai extrair, categorizar e otimizar o conteúdo automaticamente.</p>
+              )}
             </div>
-          </div>
+          )}
 
-          {/* Lista */}
+          {/* Form: URL */}
+          {trainingType === 'url' && (
+            <div className="bg-white/5 border border-white/10 rounded-xl p-5 space-y-3">
+              <h3 className="text-sm font-semibold text-white/70">Importar conteúdo de website</h3>
+              <input
+                value={trainingContent}
+                onChange={(e) => setTrainingContent(e.target.value)}
+                placeholder="https://exemplo.com.br"
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30"
+              />
+              <div className="flex justify-between items-center">
+                <label className="flex items-center gap-1.5 cursor-pointer">
+                  <input type="checkbox" checked={crawlEnabled} onChange={(e) => setCrawlEnabled(e.target.checked)}
+                    className="w-3.5 h-3.5 accent-beacon-primary rounded" />
+                  <span className="text-xs text-white/50">Navegar links internos (até 5 páginas)</span>
+                </label>
+                <Button
+                  onClick={() => processUrl.mutate()}
+                  disabled={!trainingContent.trim() || processUrl.isPending}
+                  className="bg-beacon-primary"
+                >
+                  {processUrl.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
+                  Importar
+                </Button>
+              </div>
+              <p className="text-xs text-white/25">O sistema vai extrair o texto do site, processar com IA e criar treinamentos categorizados.</p>
+            </div>
+          )}
+
+          {/* Form: Upload */}
+          {trainingType === 'upload' && (
+            <div className="bg-white/5 border border-white/10 rounded-xl p-5 space-y-3">
+              <h3 className="text-sm font-semibold text-white/70">Upload de documento</h3>
+              <p className="text-xs text-white/40">Suporta .md, .pdf, .docx — até 10MB</p>
+              <div className="flex items-center gap-3">
+                <label className="flex-1 flex items-center justify-center gap-2 py-8 border-2 border-dashed border-white/15 rounded-xl cursor-pointer hover:border-beacon-primary/40 transition-colors">
+                  <Upload className="w-5 h-5 text-white/30" />
+                  <span className="text-sm text-white/40">Clique para selecionar arquivo</span>
+                  <input
+                    type="file"
+                    accept=".md,.pdf,.docx"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) uploadFile.mutate(file)
+                    }}
+                  />
+                </label>
+              </div>
+              {uploadFile.isPending && (
+                <div className="flex items-center gap-2 text-xs text-white/50">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Processando documento...
+                </div>
+              )}
+              <p className="text-xs text-white/25">O documento será extraído e processado com IA automaticamente.</p>
+            </div>
+          )}
+
+          {/* Lista de treinamentos */}
           <div className="space-y-2">
             {trainings.length === 0 ? (
               <p className="text-center text-sm text-white/30 py-8">Nenhum treinamento cadastrado ainda.</p>
@@ -254,10 +369,20 @@ export function AgentDetail() {
               trainings.map((t: any) => (
                 <div key={t.id} className="bg-white/5 border border-white/10 rounded-lg px-4 py-3 flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      {t.type === 'text' ? <FileText className="w-3.5 h-3.5 text-white/40" /> : <Globe className="w-3.5 h-3.5 text-white/40" />}
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      {t.type === 'text' && <FileText className="w-3.5 h-3.5 text-white/40" />}
+                      {t.type === 'url' && <Globe className="w-3.5 h-3.5 text-white/40" />}
+                      {t.type === 'document' && <Upload className="w-3.5 h-3.5 text-white/40" />}
+                      {t.type === 'feedback' && <Sparkles className="w-3.5 h-3.5 text-amber-400" />}
                       <span className="text-xs font-semibold text-white/60 uppercase">{t.type}</span>
+                      {t.category && t.category !== 'general' && (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-beacon-primary/15 text-beacon-primary border border-beacon-primary/20">
+                          <Tag className="w-2.5 h-2.5" /> {t.category}
+                        </span>
+                      )}
                       {t.title && <span className="text-xs text-white/40">· {t.title}</span>}
+                      {t.status === 'processing' && <Loader2 className="w-3 h-3 animate-spin text-amber-400" />}
+                      {t.status === 'error' && <span className="text-[10px] text-red-400 font-semibold">ERRO</span>}
                     </div>
                     <p className="text-xs text-white/70 line-clamp-2">{t.content}</p>
                   </div>
@@ -405,11 +530,11 @@ export function AgentDetail() {
             ['Memória', `${agent.historyLimit} mensagens`],
             ['Limite de trocas', agent.limitTurns ? `${agent.maxTurns} trocas` : 'Sem limite'],
             ['Fallback', agent.fallbackEnabled ? 'Ativado' : 'Desativado'],
-            ['Emojis', (agent as any).useEmojis !== false ? 'Sim' : 'Não'],
-            ['Dividir resposta', (agent as any).splitResponse !== false ? 'Sim' : 'Não'],
-            ['Restringir temas', (agent as any).restrictTopics ? 'Sim' : 'Não'],
-            ['Assinar nome', (agent as any).signName ? 'Sim' : 'Não'],
-            ['Inatividade', `${(agent as any).inactivityMinutes ?? 10}min → ${(agent as any).inactivityAction ?? 'close'}`],
+            ['Emojis', agent.useEmojis !== false ? 'Sim' : 'Não'],
+            ['Dividir resposta', agent.splitResponse !== false ? 'Sim' : 'Não'],
+            ['Restringir temas', agent.restrictTopics ? 'Sim' : 'Não'],
+            ['Assinar nome', agent.signName ? 'Sim' : 'Não'],
+            ['Inatividade', `${agent.inactivityMinutes ?? 10}min → ${agent.inactivityAction ?? 'close'}`],
           ].map(([label, value]) => (
             <div key={label} className="flex justify-between text-sm py-1">
               <span className="text-white/40">{label}</span>

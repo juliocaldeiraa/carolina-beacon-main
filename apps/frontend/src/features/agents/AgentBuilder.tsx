@@ -13,7 +13,7 @@ import { z } from 'zod'
 import {
   ChevronLeft, ChevronRight, Check,
   Zap, MessageCircle, Headphones, ShoppingCart, User,
-  Bot, Sparkles,
+  Bot, Sparkles, CalendarCheck, Phone, RefreshCw, ClipboardList,
 } from 'lucide-react'
 import { Button }   from '@/components/ui/Button'
 import { Input }    from '@/components/ui/Input'
@@ -67,9 +67,14 @@ const MODELS = {
 }
 
 const PURPOSE_OPTIONS = [
-  { id: 'support',  label: 'Suporte',      desc: 'Atendimento ao cliente e suporte técnico', icon: Headphones },
-  { id: 'sales',    label: 'Vendas',        desc: 'Prospecção, qualificação e vendas',        icon: ShoppingCart },
-  { id: 'personal', label: 'Uso Pessoal',   desc: 'Assistente pessoal ou uso livre',          icon: User },
+  { id: 'qualification',                    label: 'Qualificação',           desc: 'Qualifica leads e encaminha',                         icon: Phone },
+  { id: 'qualification_scheduling',         label: 'Qualificação + Agenda', desc: 'Qualifica e agenda se qualificado',                   icon: CalendarCheck },
+  { id: 'qualification_scheduling_reminder', label: 'Qualif. + Agenda + Lembrete', desc: 'Qualifica, agenda e envia lembrete',           icon: CalendarCheck },
+  { id: 'sales',                            label: 'Vendas',                desc: 'Rapport, apresentação e fechamento',                  icon: ShoppingCart },
+  { id: 'support',                          label: 'Suporte / SAC',         desc: 'Resolve dúvidas com base no conhecimento',            icon: Headphones },
+  { id: 'reception',                        label: 'Recepção',              desc: 'Triagem geral — direciona, agenda, informa',          icon: User },
+  { id: 'reactivation',                     label: 'Reativação',            desc: 'Reengaja leads ou clientes inativos',                 icon: RefreshCw },
+  { id: 'survey',                           label: 'Pesquisa / NPS',        desc: 'Coleta feedback estruturado',                         icon: ClipboardList },
 ]
 
 const TONE_OPTIONS = [
@@ -124,6 +129,7 @@ export function AgentBuilder({ mode = 'create' }: AgentBuilderProps) {
   const [tone, setTone]           = useState('normal')
   const [companyName, setCompanyName] = useState('')
   const [companyUrl, setCompanyUrl]   = useState('')
+  const [conversationFlow, setConversationFlow] = useState('')
   const [selectedProvider, setSelectedProvider] = useState('OpenAI')
 
   // Configurações avançadas
@@ -167,16 +173,17 @@ export function AgentBuilder({ mode = 'create' }: AgentBuilderProps) {
         tools:           existingAgent.tools ?? [],
       })
       setAgentType(existingAgent.agentType ?? 'PASSIVO')
-      setPurpose((existingAgent as any).purpose ?? 'support')
-      setTone((existingAgent as any).communicationTone ?? 'normal')
-      setCompanyName((existingAgent as any).companyName ?? '')
-      setCompanyUrl((existingAgent as any).companyUrl ?? '')
-      setUseEmojis((existingAgent as any).useEmojis ?? true)
-      setSplitResponse((existingAgent as any).splitResponse ?? true)
-      setRestrictTopics((existingAgent as any).restrictTopics ?? false)
-      setSignName((existingAgent as any).signName ?? false)
-      setInactivityMinutes((existingAgent as any).inactivityMinutes ?? 10)
-      setInactivityAction((existingAgent as any).inactivityAction ?? 'close')
+      setPurpose(existingAgent.purpose ?? 'support')
+      setTone(existingAgent.communicationTone ?? 'normal')
+      setCompanyName(existingAgent.companyName ?? '')
+      setCompanyUrl(existingAgent.companyUrl ?? '')
+      setConversationFlow(existingAgent.conversationFlow ?? '')
+      setUseEmojis(existingAgent.useEmojis ?? true)
+      setSplitResponse(existingAgent.splitResponse ?? true)
+      setRestrictTopics(existingAgent.restrictTopics ?? false)
+      setSignName(existingAgent.signName ?? false)
+      setInactivityMinutes(existingAgent.inactivityMinutes ?? 10)
+      setInactivityAction(existingAgent.inactivityAction ?? 'close')
     }
   }, [existingAgent, mode, form])
 
@@ -198,6 +205,7 @@ export function AgentBuilder({ mode = 'create' }: AgentBuilderProps) {
       communicationTone: tone,
       companyName: companyName || undefined,
       companyUrl: companyUrl || undefined,
+      conversationFlow: conversationFlow || undefined,
       useEmojis,
       splitResponse,
       restrictTopics,
@@ -297,7 +305,7 @@ export function AgentBuilder({ mode = 'create' }: AgentBuilderProps) {
               <p className="text-sm text-white/50">Escolha o que melhor define o objetivo.</p>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-4 gap-2">
               {PURPOSE_OPTIONS.map((opt) => {
                 const Icon = opt.icon
                 return (
@@ -306,15 +314,15 @@ export function AgentBuilder({ mode = 'create' }: AgentBuilderProps) {
                     type="button"
                     onClick={() => setPurpose(opt.id)}
                     className={cn(
-                      'rounded-xl p-5 border-2 transition-all text-center',
+                      'rounded-xl p-4 border-2 transition-all text-center',
                       purpose === opt.id
                         ? 'border-beacon-primary bg-beacon-primary/10'
                         : 'border-white/10 hover:border-white/20',
                     )}
                   >
-                    <Icon className={cn('w-6 h-6 mx-auto mb-2', purpose === opt.id ? 'text-beacon-primary' : 'text-white/40')} />
-                    <p className="text-sm font-semibold text-white">{opt.label}</p>
-                    <p className="text-[11px] text-white/40 mt-1">{opt.desc}</p>
+                    <Icon className={cn('w-5 h-5 mx-auto mb-1.5', purpose === opt.id ? 'text-beacon-primary' : 'text-white/40')} />
+                    <p className="text-xs font-semibold text-white">{opt.label}</p>
+                    <p className="text-[10px] text-white/40 mt-0.5 leading-tight">{opt.desc}</p>
                   </button>
                 )
               })}
@@ -334,6 +342,17 @@ export function AgentBuilder({ mode = 'create' }: AgentBuilderProps) {
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-white/70">Descrição breve</label>
                 <Textarea {...form.register('description')} placeholder="Descreva brevemente o que o agente faz..." rows={3} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-white/70">Fluxo conversacional (opcional)</label>
+                <p className="text-xs text-white/30">Sobrescreve o fluxo padrão do arquétipo. Deixe vazio para usar o padrão.</p>
+                <Textarea
+                  value={conversationFlow}
+                  onChange={(e) => setConversationFlow(e.target.value)}
+                  placeholder="1. Cumprimentar&#10;2. Entender necessidade&#10;3. Qualificar&#10;4. Agendar&#10;5. Transferir"
+                  rows={4}
+                  className="font-mono text-sm"
+                />
               </div>
             </div>
           </div>
