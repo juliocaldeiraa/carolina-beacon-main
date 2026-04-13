@@ -127,3 +127,104 @@ h1, h2, h3, h4, h5, h6 {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-primary);
 }
+
+/* ─── Global Dark→Light Overrides ───
+ * Converts dark-mode-first Tailwind classes to light theme.
+ * This avoids rewriting every component file.
+ * ─── */
+
+/* Text white → dark */
+.text-white                { color: #134E4A !important; }
+.text-white\/85            { color: rgba(19,78,74,.85) !important; }
+.text-white\/80            { color: rgba(19,78,74,.80) !important; }
+.text-white\/70            { color: rgba(71,85,105,.90) !important; }
+.text-white\/60            { color: rgba(71,85,105,.75) !important; }
+.text-white\/50            { color: rgba(100,116,139,.90) !important; }
+.text-white\/45            { color: rgba(100,116,139,.80) !important; }
+.text-white\/40            { color: rgba(148,163,184,.90) !important; }
+.text-white\/35            { color: rgba(148,163,184,.80) !important; }
+.text-white\/30            { color: rgba(148,163,184,.70) !important; }
+.text-white\/25            { color: rgba(203,213,225,.90) !important; }
+.text-white\/20            { color: rgba(203,213,225,.70) !important; }
+.text-white\/15            { color: rgba(203,213,225,.50) !important; }
+.text-white\/10            { color: rgba(203,213,225,.40) !important; }
+
+/* Hover text */
+.hover\:text-white:hover   { color: #134E4A !important; }
+.hover\:text-white\/80:hover { color: rgba(19,78,74,.80) !important; }
+
+/* Backgrounds */
+.bg-white\/3  { background-color: rgba(8,145,178,.02) !important; }
+.bg-white\/4  { background-color: rgba(8,145,178,.025) !important; }
+.bg-white\/5  { background-color: rgba(8,145,178,.03) !important; }
+.bg-white\/6  { background-color: rgba(8,145,178,.04) !important; }
+.bg-white\/8  { background-color: rgba(8,145,178,.05) !important; }
+.bg-white\/10 { background-color: rgba(8,145,178,.06) !important; }
+.bg-white\/12 { background-color: rgba(8,145,178,.08) !important; }
+.bg-white\/15 { background-color: rgba(8,145,178,.10) !important; }
+.bg-white\/20 { background-color: rgba(8,145,178,.12) !important; }
+
+.hover\:bg-white\/6:hover  { background-color: rgba(8,145,178,.04) !important; }
+.hover\:bg-white\/8:hover  { background-color: rgba(8,145,178,.05) !important; }
+.hover\:bg-white\/12:hover { background-color: rgba(8,145,178,.08) !important; }
+
+/* Surface tokens */
+.bg-beacon-app       { background-color: #F5FAFA !important; }
+.bg-beacon-surface   { background-color: #FFFFFF !important; }
+.bg-beacon-surface-2 { background-color: #F0FDFA !important; }
+
+/* Borders */
+.border-\[rgba\(255\,255\,255\,0\.06\)\],
+.border-\[rgba\(255\,255\,255\,0\.07\)\],
+.border-\[rgba\(255\,255\,255\,0\.08\)\],
+.border-\[rgba\(255\,255\,255\,0\.10\)\],
+.border-\[rgba\(255\,255\,255\,0\.12\)\] {
+  border-color: rgba(8,145,178,.08) !important;
+}
+
+.border-white\/10 { border-color: rgba(8,145,178,.10) !important; }
+.border-white\/5  { border-color: rgba(8,145,178,.05) !important; }
+
+/* Beacon primary → teal */
+.bg-beacon-primary     { background-color: #0891B2 !important; }
+.hover\:bg-beacon-hover:hover { background-color: #0E7490 !important; }
+.text-beacon-primary   { color: #0891B2 !important; }
+.border-beacon-primary { border-color: #0891B2 !important; }
+
+/* Preserve white text on colored backgrounds */
+.bg-beacon-primary .text-white,
+.bg-green-600 .text-white,
+.bg-red-500 .text-white,
+.bg-yellow-500 .text-white,
+.bg-\[\#0891B2\] .text-white,
+[class*="bg-gradient-to"] .text-white,
+button[class*="bg-beacon-primary"] { color: white !important; }
+
+/* Active sidebar item */
+.bg-\[\#0891B2\] { color: white; }
+.bg-\[\#0891B2\] span,
+.bg-\[\#0891B2\] svg { color: white !important; }
+
+/* Shadows */
+.shadow-\[0_16px_64px_rgba\(0\,0\,0\,0\.7\)\] {
+  box-shadow: 0 16px 64px rgba(0,0,0,.12) !important;
+}
+.shadow-\[0_0_16px_rgba\(240\,101\,41\,0\.25\)\] {
+  box-shadow: 0 0 16px rgba(8,145,178,.15) !important;
+}
+
+/* Modal overlay */
+.bg-black\/70 { background-color: rgba(0,0,0,.40) !important; }
+
+/* Fix inputs/selects in light mode */
+select, input[type="text"], input[type="number"], input[type="email"], input[type="password"], textarea {
+  color: #134E4A;
+  background-color: white;
+}
+
+/* Gradient backgrounds for cards */
+.from-\[\#1a0a00\], .from-\[\#001a1a\], .from-\[\#0d0500\], .from-\[\#000d0d\] {
+  background: white !important;
+}
+.bg-gradient-to-br.from-\[\#0f0f0f\] { background: white !important; }
+.bg-gradient-to-b.from-\[\#0f0f0f\]  { background: white !important; }
