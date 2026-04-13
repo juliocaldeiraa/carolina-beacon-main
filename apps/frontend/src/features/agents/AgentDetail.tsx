@@ -65,8 +65,17 @@ export function AgentDetail() {
     queryFn: () => api.get(`/integrations/google/config/${id}`).then((r) => r.data).catch(() => null),
     enabled: !!id,
   })
+  const { data: calendars = [] } = useQuery({
+    queryKey: ['google-calendars', id],
+    queryFn: () => api.get(`/integrations/google/calendars/${id}`).then((r) => r.data).catch(() => []),
+    enabled: !!id && !!calendarConfig,
+  })
   const disconnectCalendar = useMutation({
     mutationFn: () => api.delete(`/integrations/google/${id}`),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['calendar-config', id] }); qc.invalidateQueries({ queryKey: ['google-calendars', id] }) },
+  })
+  const updateCalendarConfig = useMutation({
+    mutationFn: (dto: any) => api.patch(`/integrations/google/config/${id}`, dto).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['calendar-config', id] }),
   })
 
@@ -268,8 +277,8 @@ export function AgentDetail() {
       {/* ─── Tab: Integrações ─── */}
       {tab === 'integrations' && (
         <div className="space-y-4">
-          {/* Google Calendar */}
           <div className="bg-white/5 border border-white/10 rounded-xl p-5">
+            {/* Header */}
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
@@ -282,43 +291,99 @@ export function AgentDetail() {
                   </p>
                 </div>
               </div>
-
               {calendarConfig ? (
-                <button
-                  onClick={() => disconnectCalendar.mutate()}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 text-red-400 rounded-lg text-xs font-medium hover:bg-red-500/30"
-                >
-                  <Unlink className="w-3.5 h-3.5" />
-                  Desconectar
+                <button onClick={() => disconnectCalendar.mutate()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 text-red-400 rounded-lg text-xs font-medium hover:bg-red-500/30">
+                  <Unlink className="w-3.5 h-3.5" /> Desconectar
                 </button>
               ) : (
-                <a
-                  href={`/api/integrations/google/auth/${id}?tenantId=t1`}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-beacon-primary text-white rounded-lg text-sm font-medium hover:bg-beacon-hover transition-colors"
-                >
-                  <Link2 className="w-4 h-4" />
-                  Conectar
+                <a href={`/api/integrations/google/auth/${id}?tenantId=t1`}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-beacon-primary text-white rounded-lg text-sm font-medium hover:bg-beacon-hover transition-colors">
+                  <Link2 className="w-4 h-4" /> Conectar
                 </a>
               )}
             </div>
 
             {calendarConfig && (
-              <div className="space-y-3 border-t border-white/10 pt-4">
-                {[
-                  ['Calendário', calendarConfig.calendarName],
-                  ['Duração do slot', `${calendarConfig.slotDuration} min`],
-                  ['Google Meet', calendarConfig.googleMeet ? 'Ativado' : 'Desativado'],
-                  ['Título do evento', calendarConfig.eventTitle],
-                  ['Coletar nome', calendarConfig.collectName ? 'Sim' : 'Não'],
-                  ['Coletar email', calendarConfig.collectEmail ? 'Sim' : 'Não'],
-                  ['Coletar telefone', calendarConfig.collectPhone ? 'Sim' : 'Não'],
-                  ['Resumo da conversa', calendarConfig.sendSummary ? 'Sim' : 'Não'],
-                ].map(([label, value]) => (
-                  <div key={label} className="flex justify-between text-sm">
-                    <span className="text-white/40">{label}</span>
-                    <span className="text-white font-medium">{value}</span>
+              <div className="space-y-5 border-t border-white/10 pt-4">
+                {/* Seletor de agenda */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-white/70">Selecione a agenda</label>
+                  <select
+                    value={calendarConfig.calendarId}
+                    onChange={(e) => {
+                      const cal = calendars.find((c: any) => c.id === e.target.value)
+                      updateCalendarConfig.mutate({
+                        calendarId: e.target.value,
+                        calendarName: cal?.summary ?? e.target.value,
+                      })
+                    }}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white"
+                  >
+                    {calendars.map((c: any) => (
+                      <option key={c.id} value={c.id}>
+                        {c.summary} {c.primary ? '(principal)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Duração do slot */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-white/70">Duração do agendamento</label>
+                  <div className="flex gap-2">
+                    {[15, 30, 45, 60].map((min) => (
+                      <button key={min} onClick={() => updateCalendarConfig.mutate({ slotDuration: min })}
+                        className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          calendarConfig.slotDuration === min
+                            ? 'bg-beacon-primary text-white'
+                            : 'bg-white/5 text-white/50 hover:bg-white/10'
+                        }`}>
+                        {min}min
+                      </button>
+                    ))}
                   </div>
-                ))}
+                </div>
+
+                {/* Título do evento */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-white/70">Título do evento</label>
+                  <input
+                    defaultValue={calendarConfig.eventTitle}
+                    onBlur={(e) => updateCalendarConfig.mutate({ eventTitle: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+                    placeholder="Consulta - {userName}"
+                  />
+                  <p className="text-xs text-white/30">Use {'{userName}'} para inserir o nome do cliente</p>
+                </div>
+
+                {/* Toggles */}
+                <div className="space-y-1">
+                  {[
+                    { key: 'googleMeet', label: 'Google Meet', desc: 'Gerar link do Meet no agendamento' },
+                    { key: 'consultHours', label: 'Consulta de horários', desc: 'Agente pode consultar horários disponíveis' },
+                    { key: 'collectName', label: 'Coletar nome', desc: 'Solicitar nome do cliente' },
+                    { key: 'collectEmail', label: 'Coletar email', desc: 'Solicitar email para enviar convite' },
+                    { key: 'collectPhone', label: 'Coletar telefone', desc: 'Solicitar telefone do cliente' },
+                    { key: 'sendSummary', label: 'Enviar resumo', desc: 'Anexar resumo da conversa no evento' },
+                  ].map((item) => (
+                    <div key={item.key} className="flex items-center justify-between py-2.5">
+                      <div>
+                        <p className="text-sm font-medium text-white/80">{item.label}</p>
+                        <p className="text-xs text-white/30">{item.desc}</p>
+                      </div>
+                      <button
+                        onClick={() => updateCalendarConfig.mutate({ [item.key]: !(calendarConfig as any)[item.key] })}
+                        className={`relative w-9 h-5 rounded-full transition-colors ${
+                          (calendarConfig as any)[item.key] ? 'bg-beacon-primary' : 'bg-white/15'
+                        }`}>
+                        <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${
+                          (calendarConfig as any)[item.key] ? 'left-[18px]' : 'left-0.5'
+                        }`} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
