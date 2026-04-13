@@ -1,74 +1,58 @@
 /*
- * Beacon Design Tokens — Dark UI Edition
- *
- * Fonte da verdade: /Brand/Brand Playbook - Guia de Uso de Cores da Plataforma Beacon.md
- *                   /Brand/Playbook de Layout e UX - Plataforma Beacon.md
+ * Carolina Beacon — Design Tokens
+ * Healthcare-focused design system
+ * Colors: Medical Teal + Health Green
+ * Typography: Figtree + Noto Sans
  */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Noto+Sans:wght@400;500;600;700&display=swap');
 
 :root {
-  /* =============================================
-   * BEACON BRAND COLORS
-   * ============================================= */
-  --color-primary:       #f06529;
-  --color-primary-hover: #e34c26;
-  --color-gray-light:    #ebebeb;
-  --color-white:         #ffffff;
-  --color-black:         #000000;
-  --color-cyan:          #00b4d8;
+  /* ─── Brand Colors ─── */
+  --color-primary:       #0891B2;
+  --color-primary-hover: #0E7490;
+  --color-primary-light: #CFFAFE;
+  --color-secondary:     #22D3EE;
+  --color-accent:        #16A34A;
+  --color-destructive:   #DC2626;
 
-  /* =============================================
-   * RGB CHANNEL VARS — usadas pelo Tailwind para
-   * suporte a opacity modifiers (bg-beacon-surface/80)
-   * ============================================= */
-  --c-app:       10 10 15;    /* #0a0a0f */
-  --c-surface:   17 17 24;    /* #111118 */
-  --c-surface-2: 26 26 36;    /* #1a1a24 */
+  /* ─── Surface Colors (Light Default) ─── */
+  --c-app:       248 253 250;    /* #F0FDFA */
+  --c-surface:   255 255 255;    /* #FFFFFF */
+  --c-surface-2: 240 253 250;   /* #F0FDFA */
 
-  /* =============================================
-   * DARK UI SURFACE TOKENS
-   * ============================================= */
-  --color-app:       #0a0a0f;   /* Fundo global */
-  --color-surface:   #111118;   /* Cards, modais, inputs */
-  --color-surface-2: #1a1a24;   /* Cards elevados, painéis */
-  --color-border:    rgba(255,255,255,0.07);
-  --color-border-2:  rgba(255,255,255,0.12);
+  --color-app:       #F5FAFA;
+  --color-surface:   #FFFFFF;
+  --color-surface-2: #F0FDFA;
+  --color-border:    rgba(8,145,178,0.10);
+  --color-border-2:  rgba(8,145,178,0.18);
 
-  /* =============================================
-   * SEMANTIC TOKENS — Background
-   * ============================================= */
+  /* ─── Semantic: Background ─── */
   --bg-app:       var(--color-app);
   --bg-card:      var(--color-surface);
   --bg-secondary: var(--color-surface-2);
-  --bg-sidebar:   var(--color-black);
+  --bg-sidebar:   #FFFFFF;
 
-  /* =============================================
-   * SEMANTIC TOKENS — Text
-   * ============================================= */
-  --text-primary:    rgba(255,255,255,0.85);
-  --text-on-dark:    var(--color-white);
-  --text-muted:      rgba(255,255,255,0.45);
-  --text-subtle:     rgba(255,255,255,0.25);
+  /* ─── Semantic: Text ─── */
+  --text-primary:    #134E4A;
+  --text-secondary:  #475569;
+  --text-muted:      #94A3B8;
+  --text-subtle:     #CBD5E1;
+  --text-on-primary: #FFFFFF;
 
-  /* =============================================
-   * SEMANTIC TOKENS — Borders
-   * ============================================= */
-  --border-subtle: var(--color-border);
-  --border-focus:  var(--color-cyan);
+  /* ─── Semantic: Borders ─── */
+  --border-subtle: rgba(8,145,178,0.08);
+  --border-focus:  var(--color-primary);
 
-  /* =============================================
-   * SEMANTIC TOKENS — Interactive
-   * ============================================= */
+  /* ─── Semantic: Interactive ─── */
   --interactive-primary: var(--color-primary);
   --interactive-hover:   var(--color-primary-hover);
-  --disabled-bg:         rgba(255,255,255,0.06);
-  --disabled-text:       rgba(255,255,255,0.25);
+  --disabled-bg:         #F1F5F9;
+  --disabled-text:       #CBD5E1;
 
-  /* =============================================
-   * TYPOGRAPHY
-   * ============================================= */
-  --font-family: 'Inter', system-ui, sans-serif;
+  /* ─── Typography ─── */
+  --font-heading: 'Figtree', system-ui, sans-serif;
+  --font-body:    'Noto Sans', system-ui, sans-serif;
   --font-size-xs:   0.75rem;
   --font-size-sm:   0.875rem;
   --font-size-base: 1rem;
@@ -77,36 +61,20 @@
   --font-size-2xl:  1.5rem;
   --font-size-3xl:  2rem;
 
-  --font-weight-regular:   400;
-  --font-weight-medium:    500;
-  --font-weight-semibold:  600;
-  --font-weight-bold:      700;
-
-  /* =============================================
-   * SPACING & LAYOUT
-   * ============================================= */
-  --sidebar-width: 240px;
+  /* ─── Layout ─── */
+  --sidebar-width: 260px;
   --header-height: 64px;
 
-  /* =============================================
-   * SHADOWS
-   * ============================================= */
-  --shadow-card:      0 1px 3px rgba(0,0,0,0.3);
-  --shadow-card-hover:0 4px 12px rgba(0,0,0,0.5);
-  --shadow-fab:       0 4px 12px rgba(240,101,41,0.4);
-  --shadow-modal:     0 16px 64px rgba(0,0,0,0.7);
-  --shadow-glow:      0 0 24px rgba(240,101,41,0.30);
-  --shadow-glow-sm:   0 0 12px rgba(240,101,41,0.15);
-  --shadow-glow-cyan: 0 0 24px rgba(0,180,216,0.25);
-  --shadow-surface:   0 4px 24px rgba(0,0,0,0.50);
+  /* ─── Shadows ─── */
+  --shadow-card:      0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-card-hover:0 4px 12px rgba(0,0,0,0.08);
+  --shadow-fab:       0 4px 12px rgba(8,145,178,0.25);
+  --shadow-modal:     0 16px 64px rgba(0,0,0,0.12);
+  --shadow-sm:        0 1px 2px rgba(0,0,0,0.05);
 }
 
-/* =============================================
- * GLOBAL RESET & BASE
- * ============================================= */
-*,
-*::before,
-*::after {
+/* ─── Global Reset ─── */
+*, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -119,245 +87,43 @@ html {
 }
 
 body {
-  font-family: var(--font-family);
+  font-family: var(--font-body);
   font-size: var(--font-size-base);
-  font-weight: var(--font-weight-regular);
   color: var(--text-primary);
   background-color: var(--bg-app);
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
-/* =============================================
- * FOCUS VISIBLE — Acessibilidade WCAG 2.1 AA
- * ============================================= */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+/* ─── Focus Visible ─── */
 :focus-visible {
-  outline: 2px solid var(--border-focus);
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 
-/* =============================================
- * SELECTION COLOR
- * ============================================= */
+/* ─── Selection ─── */
 ::selection {
   background-color: var(--color-primary);
-  color: var(--color-white);
+  color: white;
 }
 
-/* =============================================
- * SCROLLBAR — Dark themed
- * ============================================= */
+/* ─── Scrollbar ─── */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-
 ::-webkit-scrollbar-track {
-  background: #1a1a1a;
+  background: #F1F5F9;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: #333;
+  background: #CBD5E1;
   border-radius: 3px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-primary);
-}
-
-/* =============================================
- * GLOW ANIMATIONS
- * ============================================= */
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 12px rgba(240,101,41,0.20); }
-  50%       { box-shadow: 0 0 28px rgba(240,101,41,0.45); }
-}
-
-@keyframes pulse-glow-cyan {
-  0%, 100% { box-shadow: 0 0 12px rgba(0,180,216,0.15); }
-  50%       { box-shadow: 0 0 24px rgba(0,180,216,0.35); }
-}
-
-.animate-glow      { animation: pulse-glow      2.5s ease-in-out infinite; }
-.animate-glow-cyan { animation: pulse-glow-cyan 2.5s ease-in-out infinite; }
-
-/* =============================================
- * DARK MODE GAMIFICATION — profundidade e glows
- * ============================================= */
-
-/* Gradiente sutil nos cards para dar profundidade */
-.beacon-card-gradient {
-  background: linear-gradient(135deg, #111118 0%, #14141e 100%);
-}
-
-/* Hover glow em elementos interativos */
-.beacon-hover-glow {
-  transition: box-shadow 0.3s ease, border-color 0.3s ease;
-}
-.beacon-hover-glow:hover {
-  box-shadow: 0 0 20px rgba(240,101,41,0.18), 0 4px 24px rgba(0,0,0,0.5);
-  border-color: rgba(240,101,41,0.25) !important;
-}
-
-/* =============================================
- * LIGHT THEME — Paleta Quente (Everforest/Flexoki)
- * Inspirada nas refs: tons creme/areia/bege quente
- * ============================================= */
-
-[data-theme="light"] {
-  color-scheme: light;
-
-  /* RGB channels para Tailwind opacity modifiers
-   * Paleta quente: creme (#f8f4ec), branco-quente (#fffcf5), bege (#f2ece0) */
-  --c-app:       248 244 236;   /* #f8f4ec — creme quente */
-  --c-surface:   255 252 245;   /* #fffcf5 — branco levemente âmbar */
-  --c-surface-2: 242 236 224;   /* #f2ece0 — bege claro */
-
-  /* Cores CSS diretas */
-  --color-app:       #f8f4ec;
-  --color-surface:   #fffcf5;
-  --color-surface-2: #f2ece0;
-  --color-border:    rgba(60,40,10,0.09);
-  --color-border-2:  rgba(60,40,10,0.16);
-
-  /* Texto tom terra quente */
-  --text-primary:    rgba(35,22,8,0.88);
-  --text-muted:      rgba(35,22,8,0.52);
-  --text-subtle:     rgba(35,22,8,0.34);
-}
-
-[data-theme="light"] body {
-  color: rgba(35, 22, 8, 0.88);
-  background-color: #f8f4ec;
-}
-
-/* Scrollbar quente */
-[data-theme="light"] ::-webkit-scrollbar-track { background: #ece6d8; }
-[data-theme="light"] ::-webkit-scrollbar-thumb { background: #c4b89a; }
-[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: var(--color-primary); }
-
-/* ──────────────────────────────────────────────
- * SIDEBAR — bege/areia escuro para distinção clara
- * Claramente diferente do conteúdo (#f8f4ec)
- * ────────────────────────────────────────────── */
-[data-theme="light"] aside[aria-label="Navegação principal"] {
-  background-image: linear-gradient(to bottom, #e6e0d2, #dfd9cb) !important;
-  border-right: 1px solid rgba(60,40,10,0.12) !important;
-}
-
-/* Divisores do sidebar no light mode (border-[#1e1e1e] → bege escuro) */
-[data-theme="light"] aside[aria-label="Navegação principal"] [class*="border-[#1e1e1e]"] {
-  border-color: rgba(60,40,10,0.14) !important;
-}
-
-/* ──────────────────────────────────────────────
- * HEADER — branco quente com borda sutil
- * ────────────────────────────────────────────── */
-[data-theme="light"] header.fixed {
-  background-color: #fffcf5 !important;
-  border-bottom-color: rgba(60,40,10,0.09) !important;
-  box-shadow: 0 1px 0 rgba(60,40,10,0.06) !important;
-}
-
-/* ──────────────────────────────────────────────
- * TEXT: text-white/* → equivalentes quentes escuros
- * ────────────────────────────────────────────── */
-[data-theme="light"] .text-white                { color: rgb(35 22 8) !important; }
-[data-theme="light"] .text-white\/85            { color: rgba(35,22,8,.85) !important; }
-[data-theme="light"] .text-white\/70            { color: rgba(35,22,8,.70) !important; }
-[data-theme="light"] .text-white\/60            { color: rgba(35,22,8,.60) !important; }
-[data-theme="light"] .text-white\/50            { color: rgba(35,22,8,.50) !important; }
-[data-theme="light"] .text-white\/45            { color: rgba(35,22,8,.45) !important; }
-[data-theme="light"] .text-white\/40            { color: rgba(35,22,8,.40) !important; }
-[data-theme="light"] .text-white\/35            { color: rgba(35,22,8,.38) !important; }
-[data-theme="light"] .text-white\/30            { color: rgba(35,22,8,.32) !important; }
-[data-theme="light"] .text-white\/25            { color: rgba(35,22,8,.28) !important; }
-[data-theme="light"] .text-white\/20            { color: rgba(35,22,8,.22) !important; }
-[data-theme="light"] .text-white\/15            { color: rgba(35,22,8,.18) !important; }
-[data-theme="light"] .text-white\/10            { color: rgba(35,22,8,.12) !important; }
-
-/* hover:text-white */
-[data-theme="light"] .hover\:text-white:hover   { color: rgb(35 22 8) !important; }
-
-/* ──────────────────────────────────────────────
- * DATA-DARK-SURFACE: preserva texto branco em
- * componentes intencionalmente escuros (TypeSelector,
- * Step 0 do AgentBuilder, etc.)
- * Especificidade maior que as regras globais acima.
- * ────────────────────────────────────────────── */
-[data-theme="light"] [data-dark-surface] .text-white    { color: rgb(255 255 255) !important; }
-[data-theme="light"] [data-dark-surface] .text-white\/85 { color: rgba(255,255,255,.85) !important; }
-[data-theme="light"] [data-dark-surface] .text-white\/80 { color: rgba(255,255,255,.80) !important; }
-[data-theme="light"] [data-dark-surface] .text-white\/70 { color: rgba(255,255,255,.70) !important; }
-[data-theme="light"] [data-dark-surface] .text-white\/60 { color: rgba(255,255,255,.60) !important; }
-[data-theme="light"] [data-dark-surface] .text-white\/50 { color: rgba(255,255,255,.50) !important; }
-[data-theme="light"] [data-dark-surface] .text-white\/40 { color: rgba(255,255,255,.40) !important; }
-[data-theme="light"] [data-dark-surface] .border-white\/10 { border-color: rgba(255,255,255,.10) !important; }
-
-/* ──────────────────────────────────────────────
- * BACKGROUND: bg-white/* → tints areia quentes
- * ────────────────────────────────────────────── */
-[data-theme="light"] .bg-white\/3  { background-color: rgba(60,40,10,.015) !important; }
-[data-theme="light"] .bg-white\/4  { background-color: rgba(60,40,10,.022) !important; }
-[data-theme="light"] .bg-white\/5  { background-color: rgba(60,40,10,.028) !important; }
-[data-theme="light"] .bg-white\/6  { background-color: rgba(60,40,10,.038) !important; }
-[data-theme="light"] .bg-white\/8  { background-color: rgba(60,40,10,.052) !important; }
-[data-theme="light"] .bg-white\/10 { background-color: rgba(60,40,10,.065) !important; }
-[data-theme="light"] .bg-white\/12 { background-color: rgba(60,40,10,.078) !important; }
-[data-theme="light"] .bg-white\/15 { background-color: rgba(60,40,10,.095) !important; }
-[data-theme="light"] .bg-white\/20 { background-color: rgba(60,40,10,.115) !important; }
-
-/* hover bg-white/* */
-[data-theme="light"] .hover\:bg-white\/6:hover  { background-color: rgba(60,40,10,.038) !important; }
-[data-theme="light"] .hover\:bg-white\/8:hover  { background-color: rgba(60,40,10,.052) !important; }
-[data-theme="light"] .hover\:bg-white\/12:hover { background-color: rgba(60,40,10,.078) !important; }
-
-/* ──────────────────────────────────────────────
- * BORDERS: rgba(255,255,255,*) → bordas quentes
- * ────────────────────────────────────────────── */
-[data-theme="light"] [class*="border-[rgba(255"] {
-  border-color: rgba(60,40,10,.10) !important;
-}
-
-/* divide branco → quente */
-[data-theme="light"] [class*="divide-white"] > * + * {
-  border-color: rgba(60,40,10,.07) !important;
-}
-
-/* ──────────────────────────────────────────────
- * SHADOWS — suaves e quentes no light
- * ────────────────────────────────────────────── */
-[data-theme="light"] .shadow-surface {
-  box-shadow: 0 1px 6px rgba(60,40,10,.08), 0 4px 20px rgba(60,40,10,.05) !important;
-}
-[data-theme="light"] .shadow-glow-sm {
-  box-shadow: 0 0 12px rgba(240,101,41,.10) !important;
-}
-[data-theme="light"] .shadow-glow {
-  box-shadow: 0 0 24px rgba(240,101,41,.15) !important;
-}
-[data-theme="light"] .shadow-\[0_0_16px_rgba\(240\,101\,41\,0\.25\)\] {
-  box-shadow: 0 0 12px rgba(240,101,41,.12) !important;
-}
-
-/* ──────────────────────────────────────────────
- * BG TOKENS — sobrescreve hardcoded dark bg
- * ────────────────────────────────────────────── */
-[data-theme="light"] .bg-beacon-app       { background-color: #f8f4ec !important; }
-[data-theme="light"] .bg-beacon-surface   { background-color: #fffcf5 !important; }
-[data-theme="light"] .bg-beacon-surface-2 { background-color: #f2ece0 !important; }
-
-/* ──────────────────────────────────────────────
- * GRADIENTE CARD — quente no light
- * ────────────────────────────────────────────── */
-[data-theme="light"] [class*="from-beacon-surface"] {
-  background-image: linear-gradient(to bottom right, #fffcf5, #f8f2e8) !important;
-}
-
-/* ──────────────────────────────────────────────
- * GLOW ANIMATIONS — desativadas no light
- * ────────────────────────────────────────────── */
-[data-theme="light"] .animate-glow,
-[data-theme="light"] .animate-glow-cyan {
-  animation: none !important;
-  box-shadow: none !important;
 }

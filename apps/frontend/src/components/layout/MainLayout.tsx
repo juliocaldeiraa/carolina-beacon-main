@@ -84,12 +84,12 @@ export function MainLayout() {
         Ir para o conteúdo principal
       </a>
 
-      <div className="min-h-screen bg-beacon-app">
+      <div className="min-h-screen bg-[#F5FAFA]">
         <Sidebar />
         <Header title={meta.title} subtitle={meta.subtitle} />
 
         <main
-          className="ml-60 pt-16 min-h-screen"
+          className="ml-[260px] pt-16 min-h-screen"
           id="main-content"
           aria-label={meta.title}
         >

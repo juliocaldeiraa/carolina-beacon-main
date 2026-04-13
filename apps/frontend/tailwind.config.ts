@@ -1,38 +1,34 @@
 import type { Config } from 'tailwindcss'
 
-// Cores derivadas de: /Brand/Brand Playbook - Guia de Uso de Cores da Plataforma Beacon.md
 const config: Config = {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
         beacon: {
-          primary:         '#f06529',   // Laranja Principal — ações primárias, CTAs
-          'primary-hover': '#e34c26',   // Laranja Secundário — hover/active/focus
-          gray:            '#ebebeb',   // Cinza Claro — backward compat
-          white:           '#ffffff',   // Branco — backward compat
-          black:           '#000000',   // Preto — backward compat
-          // Dark UI tokens — via CSS vars para suporte a temas
+          primary:         '#0891B2',
+          'primary-hover': '#0E7490',
+          'primary-light': '#CFFAFE',
+          secondary:       '#22D3EE',
+          accent:          '#16A34A',
+          destructive:     '#DC2626',
           app:             'rgb(var(--c-app) / <alpha-value>)',
           surface:         'rgb(var(--c-surface) / <alpha-value>)',
           'surface-2':     'rgb(var(--c-surface-2) / <alpha-value>)',
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        heading: ['Figtree', 'system-ui', 'sans-serif'],
+        sans:    ['Noto Sans', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
-        card:          '0 1px 3px rgba(0,0,0,0.1)',
-        'card-hover':  '0 4px 12px rgba(0,0,0,0.15)',
-        fab:           '0 4px 12px rgba(240,101,41,0.4)',
-        // Dark UI glow shadows
-        glow:          '0 0 24px rgba(240,101,41,0.30)',
-        'glow-sm':     '0 0 12px rgba(240,101,41,0.15)',
-        'glow-cyan':   '0 0 24px rgba(0,180,216,0.25)',
-        surface:       '0 4px 24px rgba(0,0,0,0.50)',
+        card:         '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+        'card-hover': '0 4px 12px rgba(0,0,0,0.08)',
+        fab:          '0 4px 12px rgba(8,145,178,0.25)',
+        sm:           '0 1px 2px rgba(0,0,0,0.05)',
       },
       borderRadius: {
-        card: '8px',
+        card: '12px',
       },
     },
   },
