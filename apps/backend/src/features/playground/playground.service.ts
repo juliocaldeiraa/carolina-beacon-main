@@ -19,7 +19,7 @@ import type { ChatMessage }       from '@/infrastructure/ai-engine/ai-engine.ser
 import { MessageSplitterService } from '@/infrastructure/ai-engine/message-splitter.service'
 import { PrismaService }          from '@/infrastructure/database/prisma/prisma.service'
 import { IAgentRepository, AGENT_REPOSITORY } from '@/core/repositories/IAgentRepository'
-import { buildSystemPrompt }      from '@/core/entities/Agent'
+import { buildEnrichedSystemPrompt } from '@/core/entities/Agent'
 import { GoogleCalendarService }  from '@/infrastructure/google-calendar/google-calendar.service'
 import { TrainingsService }       from '@/features/agents/trainings.service'
 import { CALENDAR_TOOLS, getCalendarSystemPrompt, executeCalendarTool } from '@/infrastructure/google-calendar/calendar-tools'
@@ -113,21 +113,18 @@ export class PlaygroundService {
     ]
 
     const resolvedModel = model ?? agent.model
-    let systemPrompt = buildSystemPrompt(agent) ?? ''
+    // Monta system prompt enriquecido
+    let trainingsByCategory: Record<string, Array<{ title?: string; content: string }>> = {}
+    try { trainingsByCategory = await this.trainingsService.getTrainingsByCategory(agentId) } catch {}
 
-    // Injetar training context
-    try {
-      const trainingCtx = await this.trainingsService.getTrainingContext(agentId)
-      if (trainingCtx) systemPrompt += `\n\n--- BASE DE CONHECIMENTO ---\n${trainingCtx}`
-    } catch {}
-
-    // Injetar calendar tools
     let calendarIntegration: any = null
     try { calendarIntegration = await this.calendarService.getIntegration(agentId) } catch {}
 
-    if (calendarIntegration?.isActive) {
-      systemPrompt += `\n\n${getCalendarSystemPrompt()}`
-    }
+    const systemPrompt = buildEnrichedSystemPrompt({
+      agent,
+      trainingsByCategory,
+      calendarPrompt: calendarIntegration?.isActive ? getCalendarSystemPrompt() : undefined,
+    })
 
     const tools = calendarIntegration?.isActive ? CALENDAR_TOOLS : undefined
     const onToolCall = calendarIntegration?.isActive

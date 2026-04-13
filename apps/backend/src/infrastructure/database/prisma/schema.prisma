@@ -106,9 +106,10 @@ model Agent {
   inactivityMinutes  Int      @default(10)         @map("inactivity_minutes")   // tempo de inatividade
   inactivityAction   String   @default("close")    @map("inactivity_action")    // close | message | transfer
   // Informações de trabalho
-  purpose            String   @default("support")  @map("purpose")              // support | sales | personal
+  purpose            String   @default("support")  @map("purpose")              // qualification | qualification_scheduling | qualification_scheduling_reminder | sales | support | reception | reactivation | survey
   companyName        String?                       @map("company_name")
   companyUrl         String?                       @map("company_url")
+  conversationFlow   String?  @db.Text             @map("conversation_flow")    // fluxo conversacional customizado (override do archetype)
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   deletedAt       DateTime?   // soft delete
@@ -117,6 +118,7 @@ model Agent {
   metrics          Metric[]
   trainings        AgentTraining[]
   calendarIntegration GoogleCalendarIntegration?
+  feedbacks        ConversationFeedback[]
 
   @@index([tenantId])
   @@index([tenantId, status])
@@ -130,10 +132,11 @@ model AgentTraining {
   id        String   @id @default(uuid())
   agentId   String   @map("agent_id")
   agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  type      String   // text | url | document
+  type      String   // text | url | document | feedback
   title     String?
   content   String   @db.Text  // texto do treinamento ou URL
   status    String   @default("ready") // pending | processing | ready | error
+  category  String   @default("general")  // faq | services | pricing | policies | scripts | general | feedback
   metadata  Json?    // { fileName, mimeType, charCount, etc. }
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -189,8 +192,9 @@ model Conversation {
   turns         Int       @default(0)
   lastMessageAt DateTime? @map("last_message_at")
 
-  messages Message[]
-  metric   Metric?
+  messages  Message[]
+  metric    Metric?
+  feedbacks ConversationFeedback[]
 
   @@index([tenantId])
   @@index([agentId])
@@ -214,6 +218,26 @@ model Message {
 
   @@index([conversationId])
   @@map("messages")
+}
+
+// =============================================
+// CONVERSATION FEEDBACK — Supervisão humana
+// =============================================
+model ConversationFeedback {
+  id               String       @id @default(uuid())
+  conversationId   String       @map("conversation_id")
+  conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  agentId          String       @map("agent_id")
+  agent            Agent        @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  messageIndex     Int          @map("message_index")
+  feedbackText     String       @db.Text  @map("feedback_text")
+  processedContent String?      @db.Text  @map("processed_content")
+  status           String       @default("pending") // pending | processing | ready | dismissed
+  createdAt        DateTime     @default(now())      @map("created_at")
+
+  @@index([conversationId])
+  @@index([agentId])
+  @@map("conversation_feedbacks")
 }
 
 // =============================================

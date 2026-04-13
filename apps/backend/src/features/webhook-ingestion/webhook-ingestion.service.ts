@@ -31,7 +31,7 @@ import { TrainingsService } from '@/features/agents/trainings.service'
 import { GoogleCalendarService } from '@/infrastructure/google-calendar/google-calendar.service'
 import { CALENDAR_TOOLS, getCalendarSystemPrompt, executeCalendarTool } from '@/infrastructure/google-calendar/calendar-tools'
 import { parseWebhookPayload }    from './webhook-ingestion.parser'
-import { buildSystemPrompt }      from '@/core/entities/Agent'
+import { buildEnrichedSystemPrompt } from '@/core/entities/Agent'
 import { brPhoneVariants }        from '@/shared/utils/phone.utils'
 import type { Channel, ChannelType, ChannelConfig } from '@/core/entities/Channel'
 
@@ -522,27 +522,36 @@ export class WebhookIngestionService {
       content: m.content,
     }))
 
-    // 6. Monta system prompt
-    const baseSystemPrompt = buildSystemPrompt({
-      personality:  agentRow.personality  ?? undefined,
-      actionPrompt: agentRow.actionPrompt ?? undefined,
-      systemPrompt: agentRow.systemPrompt ?? undefined,
-      agentType:    (agentRow as any).agentType ?? 'PASSIVO',
-    })
-    // 6b. Injeta training context + calendar tools
-    let trainingCtx = ''
-    try { trainingCtx = await this.trainingsService.getTrainingContext(agentRow.id) } catch {}
+    // 6. Monta system prompt enriquecido
+    let trainingsByCategory: Record<string, Array<{ title?: string; content: string }>> = {}
+    try { trainingsByCategory = await this.trainingsService.getTrainingsByCategory(agentRow.id) } catch {}
 
     let calendarIntegration: any = null
     try { calendarIntegration = await this.calendarService.getIntegration(agentRow.id) } catch {}
 
-    const composedSystemPrompt = [
-      baseSystemPrompt,
-      name ? `\nVocê está conversando com: ${name}` : '',
-      agentOverride?.extraSystemCtx ? `\n${agentOverride.extraSystemCtx}` : '',
-      trainingCtx ? `\n\n--- BASE DE CONHECIMENTO ---\n${trainingCtx}` : '',
-      calendarIntegration?.isActive ? `\n\n${getCalendarSystemPrompt()}` : '',
-    ].filter(Boolean).join('')
+    const composedSystemPrompt = buildEnrichedSystemPrompt({
+      agent: {
+        name:              agentRow.name,
+        description:       agentRow.description ?? undefined,
+        personality:       agentRow.personality ?? undefined,
+        actionPrompt:      agentRow.actionPrompt ?? undefined,
+        systemPrompt:      agentRow.systemPrompt ?? undefined,
+        agentType:         (agentRow as any).agentType ?? 'PASSIVO',
+        purpose:           (agentRow as any).purpose ?? 'support',
+        companyName:       (agentRow as any).companyName ?? undefined,
+        companyUrl:        (agentRow as any).companyUrl ?? undefined,
+        communicationTone: (agentRow as any).communicationTone ?? 'normal',
+        useEmojis:         (agentRow as any).useEmojis ?? true,
+        splitResponse:     (agentRow as any).splitResponse ?? true,
+        restrictTopics:    (agentRow as any).restrictTopics ?? false,
+        signName:          (agentRow as any).signName ?? false,
+        conversationFlow:  (agentRow as any).conversationFlow ?? undefined,
+      },
+      contactName: name ?? undefined,
+      trainingsByCategory,
+      extraSystemCtx: agentOverride?.extraSystemCtx,
+      calendarPrompt: calendarIntegration?.isActive ? getCalendarSystemPrompt() : undefined,
+    })
 
     const tools = calendarIntegration?.isActive ? CALENDAR_TOOLS : undefined
     const onToolCall = calendarIntegration?.isActive

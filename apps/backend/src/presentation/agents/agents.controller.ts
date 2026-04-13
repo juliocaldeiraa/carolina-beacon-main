@@ -3,7 +3,7 @@ import {
   Body, Param, Query, UseGuards,
 } from '@nestjs/common'
 import {
-  IsString, IsOptional, IsEnum, MinLength,
+  IsString, IsOptional, IsEnum, IsIn, MinLength,
   IsArray, IsNumber, IsBoolean, Min, Max,
 } from 'class-validator'
 import { AgentsService } from '../../features/agents/agents.service'
@@ -96,9 +96,11 @@ class CreateAgentDto {
   @IsOptional() @IsString()  communicationTone?: string
   @IsOptional() @IsNumber()  inactivityMinutes?: number
   @IsOptional() @IsString()  inactivityAction?: string
-  @IsOptional() @IsString()  purpose?: string
+  @IsOptional() @IsIn(['qualification', 'qualification_scheduling', 'qualification_scheduling_reminder', 'sales', 'support', 'reception', 'reactivation', 'survey'])
+  purpose?: string
   @IsOptional() @IsString()  companyName?: string
   @IsOptional() @IsString()  companyUrl?: string
+  @IsOptional() @IsString()  conversationFlow?: string
 }
 
 class UpdateAgentDto {
@@ -182,9 +184,11 @@ class UpdateAgentDto {
   @IsOptional() @IsString()  communicationTone?: string
   @IsOptional() @IsNumber()  inactivityMinutes?: number
   @IsOptional() @IsString()  inactivityAction?: string
-  @IsOptional() @IsString()  purpose?: string
+  @IsOptional() @IsIn(['qualification', 'qualification_scheduling', 'qualification_scheduling_reminder', 'sales', 'support', 'reception', 'reactivation', 'survey'])
+  purpose?: string
   @IsOptional() @IsString()  companyName?: string
   @IsOptional() @IsString()  companyUrl?: string
+  @IsOptional() @IsString()  conversationFlow?: string
 }
 
 class UpdateStatusDto {

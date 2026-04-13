@@ -17,6 +17,16 @@ export interface CreateAgentDto {
   tools?: string[]
   channelId?: string
   historyLimit?: number
+  // Prompt engineering fields
+  purpose?: string
+  companyName?: string
+  companyUrl?: string
+  communicationTone?: string
+  useEmojis?: boolean
+  splitResponse?: boolean
+  restrictTopics?: boolean
+  signName?: boolean
+  conversationFlow?: string
 }
 
 export interface UpdateAgentDto {
@@ -36,6 +46,16 @@ export interface UpdateAgentDto {
   tools?: string[]
   channelId?: string | null
   historyLimit?: number
+  // Prompt engineering fields
+  purpose?: string
+  companyName?: string
+  companyUrl?: string
+  communicationTone?: string
+  useEmojis?: boolean
+  splitResponse?: boolean
+  restrictTopics?: boolean
+  signName?: boolean
+  conversationFlow?: string
 }
 
 export interface IAgentRepository {

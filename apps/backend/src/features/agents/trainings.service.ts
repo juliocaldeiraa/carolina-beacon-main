@@ -45,9 +45,26 @@ export class TrainingsService {
     await this.prisma.agentTraining.delete({ where: { id: trainingId } })
   }
 
+  async update(agentId: string, trainingId: string, dto: { title?: string; content?: string; category?: string }) {
+    const training = await this.prisma.agentTraining.findFirst({
+      where: { id: trainingId, agentId },
+    })
+    if (!training) throw new NotFoundException('Treinamento não encontrado')
+
+    return this.prisma.agentTraining.update({
+      where: { id: trainingId },
+      data: {
+        ...(dto.title !== undefined && { title: dto.title }),
+        ...(dto.content !== undefined && { content: dto.content }),
+        ...(dto.category !== undefined && { category: dto.category }),
+      },
+    })
+  }
+
   /**
    * Retorna todos os treinamentos concatenados como contexto para o system prompt.
    * Usado pelo AiEngineService antes de chamar a IA.
+   * @deprecated Use getTrainingsByCategory para prompt enriquecido.
    */
   async getTrainingContext(agentId: string): Promise<string> {
     const trainings = await this.prisma.agentTraining.findMany({
@@ -64,5 +81,24 @@ export class TrainingsService {
         return `${header}\n${t.content}`
       })
       .join('\n\n---\n\n')
+  }
+
+  /**
+   * Retorna trainings agrupados por categoria para o prompt enriquecido.
+   */
+  async getTrainingsByCategory(agentId: string): Promise<Record<string, Array<{ title?: string; content: string }>>> {
+    const trainings = await this.prisma.agentTraining.findMany({
+      where:   { agentId, status: 'ready' },
+      orderBy: { createdAt: 'asc' },
+      select:  { category: true, title: true, content: true },
+    })
+
+    const grouped: Record<string, Array<{ title?: string; content: string }>> = {}
+    for (const t of trainings) {
+      const cat = (t as any).category ?? 'general'
+      if (!grouped[cat]) grouped[cat] = []
+      grouped[cat].push({ title: t.title ?? undefined, content: t.content })
+    }
+    return grouped
   }
 }

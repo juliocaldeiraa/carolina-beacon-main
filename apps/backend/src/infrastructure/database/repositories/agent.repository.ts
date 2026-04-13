@@ -53,6 +53,15 @@ export class AgentRepository implements IAgentRepository {
         historyLimit:    data.historyLimit     ?? 20,
         status:          'ACTIVE',
         channelId:       data.channelId,
+        purpose:         data.purpose         ?? 'support',
+        companyName:     data.companyName,
+        companyUrl:      data.companyUrl,
+        communicationTone: data.communicationTone ?? 'normal',
+        useEmojis:       data.useEmojis       ?? true,
+        splitResponse:   data.splitResponse   ?? true,
+        restrictTopics:  data.restrictTopics  ?? false,
+        signName:        data.signName        ?? false,
+        conversationFlow: data.conversationFlow,
       },
     })
     return this.toEntity(row)
@@ -78,6 +87,15 @@ export class AgentRepository implements IAgentRepository {
         ...(data.tools           !== undefined && { tools:           data.tools }),
         ...(data.channelId       !== undefined && { channelId:       data.channelId }),
         ...(data.historyLimit    !== undefined && { historyLimit:    data.historyLimit }),
+        ...(data.purpose         !== undefined && { purpose:         data.purpose }),
+        ...(data.companyName     !== undefined && { companyName:     data.companyName }),
+        ...(data.companyUrl      !== undefined && { companyUrl:      data.companyUrl }),
+        ...(data.communicationTone !== undefined && { communicationTone: data.communicationTone }),
+        ...(data.useEmojis       !== undefined && { useEmojis:       data.useEmojis }),
+        ...(data.splitResponse   !== undefined && { splitResponse:   data.splitResponse }),
+        ...(data.restrictTopics  !== undefined && { restrictTopics:  data.restrictTopics }),
+        ...(data.signName        !== undefined && { signName:        data.signName }),
+        ...(data.conversationFlow !== undefined && { conversationFlow: data.conversationFlow }),
       },
     })
     return this.toEntity(row)
@@ -107,6 +125,9 @@ export class AgentRepository implements IAgentRepository {
     limitTurns: boolean; maxTurns: number
     fallbackEnabled: boolean; fallbackMessage: string | null
     channelId: string | null; historyLimit: number
+    purpose: string; companyName: string | null; companyUrl: string | null
+    communicationTone: string; useEmojis: boolean; splitResponse: boolean
+    restrictTopics: boolean; signName: boolean; conversationFlow: string | null
     createdAt: Date; updatedAt: Date; deletedAt: Date | null
   }): Agent {
     return {
@@ -129,6 +150,15 @@ export class AgentRepository implements IAgentRepository {
       tools:           Array.isArray(row.tools) ? (row.tools as string[]) : undefined,
       channelId:       row.channelId       ?? undefined,
       historyLimit:    row.historyLimit,
+      purpose:         row.purpose         ?? 'support',
+      companyName:     row.companyName     ?? undefined,
+      companyUrl:      row.companyUrl      ?? undefined,
+      communicationTone: row.communicationTone ?? 'normal',
+      useEmojis:       row.useEmojis       ?? true,
+      splitResponse:   row.splitResponse   ?? true,
+      restrictTopics:  row.restrictTopics  ?? false,
+      signName:        row.signName        ?? false,
+      conversationFlow: row.conversationFlow ?? undefined,
       createdAt:       row.createdAt,
       updatedAt:       row.updatedAt,
       deletedAt:       row.deletedAt       ?? undefined,
