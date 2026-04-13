@@ -39,14 +39,22 @@ export const CALENDAR_TOOLS: AiTool[] = [
   },
 ]
 
-export const CALENDAR_SYSTEM_PROMPT = `
+export function getCalendarSystemPrompt(): string {
+  const now = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+  const today = new Date().toISOString().split('T')[0]  // YYYY-MM-DD
+  return `
+INFORMAÇÃO IMPORTANTE: Hoje é ${now} (${today}). Use o ano 2026 para datas futuras.
+Timezone: America/Sao_Paulo (BRT, UTC-3).
+
 Você tem acesso à agenda do profissional via ferramentas. Use-as quando o cliente:
-- Perguntar sobre horários disponíveis → use check_available_slots
+- Perguntar sobre horários disponíveis → use check_available_slots com data no formato YYYY-MM-DD
 - Quiser agendar → colete nome, data e horário preferido, depois use create_appointment
 - Sempre confirme os dados com o cliente ANTES de agendar
 - Apresente os horários de forma amigável (ex: "Temos disponível às 09:00, 10:00 e 14:30")
 - Após agendar, confirme o agendamento com os detalhes
+- NUNCA use datas no passado. Se o cliente diz "segunda-feira", use a próxima segunda a partir de hoje (${today}).
 `.trim()
+}
 
 export async function executeCalendarTool(
   toolName: string,

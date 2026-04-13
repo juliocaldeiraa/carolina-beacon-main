@@ -29,7 +29,7 @@ import { AutomationReplyHandlerService } from '@/features/automations/automation
 import { CampaignInboundService } from '@/features/campaigns/campaign-inbound.service'
 import { TrainingsService } from '@/features/agents/trainings.service'
 import { GoogleCalendarService } from '@/infrastructure/google-calendar/google-calendar.service'
-import { CALENDAR_TOOLS, CALENDAR_SYSTEM_PROMPT, executeCalendarTool } from '@/infrastructure/google-calendar/calendar-tools'
+import { CALENDAR_TOOLS, getCalendarSystemPrompt, executeCalendarTool } from '@/infrastructure/google-calendar/calendar-tools'
 import { parseWebhookPayload }    from './webhook-ingestion.parser'
 import { buildSystemPrompt }      from '@/core/entities/Agent'
 import { brPhoneVariants }        from '@/shared/utils/phone.utils'
@@ -541,7 +541,7 @@ export class WebhookIngestionService {
       name ? `\nVocê está conversando com: ${name}` : '',
       agentOverride?.extraSystemCtx ? `\n${agentOverride.extraSystemCtx}` : '',
       trainingCtx ? `\n\n--- BASE DE CONHECIMENTO ---\n${trainingCtx}` : '',
-      calendarIntegration?.isActive ? `\n\n${CALENDAR_SYSTEM_PROMPT}` : '',
+      calendarIntegration?.isActive ? `\n\n${getCalendarSystemPrompt()}` : '',
     ].filter(Boolean).join('')
 
     const tools = calendarIntegration?.isActive ? CALENDAR_TOOLS : undefined

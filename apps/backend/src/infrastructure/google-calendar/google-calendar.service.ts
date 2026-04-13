@@ -183,9 +183,15 @@ export class GoogleCalendarService {
     const { oauth2, integration } = await this.getAuthenticatedClient(agentId)
     const calendar = google.calendar({ version: 'v3', auth: oauth2 })
 
-    const startStr = `${params.date}T${params.time}:00`
-    const start    = new Date(startStr)
-    const end      = new Date(start.getTime() + integration.slotDuration * 60_000)
+    // Usar formato ISO com timezone explícito para evitar problemas de UTC
+    const startStr = `${params.date}T${params.time}:00-03:00`  // BRT
+    const endStr   = (() => {
+      const [h, m] = params.time.split(':').map(Number)
+      const totalMin = h * 60 + m + integration.slotDuration
+      const eh = String(Math.floor(totalMin / 60)).padStart(2, '0')
+      const em = String(totalMin % 60).padStart(2, '0')
+      return `${params.date}T${eh}:${em}:00-03:00`
+    })()
 
     const title = integration.eventTitle
       .replace('{userName}', params.name)
@@ -202,8 +208,8 @@ export class GoogleCalendarService {
     const eventBody: calendar_v3.Schema$Event = {
       summary:     title,
       description,
-      start:       { dateTime: start.toISOString(), timeZone: 'America/Sao_Paulo' },
-      end:         { dateTime: end.toISOString(),   timeZone: 'America/Sao_Paulo' },
+      start:       { dateTime: startStr, timeZone: 'America/Sao_Paulo' },
+      end:         { dateTime: endStr,  timeZone: 'America/Sao_Paulo' },
     }
 
     if (integration.googleMeet) {

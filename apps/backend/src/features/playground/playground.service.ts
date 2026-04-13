@@ -22,7 +22,7 @@ import { IAgentRepository, AGENT_REPOSITORY } from '@/core/repositories/IAgentRe
 import { buildSystemPrompt }      from '@/core/entities/Agent'
 import { GoogleCalendarService }  from '@/infrastructure/google-calendar/google-calendar.service'
 import { TrainingsService }       from '@/features/agents/trainings.service'
-import { CALENDAR_TOOLS, CALENDAR_SYSTEM_PROMPT, executeCalendarTool } from '@/infrastructure/google-calendar/calendar-tools'
+import { CALENDAR_TOOLS, getCalendarSystemPrompt, executeCalendarTool } from '@/infrastructure/google-calendar/calendar-tools'
 
 export interface SessionMessage {
   role: 'user' | 'assistant'
@@ -126,7 +126,7 @@ export class PlaygroundService {
     try { calendarIntegration = await this.calendarService.getIntegration(agentId) } catch {}
 
     if (calendarIntegration?.isActive) {
-      systemPrompt += `\n\n${CALENDAR_SYSTEM_PROMPT}`
+      systemPrompt += `\n\n${getCalendarSystemPrompt()}`
     }
 
     const tools = calendarIntegration?.isActive ? CALENDAR_TOOLS : undefined
