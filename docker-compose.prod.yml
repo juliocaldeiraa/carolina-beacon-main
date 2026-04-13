@@ -33,12 +33,12 @@ services:
       context: ./apps/frontend
       dockerfile: Dockerfile
     networks:
-      - otmizanet
+      - beacon-proxy
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     labels:
       - traefik.enable=true
-      - traefik.docker.network=otmizanet
+      - traefik.docker.network=beacon-proxy
       - traefik.http.routers.beacon.entrypoints=websecure
       - traefik.http.routers.beacon.rule=Host(`beacon.carolinapedrollo.com.br`)
       - traefik.http.routers.beacon.tls.certresolver=letsencryptresolver
@@ -50,5 +50,5 @@ volumes:
   redis-data:
 
 networks:
-  otmizanet:
+  beacon-proxy:
     external: true
