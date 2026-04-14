@@ -616,7 +616,9 @@ export class WebhookIngestionService {
     }
 
     // 8. Fatia resposta via IA Central
-    const fragments = await this.splitter.split(aiResult.content)
+    // Remove trigger "atendente humano" antes de enviar ao cliente (é comando interno)
+    const cleanContent = aiResult.content.replace(/\n*atendente humano\n*/gi, '').trim()
+    const fragments = await this.splitter.split(cleanContent)
 
     // 9. Salva resposta COMPLETA no DB
     await this.prisma.message.create({
