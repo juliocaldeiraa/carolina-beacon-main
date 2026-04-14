@@ -14,7 +14,7 @@ import { AgentStatus, AgentType } from '../../core/entities/Agent'
 // DTOs
 // =============================================
 
-const DEFAULT_AGENT_MODEL = 'gpt-4o-mini'
+const DEFAULT_AGENT_MODEL = 'gpt-5.4-nano'
 
 class CreateAgentDto {
   @IsString()

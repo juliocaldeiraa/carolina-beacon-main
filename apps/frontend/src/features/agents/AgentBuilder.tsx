@@ -53,16 +53,15 @@ const STEPS = [
 
 const MODELS = {
   OpenAI: [
-    { id: 'gpt-4.1-mini', label: 'GPT-4.1 Mini', tier: 'econômico' },
-    { id: 'gpt-4.1',      label: 'GPT-4.1',      tier: 'avançado' },
-    { id: 'gpt-4o-mini',  label: 'GPT-4o Mini',   tier: 'econômico' },
-    { id: 'gpt-4o',       label: 'GPT-4o',        tier: 'avançado' },
-    { id: 'o4-mini',      label: 'o4-Mini',        tier: 'raciocínio' },
-    { id: 'o3-mini',      label: 'o3-Mini',        tier: 'raciocínio' },
+    { id: 'gpt-5.4-nano', label: 'GPT-5.4 Nano', tier: 'econômico — ultra-rápido, menor custo' },
+    { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini', tier: 'balanceado — rápido com ótimo custo-benefício' },
+    { id: 'gpt-5.4',      label: 'GPT-5.4',      tier: 'avançado — modelo frontier mais capaz' },
+    { id: 'o3-mini',      label: 'o3-Mini',       tier: 'raciocínio — otimizado para lógica e análise' },
   ],
   Anthropic: [
-    { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5', tier: 'econômico' },
-    { id: 'claude-sonnet-4-6',         label: 'Claude Sonnet 4.6', tier: 'avançado' },
+    { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5', tier: 'econômico — mais rápido e barato' },
+    { id: 'claude-sonnet-4-6',         label: 'Claude Sonnet 4.6', tier: 'balanceado — inteligência + velocidade' },
+    { id: 'claude-opus-4-6',           label: 'Claude Opus 4.6',  tier: 'avançado — máxima capacidade, 1M contexto' },
   ],
 }
 
@@ -148,7 +147,7 @@ export function AgentBuilder({ mode = 'create' }: AgentBuilderProps) {
     resolver: zodResolver(schema),
     defaultValues: {
       name: '', description: '', personality: '', actionPrompt: '',
-      model: 'gpt-4.1-mini', temperature: 0.6, maxTokens: 300,
+      model: 'gpt-5.4-nano', temperature: 0.6, maxTokens: 300,
       historyLimit: 20, limitTurns: false, maxTurns: 8,
       fallbackEnabled: true, fallbackMessage: '', tools: [],
     },
@@ -162,7 +161,7 @@ export function AgentBuilder({ mode = 'create' }: AgentBuilderProps) {
         description:     existingAgent.description ?? '',
         personality:     existingAgent.personality ?? '',
         actionPrompt:    existingAgent.actionPrompt ?? '',
-        model:           existingAgent.model ?? 'gpt-4.1-mini',
+        model:           existingAgent.model ?? 'gpt-5.4-nano',
         temperature:     existingAgent.temperature,
         maxTokens:       existingAgent.maxTokens,
         historyLimit:    existingAgent.historyLimit,
