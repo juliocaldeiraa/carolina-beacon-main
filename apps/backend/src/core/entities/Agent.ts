@@ -59,6 +59,8 @@ export interface Agent {
   restrictTopics: boolean
   signName: boolean
   conversationFlow?: string
+  leadDispatchEnabled: boolean
+  leadDispatchPhone?: string
   createdAt: Date
   updatedAt: Date
   deletedAt?: Date

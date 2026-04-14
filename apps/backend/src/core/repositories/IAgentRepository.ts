@@ -27,6 +27,8 @@ export interface CreateAgentDto {
   restrictTopics?: boolean
   signName?: boolean
   conversationFlow?: string
+  leadDispatchEnabled?: boolean
+  leadDispatchPhone?: string
 }
 
 export interface UpdateAgentDto {
@@ -56,6 +58,8 @@ export interface UpdateAgentDto {
   restrictTopics?: boolean
   signName?: boolean
   conversationFlow?: string
+  leadDispatchEnabled?: boolean
+  leadDispatchPhone?: string
 }
 
 export interface IAgentRepository {

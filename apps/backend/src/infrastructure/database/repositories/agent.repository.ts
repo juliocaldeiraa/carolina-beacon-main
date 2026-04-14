@@ -96,6 +96,8 @@ export class AgentRepository implements IAgentRepository {
         ...(data.restrictTopics  !== undefined && { restrictTopics:  data.restrictTopics }),
         ...(data.signName        !== undefined && { signName:        data.signName }),
         ...(data.conversationFlow !== undefined && { conversationFlow: data.conversationFlow }),
+        ...(data.leadDispatchEnabled !== undefined && { leadDispatchEnabled: data.leadDispatchEnabled }),
+        ...(data.leadDispatchPhone !== undefined && { leadDispatchPhone: data.leadDispatchPhone }),
       },
     })
     return this.toEntity(row)
@@ -128,6 +130,7 @@ export class AgentRepository implements IAgentRepository {
     purpose: string; companyName: string | null; companyUrl: string | null
     communicationTone: string; useEmojis: boolean; splitResponse: boolean
     restrictTopics: boolean; signName: boolean; conversationFlow: string | null
+    leadDispatchEnabled: boolean; leadDispatchPhone: string | null
     createdAt: Date; updatedAt: Date; deletedAt: Date | null
   }): Agent {
     return {
@@ -159,6 +162,8 @@ export class AgentRepository implements IAgentRepository {
       restrictTopics:  row.restrictTopics  ?? false,
       signName:        row.signName        ?? false,
       conversationFlow: row.conversationFlow ?? undefined,
+      leadDispatchEnabled: row.leadDispatchEnabled ?? false,
+      leadDispatchPhone: row.leadDispatchPhone ?? undefined,
       createdAt:       row.createdAt,
       updatedAt:       row.updatedAt,
       deletedAt:       row.deletedAt       ?? undefined,

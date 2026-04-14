@@ -101,6 +101,8 @@ class CreateAgentDto {
   @IsOptional() @IsString()  companyName?: string
   @IsOptional() @IsString()  companyUrl?: string
   @IsOptional() @IsString()  conversationFlow?: string
+  @IsOptional() @IsBoolean() leadDispatchEnabled?: boolean
+  @IsOptional() @IsString()  leadDispatchPhone?: string
 }
 
 class UpdateAgentDto {
@@ -189,6 +191,8 @@ class UpdateAgentDto {
   @IsOptional() @IsString()  companyName?: string
   @IsOptional() @IsString()  companyUrl?: string
   @IsOptional() @IsString()  conversationFlow?: string
+  @IsOptional() @IsBoolean() leadDispatchEnabled?: boolean
+  @IsOptional() @IsString()  leadDispatchPhone?: string
 }
 
 class UpdateStatusDto {
