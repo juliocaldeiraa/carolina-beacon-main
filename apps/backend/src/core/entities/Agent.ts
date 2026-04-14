@@ -259,9 +259,21 @@ export function buildEnrichedSystemPrompt(ctx: EnrichedPromptContext): string {
     dynamicParts.push(ctx.calendarPrompt)
   }
 
+  // Reforço final (LLMs prestam atenção ao início E ao final)
+  const finalReminder: string[] = []
+  if (!agent.useEmojis) {
+    finalReminder.push('LEMBRETE FINAL: Sua resposta NÃO PODE conter nenhum emoji. Verifique antes de enviar.')
+  }
+  if (!agent.splitResponse) {
+    finalReminder.push('LEMBRETE FINAL: Envie apenas UMA mensagem. Não divida.')
+  }
+
   // Seções 1-4 fluem juntas com \n\n, seção 5 separada por ---
   const instructions = sections.join('\n\n')
   const context = dynamicParts.length > 0 ? dynamicParts.join('\n\n') : ''
+  const reminder = finalReminder.length > 0 ? '\n\n' + finalReminder.join('\n') : ''
 
-  return context ? `${instructions}\n\n---\n\n${context}` : instructions
+  return context
+    ? `${instructions}\n\n---\n\n${context}${reminder}`
+    : `${instructions}${reminder}`
 }
