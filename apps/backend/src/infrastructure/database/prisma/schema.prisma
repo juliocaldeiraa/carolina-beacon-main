@@ -110,6 +110,9 @@ model Agent {
   companyName        String?                       @map("company_name")
   companyUrl         String?                       @map("company_url")
   conversationFlow   String?  @db.Text             @map("conversation_flow")    // fluxo conversacional customizado (override do archetype)
+  // Disparo de lead qualificado
+  leadDispatchEnabled Boolean  @default(false)     @map("lead_dispatch_enabled")
+  leadDispatchPhone   String?                      @map("lead_dispatch_phone")  // numero que recebe o resumo do lead
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   deletedAt       DateTime?   // soft delete

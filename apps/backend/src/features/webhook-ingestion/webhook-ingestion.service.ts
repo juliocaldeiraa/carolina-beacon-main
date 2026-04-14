@@ -675,6 +675,76 @@ export class WebhookIngestionService {
       this.logger.error(`[processMessage] falha ao enviar para ${phone} via canal ${channelId}: ${sendErr}`)
       this.updateLog(logId, { status: 'send_error', step: 'fragment_send', errorMsg: String(sendErr) })
     }
+
+    // 15. Disparo de lead qualificado — se IA pediu transferência e dispatch está ativo
+    if (aiResult.content.toLowerCase().includes('atendente humano')) {
+      // Ativar humanTakeover
+      await this.prisma.conversation.update({
+        where: { id: conv.id },
+        data: { humanTakeover: true },
+      })
+
+      // Disparar resumo se configurado
+      if ((agentRow as any).leadDispatchEnabled && (agentRow as any).leadDispatchPhone) {
+        this.dispatchLeadSummary(conv.id, agentRow, phone, name, channel)
+          .catch((err) => this.logger.error(`[leadDispatch] falha: ${err}`))
+      }
+    }
+  }
+
+  /**
+   * Gera resumo da conversa e envia para o telefone de disparo configurado.
+   */
+  private async dispatchLeadSummary(
+    conversationId: string,
+    agent: any,
+    clientPhone: string,
+    clientName: string,
+    channel: Channel,
+  ): Promise<void> {
+    const messages = await this.prisma.message.findMany({
+      where: { conversationId },
+      orderBy: { createdAt: 'asc' },
+      select: { role: true, content: true },
+    })
+
+    const historyText = messages
+      .map((m) => `${m.role === 'USER' ? 'Cliente' : 'Agente'}: ${m.content}`)
+      .join('\n')
+
+    // Gerar resumo com IA
+    const summaryPrompt = [
+      'Gere um resumo de triagem conciso baseado na conversa abaixo.',
+      '',
+      'Formato:',
+      'NOVO LEAD - TRIAGEM',
+      '',
+      `Nome: ${clientName || 'Não informado'}`,
+      `WhatsApp: ${clientPhone}`,
+      `Agente: ${agent.name}`,
+      '',
+      'Interesse: [extraia da conversa]',
+      'Motivação: [extraia da conversa em 1 linha]',
+      'Observações: [qualquer info relevante]',
+      '',
+      'Conversa:',
+      historyText,
+    ].join('\n')
+
+    try {
+      const result = await this.aiEngine.complete({
+        messages: [{ role: 'user', content: summaryPrompt }],
+        model: agent.model,
+        temperature: 0.3,
+        maxTokens: 500,
+      })
+
+      const dispatchPhone = (agent as any).leadDispatchPhone
+      await this.channelSend.send(channel, dispatchPhone, result.content)
+      this.logger.log(`[leadDispatch] Resumo enviado para ${dispatchPhone} (conversa ${conversationId})`)
+    } catch (err) {
+      this.logger.error(`[leadDispatch] Erro ao gerar/enviar resumo: ${err}`)
+    }
   }
 
   // ─── Cron: auto-retoma IA após timeout de atendimento humano ─────────────────

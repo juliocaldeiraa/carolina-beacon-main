@@ -46,7 +46,7 @@ export class MediaProcessingService {
         : 'ogg'
 
       // Build multipart form data
-      const blob = new Blob([audioBuffer], { type: mime })
+      const blob = new Blob([new Uint8Array(audioBuffer)], { type: mime })
       const formData = new FormData()
       formData.append('file', blob, `audio.${ext}`)
       formData.append('model', 'whisper-1')

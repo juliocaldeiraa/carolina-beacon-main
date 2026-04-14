@@ -10,7 +10,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Pencil, ArrowLeft, Bot, Brain, Settings2, BookOpen, Play,
   Trash2, Plus, FileText, Globe, Loader2, Send, Calendar, Link2, Unlink,
-  Upload, Sparkles, Tag,
+  Upload, Sparkles, Tag, X, Phone, Zap, ChevronRight,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -121,6 +121,17 @@ export function AgentDetail() {
   const updateCalendarConfig = useMutation({
     mutationFn: (dto: any) => api.patch(`/integrations/google/config/${id}`, dto).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['calendar-config', id] }),
+  })
+
+  // Integration modals
+  const [openModal, setOpenModal] = useState<'calendar' | 'leadDispatch' | null>(null)
+
+  // Lead Dispatch
+  const [dispatchPhone, setDispatchPhone] = useState(agent?.leadDispatchPhone ?? '')
+  const updateLeadDispatch = useMutation({
+    mutationFn: (dto: { leadDispatchEnabled?: boolean; leadDispatchPhone?: string }) =>
+      api.patch(`/agents/${id}`, dto).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['agents'] }),
   })
 
   // Testar
@@ -401,123 +412,216 @@ export function AgentDetail() {
 
       {/* ─── Tab: Integrações ─── */}
       {tab === 'integrations' && (
-        <div className="space-y-4">
-          <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
-                  <Calendar className="w-5 h-5 text-beacon-primary" />
+        <div className="space-y-3">
+          {/* Card: Google Calendar */}
+          <button
+            onClick={() => setOpenModal('calendar')}
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-4 flex items-center justify-between hover:bg-white/8 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-beacon-primary" />
+              </div>
+              <div className="text-left">
+                <h3 className="text-sm font-semibold text-white">Google Calendar</h3>
+                <p className="text-xs text-white/40">
+                  {calendarConfig ? `Conectado: ${calendarConfig.calendarName}` : 'Não conectado'}
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-white/30" />
+          </button>
+
+          {/* Card: Disparo de Lead */}
+          <button
+            onClick={() => setOpenModal('leadDispatch')}
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-4 flex items-center justify-between hover:bg-white/8 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
+                <Zap className="w-5 h-5 text-amber-500" />
+              </div>
+              <div className="text-left">
+                <h3 className="text-sm font-semibold text-white">Disparo de Lead</h3>
+                <p className="text-xs text-white/40">
+                  {agent.leadDispatchEnabled ? `Ativo: ${agent.leadDispatchPhone}` : 'Não configurado'}
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-white/30" />
+          </button>
+
+          {/* ─── Modal: Google Calendar ─── */}
+          {openModal === 'calendar' && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setOpenModal(null)}>
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <Calendar className="w-5 h-5 text-beacon-primary" />
+                    <h2 className="text-base font-semibold text-gray-900">Google Calendar</h2>
+                  </div>
+                  <button onClick={() => setOpenModal(null)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100">
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-white">Google Calendar</h3>
-                  <p className="text-xs text-white/40">
-                    {calendarConfig ? `Conectado: ${calendarConfig.calendarName}` : 'Não conectado'}
-                  </p>
+                <div className="px-6 py-5 space-y-5">
+                  {/* Conexão */}
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-gray-600">
+                      {calendarConfig ? `Conectado: ${calendarConfig.calendarName}` : 'Não conectado'}
+                    </p>
+                    {calendarConfig ? (
+                      <button onClick={() => disconnectCalendar.mutate()}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-xs font-medium hover:bg-red-100">
+                        <Unlink className="w-3.5 h-3.5" /> Desconectar
+                      </button>
+                    ) : (
+                      <a href={`/api/integrations/google/auth/${id}?tenantId=t1`}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-beacon-primary text-white rounded-lg text-sm font-medium hover:opacity-90">
+                        <Link2 className="w-4 h-4" /> Conectar
+                      </a>
+                    )}
+                  </div>
+
+                  {calendarConfig && (<>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Agenda</label>
+                      <select
+                        value={calendarConfig.calendarId}
+                        onChange={(e) => {
+                          const cal = calendars.find((c: any) => c.id === e.target.value)
+                          updateCalendarConfig.mutate({ calendarId: e.target.value, calendarName: cal?.summary ?? e.target.value })
+                        }}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-beacon-primary"
+                      >
+                        {calendars.map((c: any) => (
+                          <option key={c.id} value={c.id}>{c.summary} {c.primary ? '(principal)' : ''}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Duração</label>
+                      <div className="flex gap-2">
+                        {[15, 30, 45, 60].map((min) => (
+                          <button key={min} onClick={() => updateCalendarConfig.mutate({ slotDuration: min })}
+                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                              calendarConfig.slotDuration === min ? 'bg-beacon-primary text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
+                            }`}>
+                            {min}min
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Título do evento</label>
+                      <input
+                        defaultValue={calendarConfig.eventTitle}
+                        onBlur={(e) => updateCalendarConfig.mutate({ eventTitle: e.target.value })}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-beacon-primary"
+                        placeholder="Consulta - {userName}"
+                      />
+                    </div>
+
+                    <div className="space-y-1 border-t border-gray-100 pt-4">
+                      {[
+                        { key: 'googleMeet', label: 'Google Meet', desc: 'Gerar link do Meet' },
+                        { key: 'consultHours', label: 'Consulta de horários', desc: 'Agente consulta horários' },
+                        { key: 'collectName', label: 'Coletar nome', desc: 'Solicitar nome do cliente' },
+                        { key: 'collectEmail', label: 'Coletar email', desc: 'Solicitar email' },
+                        { key: 'collectPhone', label: 'Coletar telefone', desc: 'Solicitar telefone' },
+                        { key: 'sendSummary', label: 'Enviar resumo', desc: 'Resumo da conversa no evento' },
+                      ].map((item) => (
+                        <div key={item.key} className="flex items-center justify-between py-2.5">
+                          <div>
+                            <p className="text-sm font-medium text-gray-700">{item.label}</p>
+                            <p className="text-xs text-gray-400">{item.desc}</p>
+                          </div>
+                          <button
+                            onClick={() => updateCalendarConfig.mutate({ [item.key]: !(calendarConfig as any)[item.key] })}
+                            className={`relative w-9 h-5 rounded-full transition-colors ${
+                              (calendarConfig as any)[item.key] ? 'bg-beacon-primary' : 'bg-gray-200'
+                            }`}>
+                            <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${
+                              (calendarConfig as any)[item.key] ? 'left-[18px]' : 'left-0.5'
+                            }`} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </>)}
+
+                  {!calendarConfig && (
+                    <p className="text-xs text-gray-400">
+                      Conecte o Google Calendar para que o agente consulte horários e agende consultas automaticamente.
+                    </p>
+                  )}
                 </div>
               </div>
-              {calendarConfig ? (
-                <button onClick={() => disconnectCalendar.mutate()}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 text-red-400 rounded-lg text-xs font-medium hover:bg-red-500/30">
-                  <Unlink className="w-3.5 h-3.5" /> Desconectar
-                </button>
-              ) : (
-                <a href={`/api/integrations/google/auth/${id}?tenantId=t1`}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-beacon-primary text-white rounded-lg text-sm font-medium hover:bg-beacon-hover transition-colors">
-                  <Link2 className="w-4 h-4" /> Conectar
-                </a>
-              )}
             </div>
+          )}
 
-            {calendarConfig && (
-              <div className="space-y-5 border-t border-white/10 pt-4">
-                {/* Seletor de agenda */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-white/70">Selecione a agenda</label>
-                  <select
-                    value={calendarConfig.calendarId}
-                    onChange={(e) => {
-                      const cal = calendars.find((c: any) => c.id === e.target.value)
-                      updateCalendarConfig.mutate({
-                        calendarId: e.target.value,
-                        calendarName: cal?.summary ?? e.target.value,
-                      })
-                    }}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white"
-                  >
-                    {calendars.map((c: any) => (
-                      <option key={c.id} value={c.id}>
-                        {c.summary} {c.primary ? '(principal)' : ''}
-                      </option>
-                    ))}
-                  </select>
+          {/* ─── Modal: Disparo de Lead ─── */}
+          {openModal === 'leadDispatch' && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setOpenModal(null)}>
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <Zap className="w-5 h-5 text-amber-500" />
+                    <h2 className="text-base font-semibold text-gray-900">Disparo de Lead</h2>
+                  </div>
+                  <button onClick={() => setOpenModal(null)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100">
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
+                <div className="px-6 py-5 space-y-5">
+                  <p className="text-sm text-gray-500">
+                    Quando o agente qualificar ou agendar um lead, envia um resumo automaticamente para o número configurado.
+                  </p>
 
-                {/* Duração do slot */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-white/70">Duração do agendamento</label>
-                  <div className="flex gap-2">
-                    {[15, 30, 45, 60].map((min) => (
-                      <button key={min} onClick={() => updateCalendarConfig.mutate({ slotDuration: min })}
-                        className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          calendarConfig.slotDuration === min
-                            ? 'bg-beacon-primary text-white'
-                            : 'bg-white/5 text-white/50 hover:bg-white/10'
-                        }`}>
-                        {min}min
-                      </button>
-                    ))}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">Ativar disparo</p>
+                      <p className="text-xs text-gray-400">Envia resumo ao transferir para humano</p>
+                    </div>
+                    <button
+                      onClick={() => updateLeadDispatch.mutate({ leadDispatchEnabled: !agent.leadDispatchEnabled })}
+                      className={`relative w-9 h-5 rounded-full transition-colors ${
+                        agent.leadDispatchEnabled ? 'bg-beacon-primary' : 'bg-gray-200'
+                      }`}>
+                      <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${
+                        agent.leadDispatchEnabled ? 'left-[18px]' : 'left-0.5'
+                      }`} />
+                    </button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Número de destino</label>
+                    <div className="flex gap-2">
+                      <div className="flex items-center gap-2 flex-1">
+                        <Phone className="w-4 h-4 text-gray-400 shrink-0" />
+                        <input
+                          value={dispatchPhone}
+                          onChange={(e) => setDispatchPhone(e.target.value)}
+                          placeholder="5567999999999"
+                          className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-beacon-primary"
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => updateLeadDispatch.mutate({ leadDispatchPhone: dispatchPhone })}
+                        disabled={!dispatchPhone.trim() || updateLeadDispatch.isPending}
+                      >
+                        {updateLeadDispatch.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar'}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-gray-400">Formato: código do país + DDD + número (ex: 5567999999999)</p>
                   </div>
                 </div>
-
-                {/* Título do evento */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-white/70">Título do evento</label>
-                  <input
-                    defaultValue={calendarConfig.eventTitle}
-                    onBlur={(e) => updateCalendarConfig.mutate({ eventTitle: e.target.value })}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
-                    placeholder="Consulta - {userName}"
-                  />
-                  <p className="text-xs text-white/30">Use {'{userName}'} para inserir o nome do cliente</p>
-                </div>
-
-                {/* Toggles */}
-                <div className="space-y-1">
-                  {[
-                    { key: 'googleMeet', label: 'Google Meet', desc: 'Gerar link do Meet no agendamento' },
-                    { key: 'consultHours', label: 'Consulta de horários', desc: 'Agente pode consultar horários disponíveis' },
-                    { key: 'collectName', label: 'Coletar nome', desc: 'Solicitar nome do cliente' },
-                    { key: 'collectEmail', label: 'Coletar email', desc: 'Solicitar email para enviar convite' },
-                    { key: 'collectPhone', label: 'Coletar telefone', desc: 'Solicitar telefone do cliente' },
-                    { key: 'sendSummary', label: 'Enviar resumo', desc: 'Anexar resumo da conversa no evento' },
-                  ].map((item) => (
-                    <div key={item.key} className="flex items-center justify-between py-2.5">
-                      <div>
-                        <p className="text-sm font-medium text-white/80">{item.label}</p>
-                        <p className="text-xs text-white/30">{item.desc}</p>
-                      </div>
-                      <button
-                        onClick={() => updateCalendarConfig.mutate({ [item.key]: !(calendarConfig as any)[item.key] })}
-                        className={`relative w-9 h-5 rounded-full transition-colors ${
-                          (calendarConfig as any)[item.key] ? 'bg-beacon-primary' : 'bg-white/15'
-                        }`}>
-                        <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${
-                          (calendarConfig as any)[item.key] ? 'left-[18px]' : 'left-0.5'
-                        }`} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
               </div>
-            )}
-
-            {!calendarConfig && (
-              <p className="text-xs text-white/30 mt-2">
-                Conecte o Google Calendar para que o agente consulte horários e agende consultas automaticamente durante a conversa.
-              </p>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
