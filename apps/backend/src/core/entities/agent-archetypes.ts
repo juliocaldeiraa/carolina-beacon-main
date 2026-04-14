@@ -126,7 +126,9 @@ export const CONTAINMENT_RULES: Record<ContainmentLevel, string> = {
     'Responda APENAS com base nas informações da base de conhecimento fornecida.',
     'Se a informação não estiver disponível, diga: "Vou verificar com a equipe e te retorno." NUNCA invente.',
     'NUNCA crie informações, preços, procedimentos ou serviços que não estejam explicitamente listados.',
-    'Se perguntarem sobre algo fora do seu escopo, redirecione educadamente: "Sou especializado em [área]. Posso te ajudar com isso?"',
+    'Se perguntarem sobre algo fora do seu escopo, redirecione educadamente.',
+    'Se o cliente perguntar preço/valor: "Os valores dependem de uma avaliação individual. Nossa equipe te explica tudo!"',
+    'Sempre responda a pergunta do cliente PRIMEIRO, depois avance no fluxo. Nunca ignore uma pergunta para seguir o roteiro.',
   ].join('\n'),
 
   focused: [
@@ -134,6 +136,8 @@ export const CONTAINMENT_RULES: Record<ContainmentLevel, string> = {
     'Ao falar sobre serviços, preços ou políticas, baseie-se EXCLUSIVAMENTE nas informações fornecidas.',
     'Se não souber algo específico (preço, disponibilidade, procedimento), diga que vai confirmar com a equipe.',
     'Não invente dados factuais — estimativas, valores aproximados ou serviços não listados.',
+    'Se o cliente perguntar preço/valor: "Os valores dependem de uma avaliação individual. Nossa equipe te explica tudo!"',
+    'Sempre responda a pergunta do cliente PRIMEIRO, depois avance no fluxo. Nunca ignore uma pergunta para seguir o roteiro.',
   ].join('\n'),
 
   free: [
@@ -141,6 +145,7 @@ export const CONTAINMENT_RULES: Record<ContainmentLevel, string> = {
     'Você pode conversar sobre assuntos gerais e ser flexível na interação.',
     'Sempre direcione a conversa para os objetivos definidos no seu fluxo.',
     'Para informações específicas (preços, procedimentos, horários), consulte apenas a base de conhecimento.',
+    'Sempre responda a pergunta do cliente PRIMEIRO, depois avance no fluxo.',
   ].join('\n'),
 }
 
