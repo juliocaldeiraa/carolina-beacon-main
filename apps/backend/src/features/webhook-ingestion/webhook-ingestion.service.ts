@@ -693,7 +693,7 @@ export class WebhookIngestionService {
   }
 
   /**
-   * Gera resumo da conversa e envia para o telefone de disparo configurado.
+   * Gera resumo estruturado da conversa e envia para o telefone de disparo.
    */
   private async dispatchLeadSummary(
     conversationId: string,
@@ -712,20 +712,35 @@ export class WebhookIngestionService {
       .map((m) => `${m.role === 'USER' ? 'Cliente' : 'Agente'}: ${m.content}`)
       .join('\n')
 
-    // Gerar resumo com IA
+    const phoneClean = clientPhone.replace(/\D/g, '')
+    const waLink = `https://wa.me/${phoneClean}`
+    const now = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+
     const summaryPrompt = [
-      'Gere um resumo de triagem conciso baseado na conversa abaixo.',
+      'Analise a conversa abaixo e gere um resumo de triagem para a atendente humana.',
       '',
-      'Formato:',
-      'NOVO LEAD - TRIAGEM',
+      'Retorne EXATAMENTE neste formato (use os emojis indicados):',
       '',
-      `Nome: ${clientName || 'Não informado'}`,
-      `WhatsApp: ${clientPhone}`,
-      `Agente: ${agent.name}`,
+      '🔔 *NOVO LEAD - TRIAGEM*',
       '',
-      'Interesse: [extraia da conversa]',
-      'Motivação: [extraia da conversa em 1 linha]',
-      'Observações: [qualquer info relevante]',
+      `👤 *Nome:* [nome que o cliente informou, ou "${clientName || 'Não informado'}" se não informou]`,
+      `📱 *WhatsApp:* ${waLink}`,
+      `⏰ *Horário:* ${now}`,
+      `🤖 *Agente:* ${agent.name}`,
+      '',
+      '🎯 *Interesse:* [procedimento ou área de interesse — extraia da conversa]',
+      '💭 *Motivação:* [por que buscou — extraia da conversa em 1 linha]',
+      '📝 *Observações:* [qualquer info relevante: dúvidas, inseguranças, urgência]',
+      '',
+      '---',
+      '✅ Lead qualificado para abordagem',
+      '',
+      'REGRAS:',
+      '- Extraia APENAS informações CONFIRMADAS na conversa',
+      '- Se o cliente não informou algo, escreva "Não informado"',
+      '- Seja conciso — a atendente precisa de info rápida',
+      '- Mantenha os emojis e a formatação WhatsApp (*negrito*)',
+      '- NÃO invente dados',
       '',
       'Conversa:',
       historyText,
@@ -735,8 +750,8 @@ export class WebhookIngestionService {
       const result = await this.aiEngine.complete({
         messages: [{ role: 'user', content: summaryPrompt }],
         model: agent.model,
-        temperature: 0.3,
-        maxTokens: 500,
+        temperature: 0.2,
+        maxTokens: 600,
       })
 
       const dispatchPhone = (agent as any).leadDispatchPhone
