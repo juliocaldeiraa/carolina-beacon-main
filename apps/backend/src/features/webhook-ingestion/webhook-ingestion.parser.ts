@@ -20,6 +20,9 @@ export interface ParsedMessage {
   type:      MessageType
   isGroup:   boolean
   messageId: string | null  // idempotency key (só Evolution API fornece)
+  mediaBase64?: string      // base64 de audio/imagem (Evolution API)
+  mediaUrl?:   string       // URL de mídia (Evolution API)
+  mediaMime?:  string       // MIME type da mídia
 }
 
 export function parseWebhookPayload(
@@ -71,13 +74,27 @@ function parseEvolutionApi(raw: unknown): ParsedMessage | null {
 
   // Audio / PTT
   if (message['audioMessage'] || message['pttMessage']) {
-    return { phone, name, text: '[Áudio recebido — responda apenas com texto]', type: 'audio', isGroup, messageId }
+    const audioMsg = (message['audioMessage'] ?? message['pttMessage']) as Record<string, unknown>
+    const mediaBase64 = data['message']?.['base64'] as string | undefined
+      ?? (data as any)['base64'] as string | undefined
+    const mediaUrl = audioMsg?.['url'] as string | undefined
+    const mediaMime = audioMsg?.['mimetype'] as string | undefined ?? 'audio/ogg'
+    return { phone, name, text: '[Áudio recebido]', type: 'audio', isGroup, messageId, mediaBase64, mediaUrl, mediaMime }
   }
 
   // Image
   if (message['imageMessage']) {
-    const caption = (message['imageMessage'] as Record<string, unknown>)['caption'] as string | undefined
-    return { phone, name, text: caption ? `[Imagem recebida] ${caption}` : '[Imagem recebida]', type: 'image', isGroup, messageId }
+    const imgMsg = message['imageMessage'] as Record<string, unknown>
+    const caption = imgMsg['caption'] as string | undefined
+    const mediaBase64 = data['message']?.['base64'] as string | undefined
+      ?? (data as any)['base64'] as string | undefined
+    const mediaUrl = imgMsg['url'] as string | undefined
+    const mediaMime = imgMsg['mimetype'] as string | undefined ?? 'image/jpeg'
+    return {
+      phone, name,
+      text: caption ? `[Imagem recebida] ${caption}` : '[Imagem recebida]',
+      type: 'image', isGroup, messageId, mediaBase64, mediaUrl, mediaMime,
+    }
   }
 
   // Document

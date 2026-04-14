@@ -30,6 +30,7 @@ import { CampaignInboundService } from '@/features/campaigns/campaign-inbound.se
 import { TrainingsService } from '@/features/agents/trainings.service'
 import { GoogleCalendarService } from '@/infrastructure/google-calendar/google-calendar.service'
 import { CALENDAR_TOOLS, getCalendarSystemPrompt, executeCalendarTool } from '@/infrastructure/google-calendar/calendar-tools'
+import { MediaProcessingService } from '@/infrastructure/media/media-processing.service'
 import { parseWebhookPayload }    from './webhook-ingestion.parser'
 import { buildEnrichedSystemPrompt } from '@/core/entities/Agent'
 import { brPhoneVariants }        from '@/shared/utils/phone.utils'
@@ -101,6 +102,7 @@ export class WebhookIngestionService {
     private readonly campaignInbound: CampaignInboundService,
     private readonly trainingsService: TrainingsService,
     private readonly calendarService: GoogleCalendarService,
+    private readonly mediaProcessing: MediaProcessingService,
   ) {}
 
   // ─── Helpers de log ─────────────────────────────────────────────────────────
@@ -176,6 +178,34 @@ export class WebhookIngestionService {
 
     const { phone, name, isGroup } = parsed
     let { text } = parsed
+
+    // ── Media processing: transcreve audio e analisa imagem ─────────────────────
+    if (parsed.type === 'audio' && (parsed.mediaBase64 || parsed.mediaUrl)) {
+      try {
+        const transcription = await this.mediaProcessing.transcribeAudio(parsed.mediaBase64, parsed.mediaUrl, parsed.mediaMime)
+        if (transcription) {
+          text = transcription
+          this.logger.log(`[media] Audio transcrito para ${phone}: "${transcription.slice(0, 60)}..."`)
+        }
+      } catch (err) {
+        this.logger.warn(`[media] Falha ao transcrever audio de ${phone}: ${err}`)
+      }
+    }
+
+    if (parsed.type === 'image' && (parsed.mediaBase64 || parsed.mediaUrl)) {
+      try {
+        const caption = parsed.text.replace('[Imagem recebida]', '').trim() || undefined
+        const description = await this.mediaProcessing.analyzeImage(parsed.mediaBase64, parsed.mediaUrl, parsed.mediaMime, caption)
+        if (description) {
+          text = caption
+            ? `[Cliente enviou imagem: ${description}] Legenda: ${caption}`
+            : `[Cliente enviou imagem: ${description}]`
+          this.logger.log(`[media] Imagem analisada de ${phone}: "${description.slice(0, 60)}..."`)
+        }
+      } catch (err) {
+        this.logger.warn(`[media] Falha ao analisar imagem de ${phone}: ${err}`)
+      }
+    }
 
     // ── Segurança 1: número malformado ──────────────────────────────────────────
     const phoneClean = phone.replace(/[^0-9@._\-]/g, '')
@@ -623,13 +653,22 @@ export class WebhookIngestionService {
     const effectiveSendDelayMs = agentOverride?.sendDelayMs ?? channelAgentRow?.sendDelayMs ?? defaultSendDelay
     if (effectiveSendDelayMs > 0) await sleep(effectiveSendDelayMs)
 
-    // 14. Envia cada fragmento com indicador de digitando
-    // Prioridade: automação.fragmentDelayMs → channelAgent.fragmentDelayMs → FRAGMENT_DELAY_MS
-    const effectiveFragmentDelayMs = agentOverride?.fragmentDelayMs ?? channelAgentRow?.fragmentDelayMs ?? FRAGMENT_DELAY_MS
+    // 14. Envia cada fragmento com indicador de digitando + delay humanizado
+    // Delay proporcional ao tamanho da mensagem (simula tempo de digitação real)
+    const baseFragmentDelayMs = agentOverride?.fragmentDelayMs ?? channelAgentRow?.fragmentDelayMs ?? FRAGMENT_DELAY_MS
     try {
       for (let i = 0; i < fragments.length; i++) {
-        if (i > 0) await sleep(effectiveFragmentDelayMs)
-        await this.channelSend.sendTyping(channel, phone)
+        // Delay humanizado: base + proporcional ao tamanho (50ms por caractere, min 1s, max 6s)
+        if (i > 0) {
+          const charDelay = Math.min(6000, Math.max(1000, fragments[i].length * 50))
+          const humanizedDelay = Math.max(baseFragmentDelayMs, charDelay)
+          await this.channelSend.sendTyping(channel, phone)
+          await sleep(humanizedDelay)
+        } else {
+          // Primeiro fragmento: typing indicator + delay curto
+          await this.channelSend.sendTyping(channel, phone)
+          await sleep(Math.min(2000, Math.max(800, fragments[i].length * 30)))
+        }
         await this.channelSend.send(channel, phone, fragments[i])
       }
     } catch (sendErr) {

@@ -3,6 +3,7 @@ import { PrismaModule }              from '@/infrastructure/database/prisma/pris
 import { AiEngineModule }            from '@/infrastructure/ai-engine/ai-engine.module'
 import { ChannelSendModule }         from '@/infrastructure/channel-send/channel-send.module'
 import { GoogleCalendarModule }      from '@/infrastructure/google-calendar/google-calendar.module'
+import { MediaProcessingModule }     from '@/infrastructure/media/media-processing.module'
 import { ContactsModule }            from '@/features/contacts/contacts.module'
 import { AutomationsModule }         from '@/features/automations/automations.module'
 import { CampaignsModule }          from '@/features/campaigns/campaigns.module'
@@ -16,6 +17,7 @@ import { WebhookIngestionController } from '@/presentation/webhook-ingestion/web
     AiEngineModule,
     ChannelSendModule,
     GoogleCalendarModule,
+    MediaProcessingModule,
     ContactsModule,
     AutomationsModule,
     CampaignsModule,
