@@ -75,7 +75,7 @@ export function AgentDetail() {
   const updateAgent = useUpdateAgent(id ?? '')
 
   // AI Refine
-  const [refining, setRefining] = useState<string | null>(null)
+  const [, setRefining] = useState<string | null>(null)
   const generateDna = useMutation({
     mutationFn: () => api.post(`/agents/${id}/generate-dna`).then((r) => r.data),
     onSuccess: async (data: any) => {
