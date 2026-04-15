@@ -1,24 +1,28 @@
 /**
- * AgentDetail — Visão detalhada do agente com tabs (estilo GPT Maker)
+ * AgentDetail — Layout GPT Maker-style com sidebar + conteúdo
  *
- * Tabs: Perfil | Treinamentos | Configurações | Testar
+ * Sidebar: avatar, nome, status, menu lateral, botão "Teste sua IA"
+ * Seções: Perfil | Trabalho | Treinamentos | Integrações | Canais | Configurações
  */
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  Pencil, ArrowLeft, Bot, Brain, Settings2, BookOpen, Play,
-  Trash2, Plus, FileText, Globe, Loader2, Send, Calendar, Link2, Unlink,
-  Upload, Sparkles, Tag, X, Phone, Zap, ChevronRight, ChevronDown,
+  Bot, Settings2, BookOpen, Briefcase, Link2, Unlink,
+  Trash2, FileText, Globe, Loader2, Send, Calendar,
+  Upload, Sparkles, X, Zap, ChevronDown,
+  MessageSquare, ArrowLeft, Pencil, Play, Radio,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 import { useAgent, useUpdateAgent } from './hooks/useAgents'
+import { useToast } from '@/components/ui/Toast'
 import { api } from '@/services/api'
+import { cn } from '@/lib/utils'
 
-const statusVariant = { ACTIVE: 'active', PAUSED: 'paused', DRAFT: 'draft', DELETED: 'error' } as const
-const statusLabel   = { ACTIVE: 'Ativo', PAUSED: 'Pausado', DRAFT: 'Rascunho', DELETED: 'Removido' }
+// ─── Constants ──────────────────────────────────────────────────────────────
 
 const PURPOSE_LABELS: Record<string, string> = {
   qualification: 'Qualificação',
@@ -31,24 +35,46 @@ const PURPOSE_LABELS: Record<string, string> = {
   survey: 'Pesquisa / NPS',
 }
 
-type Tab = 'profile' | 'trainings' | 'integrations' | 'settings' | 'test'
-
-const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
-  { id: 'profile',      label: 'Perfil',         icon: Bot },
-  { id: 'trainings',    label: 'Treinamentos',   icon: BookOpen },
-  { id: 'integrations', label: 'Integrações',    icon: Calendar },
-  { id: 'settings',     label: 'Configurações',  icon: Settings2 },
-  { id: 'test',         label: 'Testar',         icon: Play },
+const PURPOSE_OPTIONS = [
+  { id: 'qualification', label: 'Qualificação' },
+  { id: 'qualification_scheduling', label: 'Qualif. + Agenda' },
+  { id: 'qualification_scheduling_reminder', label: 'Qualif. + Agenda + Lembrete' },
+  { id: 'sales', label: 'Vendas' },
+  { id: 'support', label: 'Suporte / SAC' },
+  { id: 'reception', label: 'Recepção' },
+  { id: 'reactivation', label: 'Reativação' },
+  { id: 'survey', label: 'Pesquisa / NPS' },
 ]
+
+const TONE_OPTIONS = [
+  { id: 'formal', label: 'FORMAL' },
+  { id: 'normal', label: 'NORMAL' },
+  { id: 'casual', label: 'DESCONTRAÍDA' },
+]
+
+type Section = 'profile' | 'work' | 'trainings' | 'integrations' | 'channels' | 'settings'
+
+const MENU_ITEMS: { id: Section; label: string; icon: React.ElementType }[] = [
+  { id: 'profile',      label: 'Perfil',         icon: Bot },
+  { id: 'work',         label: 'Trabalho',       icon: Briefcase },
+  { id: 'trainings',    label: 'Treinamentos',   icon: BookOpen },
+  { id: 'integrations', label: 'Integrações',    icon: Link2 },
+  { id: 'channels',     label: 'Canais',         icon: Radio },
+  { id: 'settings',     label: 'Configurações',  icon: Settings2 },
+]
+
+// ─── Main Component ─────────────────────────────────────────────────────────
 
 export function AgentDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const qc = useQueryClient()
+  const { toast } = useToast()
   const { data: agent, isLoading } = useAgent(id ?? '')
-  const [tab, setTab] = useState<Tab>('profile')
+  const [section, setSection] = useState<Section>('profile')
+  const updateAgent = useUpdateAgent(id ?? '')
 
-  // Treinamentos
+  // Trainings
   const { data: trainings = [] } = useQuery({
     queryKey: ['trainings', id],
     queryFn: () => api.get(`/agents/${id}/trainings`).then((r) => r.data),
@@ -62,39 +88,22 @@ export function AgentDetail() {
   const createTraining = useMutation({
     mutationFn: () => api.post(`/agents/${id}/trainings`, {
       type: trainingType === 'upload' ? 'document' : trainingType,
-      title: trainingTitle || undefined,
-      content: trainingContent,
+      title: trainingTitle || undefined, content: trainingContent,
     }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['trainings', id] })
-      setTrainingTitle(''); setTrainingContent('')
-    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['trainings', id] }); setTrainingTitle(''); setTrainingContent('') },
   })
   const processText = useMutation({
-    mutationFn: () => api.post(`/agents/${id}/trainings/process-text`, {
-      content: trainingContent, title: trainingTitle || undefined,
-    }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['trainings', id] })
-      setTrainingTitle(''); setTrainingContent('')
-    },
+    mutationFn: () => api.post(`/agents/${id}/trainings/process-text`, { content: trainingContent, title: trainingTitle || undefined }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['trainings', id] }); setTrainingTitle(''); setTrainingContent('') },
   })
   const processUrl = useMutation({
-    mutationFn: () => api.post(`/agents/${id}/trainings/process-url`, {
-      url: trainingContent, crawl: crawlEnabled, maxPages: 5,
-    }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['trainings', id] })
-      setTrainingTitle(''); setTrainingContent('')
-    },
+    mutationFn: () => api.post(`/agents/${id}/trainings/process-url`, { url: trainingContent, crawl: crawlEnabled, maxPages: 5 }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['trainings', id] }); setTrainingTitle(''); setTrainingContent('') },
   })
   const uploadFile = useMutation({
     mutationFn: (file: File) => {
-      const form = new FormData()
-      form.append('file', file)
-      return api.post(`/agents/${id}/trainings/upload`, form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
+      const form = new FormData(); form.append('file', file)
+      return api.post(`/agents/${id}/trainings/upload`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['trainings', id] }),
   })
@@ -103,693 +112,518 @@ export function AgentDetail() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['trainings', id] }),
   })
 
-  // Google Calendar Integration
+  // Google Calendar
   const { data: calendarConfig } = useQuery({
     queryKey: ['calendar-config', id],
     queryFn: () => api.get(`/integrations/google/config/${id}`).then((r) => r.data).catch(() => null),
     enabled: !!id,
   })
-  const { data: calendars = [] } = useQuery({
-    queryKey: ['google-calendars', id],
-    queryFn: () => api.get(`/integrations/google/calendars/${id}`).then((r) => r.data).catch(() => []),
-    enabled: !!id && !!calendarConfig,
-  })
   const disconnectCalendar = useMutation({
     mutationFn: () => api.delete(`/integrations/google/${id}`),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['calendar-config', id] }); qc.invalidateQueries({ queryKey: ['google-calendars', id] }) },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['calendar-config', id] }) },
   })
-  const updateCalendarConfig = useMutation({
-    mutationFn: (dto: any) => api.patch(`/integrations/google/config/${id}`, dto).then((r) => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['calendar-config', id] }),
-  })
-
-  // Agent update (inline settings)
-  const updateAgent = useUpdateAgent(id ?? '')
-
-  // Settings
-  const [showAdvanced, setShowAdvanced] = useState(false)
-
-  // Integration modals
-  const [openModal, setOpenModal] = useState<'calendar' | 'leadDispatch' | null>(null)
-
   // Lead Dispatch
-  const [dispatchPhone, setDispatchPhone] = useState(agent?.leadDispatchPhone ?? '')
+  const [dispatchPhone, setDispatchPhone] = useState('')
   const updateLeadDispatch = useMutation({
-    mutationFn: (dto: { leadDispatchEnabled?: boolean; leadDispatchPhone?: string }) =>
-      api.patch(`/agents/${id}`, dto).then((r) => r.data),
+    mutationFn: (dto: any) => api.patch(`/agents/${id}`, dto),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['agents'] }),
   })
 
-  // Testar
+  // Channels
+  const { data: channelAgents = [] } = useQuery({
+    queryKey: ['channel-agents', id],
+    queryFn: () => api.get(`/chat-ia`).then((r) => (r.data as any[]).filter((ca: any) => ca.agentId === id)),
+    enabled: !!id,
+  })
+
+  // Test
   const [testMsg, setTestMsg] = useState('')
   const [testReply, setTestReply] = useState<string | null>(null)
+  const [showTest, setShowTest] = useState(false)
   const testMutation = useMutation({
     mutationFn: () => api.post(`/agents/${id}/test`, { message: testMsg }).then((r) => r.data),
     onSuccess: (data: any) => setTestReply(data.reply),
   })
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-32">
-        <Loader2 className="w-6 h-6 animate-spin text-beacon-primary" />
-      </div>
-    )
-  }
+  // Settings
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [configSubTab, setConfigSubTab] = useState<'conversa' | 'inatividade'>('conversa')
 
+  // Init dispatch phone from agent
+  useEffect(() => {
+    if (agent?.leadDispatchPhone && !dispatchPhone) setDispatchPhone(agent.leadDispatchPhone)
+  }, [agent?.leadDispatchPhone])
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center py-32"><Loader2 className="w-6 h-6 animate-spin text-[#0891B2]" /></div>
+  }
   if (!agent) {
     return (
       <div className="text-center py-20">
-        <p className="text-sm text-white/50">Agente não encontrado.</p>
-        <Button variant="ghost" className="mt-4" onClick={() => navigate('/agents')}>
-          <ArrowLeft className="w-4 h-4" /> Voltar
-        </Button>
+        <p className="text-sm text-gray-400">Agente não encontrado.</p>
+        <Button variant="ghost" className="mt-4" onClick={() => navigate('/agents')}><ArrowLeft className="w-4 h-4" /> Voltar</Button>
       </div>
     )
   }
 
+  const save = async (data: any) => {
+    await updateAgent.mutateAsync(data)
+    toast({ title: 'Salvo', type: 'success' })
+  }
+
   return (
-    <div className="max-w-4xl mx-auto flex flex-col gap-6">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/agents')} className="p-2 rounded-lg text-white/50 hover:bg-white/8">
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div className="w-12 h-12 rounded-xl bg-beacon-primary/20 flex items-center justify-center">
-            <Bot className="w-6 h-6 text-beacon-primary" />
+    <div className="flex gap-0 -m-6 h-[calc(100vh-88px)]">
+      {/* ═══ SIDEBAR ═══ */}
+      <div className="w-64 shrink-0 border-r border-gray-100 bg-white flex flex-col">
+        {/* Back */}
+        <button onClick={() => navigate('/agents')} className="flex items-center gap-2 px-5 py-3 text-sm text-gray-400 hover:text-gray-600">
+          <ArrowLeft className="w-4 h-4" /> Voltar
+        </button>
+
+        {/* Agent info */}
+        <div className="px-5 pb-4 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-[#0891B2]/10 flex items-center justify-center mx-auto mb-3">
+            <Bot className="w-8 h-8 text-[#0891B2]" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold text-white">{agent.name}</h1>
-              <Badge variant={statusVariant[agent.status]}>{statusLabel[agent.status]}</Badge>
-            </div>
-            <p className="text-sm text-white/50">{agent.description ?? 'Sem descrição'}</p>
+          <h2 className="text-sm font-bold text-[#134E4A]">{agent.name}</h2>
+          <p className="text-xs text-gray-400 mt-0.5">{PURPOSE_LABELS[agent.purpose] ?? agent.purpose} em {agent.companyName ?? '—'}</p>
+          <div className="flex items-center justify-center gap-1.5 mt-2">
+            <span className={cn('w-2 h-2 rounded-full', agent.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-gray-300')} />
+            <span className="text-xs text-gray-500">{agent.status === 'ACTIVE' ? 'Ativo' : 'Inativo'}</span>
           </div>
         </div>
-        <Button variant="secondary" onClick={() => navigate(`/agents/${agent.id}/edit`)}>
-          <Pencil className="w-4 h-4" /> Editar
-        </Button>
-      </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 bg-white/5 rounded-lg p-1">
-        {TABS.map((t) => {
-          const Icon = t.icon
-          return (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`flex items-center gap-2 flex-1 py-2.5 rounded-md text-sm font-medium transition-colors ${
-                tab === t.id ? 'bg-beacon-primary text-white' : 'text-white/50 hover:text-white/80'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {t.label}
-            </button>
-          )
-        })}
-      </div>
-
-      {/* ─── Tab: Perfil ─── */}
-      {tab === 'profile' && (
-        <div className="space-y-4">
-          <div className="bg-white/5 border border-white/10 rounded-xl p-5 space-y-3">
-            <h3 className="text-sm font-semibold text-white/70">Informações</h3>
-            {[
-              ['Tipo', agent.agentType === 'ATIVO' ? 'Ativo (Vendas)' : 'Passivo (Chat IA)'],
-              ['Objetivo', PURPOSE_LABELS[agent.purpose] ?? agent.purpose],
-              ['Empresa', agent.companyName ?? '—'],
-              ['Tom', agent.communicationTone ?? 'normal'],
-              ['Criado', new Date(agent.createdAt).toLocaleString('pt-BR')],
-            ].map(([label, value]) => (
-              <div key={label} className="flex justify-between text-sm">
-                <span className="text-white/40">{label}</span>
-                <span className="text-white">{value}</span>
-              </div>
-            ))}
-          </div>
-
-          {(agent.personality || agent.systemPrompt) && (
-            <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-              <h3 className="text-sm font-semibold text-white/70 flex items-center gap-2 mb-3">
-                <Brain className="w-4 h-4 text-beacon-primary" /> Personalidade
-              </h3>
-              <pre className="text-xs text-white/85 bg-white/6 p-3 rounded-lg whitespace-pre-wrap font-mono">
-                {agent.personality ?? agent.systemPrompt}
-              </pre>
-            </div>
-          )}
-
-          {agent.actionPrompt && (
-            <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-              <h3 className="text-sm font-semibold text-white/70 mb-3">Instrução de Ação</h3>
-              <pre className="text-xs text-white/85 bg-white/6 p-3 rounded-lg whitespace-pre-wrap font-mono">
-                {agent.actionPrompt}
-              </pre>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ─── Tab: Treinamentos ─── */}
-      {tab === 'trainings' && (
-        <div className="space-y-4">
-          {/* Tabs tipo */}
-          <div className="flex gap-2">
-            {[
-              { id: 'text' as const, label: 'Texto', icon: FileText },
-              { id: 'url' as const, label: 'Website', icon: Globe },
-              { id: 'upload' as const, label: 'Documento', icon: Upload },
-            ].map((t) => (
+        {/* Menu */}
+        <nav className="flex-1 px-3 space-y-0.5">
+          {MENU_ITEMS.map((item) => {
+            const Icon = item.icon
+            const active = section === item.id
+            return (
               <button
-                key={t.id}
-                onClick={() => setTrainingType(t.id)}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  trainingType === t.id ? 'bg-beacon-primary text-white' : 'bg-white/5 text-white/50 hover:text-white/80'
-                }`}
-              >
-                <t.icon className="w-4 h-4" />
-                {t.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Form: Texto */}
-          {trainingType === 'text' && (
-            <div className="bg-white/5 border border-white/10 rounded-xl p-5 space-y-3">
-              <h3 className="text-sm font-semibold text-white/70">Novo treinamento via texto</h3>
-              <input
-                value={trainingTitle}
-                onChange={(e) => setTrainingTitle(e.target.value)}
-                placeholder="Título (opcional)"
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30"
-              />
-              <textarea
-                value={trainingContent}
-                onChange={(e) => setTrainingContent(e.target.value)}
-                placeholder="Cole ou escreva o conteúdo para treinar a IA..."
-                rows={5}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30 resize-y"
-              />
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-white/30">{trainingContent.length} caracteres</span>
-                  <label className="flex items-center gap-1.5 cursor-pointer">
-                    <input type="checkbox" checked={useAiProcessing} onChange={(e) => setUseAiProcessing(e.target.checked)}
-                      className="w-3.5 h-3.5 accent-beacon-primary rounded" />
-                    <span className="text-xs text-white/50 flex items-center gap-1">
-                      <Sparkles className="w-3 h-3" /> Processar com IA
-                    </span>
-                  </label>
-                </div>
-                <Button
-                  onClick={() => useAiProcessing ? processText.mutate() : createTraining.mutate()}
-                  disabled={!trainingContent.trim() || processText.isPending || createTraining.isPending}
-                  className="bg-beacon-primary"
-                >
-                  {(processText.isPending || createTraining.isPending)
-                    ? <Loader2 className="w-4 h-4 animate-spin" />
-                    : useAiProcessing ? <Sparkles className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                  {useAiProcessing ? 'Processar' : 'Cadastrar'}
-                </Button>
-              </div>
-              {useAiProcessing && (
-                <p className="text-xs text-white/25">A IA vai extrair, categorizar e otimizar o conteúdo automaticamente.</p>
-              )}
-            </div>
-          )}
-
-          {/* Form: URL */}
-          {trainingType === 'url' && (
-            <div className="bg-white/5 border border-white/10 rounded-xl p-5 space-y-3">
-              <h3 className="text-sm font-semibold text-white/70">Importar conteúdo de website</h3>
-              <input
-                value={trainingContent}
-                onChange={(e) => setTrainingContent(e.target.value)}
-                placeholder="https://exemplo.com.br"
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30"
-              />
-              <div className="flex justify-between items-center">
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input type="checkbox" checked={crawlEnabled} onChange={(e) => setCrawlEnabled(e.target.checked)}
-                    className="w-3.5 h-3.5 accent-beacon-primary rounded" />
-                  <span className="text-xs text-white/50">Navegar links internos (até 5 páginas)</span>
-                </label>
-                <Button
-                  onClick={() => processUrl.mutate()}
-                  disabled={!trainingContent.trim() || processUrl.isPending}
-                  className="bg-beacon-primary"
-                >
-                  {processUrl.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
-                  Importar
-                </Button>
-              </div>
-              <p className="text-xs text-white/25">O sistema vai extrair o texto do site, processar com IA e criar treinamentos categorizados.</p>
-            </div>
-          )}
-
-          {/* Form: Upload */}
-          {trainingType === 'upload' && (
-            <div className="bg-white/5 border border-white/10 rounded-xl p-5 space-y-3">
-              <h3 className="text-sm font-semibold text-white/70">Upload de documento</h3>
-              <p className="text-xs text-white/40">Suporta .md, .pdf, .docx — até 10MB</p>
-              <div className="flex items-center gap-3">
-                <label className="flex-1 flex items-center justify-center gap-2 py-8 border-2 border-dashed border-white/15 rounded-xl cursor-pointer hover:border-beacon-primary/40 transition-colors">
-                  <Upload className="w-5 h-5 text-white/30" />
-                  <span className="text-sm text-white/40">Clique para selecionar arquivo</span>
-                  <input
-                    type="file"
-                    accept=".md,.pdf,.docx"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (file) uploadFile.mutate(file)
-                    }}
-                  />
-                </label>
-              </div>
-              {uploadFile.isPending && (
-                <div className="flex items-center gap-2 text-xs text-white/50">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Processando documento...
-                </div>
-              )}
-              <p className="text-xs text-white/25">O documento será extraído e processado com IA automaticamente.</p>
-            </div>
-          )}
-
-          {/* Lista de treinamentos */}
-          <div className="space-y-2">
-            {trainings.length === 0 ? (
-              <p className="text-center text-sm text-white/30 py-8">Nenhum treinamento cadastrado ainda.</p>
-            ) : (
-              trainings.map((t: any) => (
-                <div key={t.id} className="bg-white/5 border border-white/10 rounded-lg px-4 py-3 flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      {t.type === 'text' && <FileText className="w-3.5 h-3.5 text-white/40" />}
-                      {t.type === 'url' && <Globe className="w-3.5 h-3.5 text-white/40" />}
-                      {t.type === 'document' && <Upload className="w-3.5 h-3.5 text-white/40" />}
-                      {t.type === 'feedback' && <Sparkles className="w-3.5 h-3.5 text-amber-400" />}
-                      <span className="text-xs font-semibold text-white/60 uppercase">{t.type}</span>
-                      {t.category && t.category !== 'general' && (
-                        <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-beacon-primary/15 text-beacon-primary border border-beacon-primary/20">
-                          <Tag className="w-2.5 h-2.5" /> {t.category}
-                        </span>
-                      )}
-                      {t.title && <span className="text-xs text-white/40">· {t.title}</span>}
-                      {t.status === 'processing' && <Loader2 className="w-3 h-3 animate-spin text-amber-400" />}
-                      {t.status === 'error' && <span className="text-[10px] text-red-400 font-semibold">ERRO</span>}
-                    </div>
-                    <p className="text-xs text-white/70 line-clamp-2">{t.content}</p>
-                  </div>
-                  <button
-                    onClick={() => deleteTraining.mutate(t.id)}
-                    className="p-1.5 text-white/30 hover:text-red-400 transition-colors shrink-0"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ─── Tab: Integrações ─── */}
-      {tab === 'integrations' && (
-        <div className="space-y-3">
-          {/* Card: Google Calendar */}
-          <button
-            onClick={() => setOpenModal('calendar')}
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-4 flex items-center justify-between hover:bg-white/8 transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-beacon-primary" />
-              </div>
-              <div className="text-left">
-                <h3 className="text-sm font-semibold text-white">Google Calendar</h3>
-                <p className="text-xs text-white/40">
-                  {calendarConfig ? `Conectado: ${calendarConfig.calendarName}` : 'Não conectado'}
-                </p>
-              </div>
-            </div>
-            <ChevronRight className="w-4 h-4 text-white/30" />
-          </button>
-
-          {/* Card: Disparo de Lead */}
-          <button
-            onClick={() => setOpenModal('leadDispatch')}
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-4 flex items-center justify-between hover:bg-white/8 transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
-                <Zap className="w-5 h-5 text-amber-500" />
-              </div>
-              <div className="text-left">
-                <h3 className="text-sm font-semibold text-white">Disparo de Lead</h3>
-                <p className="text-xs text-white/40">
-                  {agent.leadDispatchEnabled ? `Ativo: ${agent.leadDispatchPhone}` : 'Não configurado'}
-                </p>
-              </div>
-            </div>
-            <ChevronRight className="w-4 h-4 text-white/30" />
-          </button>
-
-          {/* ─── Modal: Google Calendar ─── */}
-          {openModal === 'calendar' && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setOpenModal(null)}>
-              <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-                  <div className="flex items-center gap-3">
-                    <Calendar className="w-5 h-5 text-beacon-primary" />
-                    <h2 className="text-base font-semibold text-gray-900">Google Calendar</h2>
-                  </div>
-                  <button onClick={() => setOpenModal(null)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100">
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="px-6 py-5 space-y-5">
-                  {/* Conexão */}
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-gray-600">
-                      {calendarConfig ? `Conectado: ${calendarConfig.calendarName}` : 'Não conectado'}
-                    </p>
-                    {calendarConfig ? (
-                      <button onClick={() => disconnectCalendar.mutate()}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-xs font-medium hover:bg-red-100">
-                        <Unlink className="w-3.5 h-3.5" /> Desconectar
-                      </button>
-                    ) : (
-                      <a href={`/api/integrations/google/auth/${id}?tenantId=t1`}
-                        className="flex items-center gap-1.5 px-4 py-2 bg-beacon-primary text-white rounded-lg text-sm font-medium hover:opacity-90">
-                        <Link2 className="w-4 h-4" /> Conectar
-                      </a>
-                    )}
-                  </div>
-
-                  {calendarConfig && (<>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-700">Agenda</label>
-                      <select
-                        value={calendarConfig.calendarId}
-                        onChange={(e) => {
-                          const cal = calendars.find((c: any) => c.id === e.target.value)
-                          updateCalendarConfig.mutate({ calendarId: e.target.value, calendarName: cal?.summary ?? e.target.value })
-                        }}
-                        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-beacon-primary"
-                      >
-                        {calendars.map((c: any) => (
-                          <option key={c.id} value={c.id}>{c.summary} {c.primary ? '(principal)' : ''}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-700">Duração</label>
-                      <div className="flex gap-2">
-                        {[15, 30, 45, 60].map((min) => (
-                          <button key={min} onClick={() => updateCalendarConfig.mutate({ slotDuration: min })}
-                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-                              calendarConfig.slotDuration === min ? 'bg-beacon-primary text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
-                            }`}>
-                            {min}min
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-700">Título do evento</label>
-                      <input
-                        defaultValue={calendarConfig.eventTitle}
-                        onBlur={(e) => updateCalendarConfig.mutate({ eventTitle: e.target.value })}
-                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-beacon-primary"
-                        placeholder="Consulta - {userName}"
-                      />
-                    </div>
-
-                    <div className="space-y-1 border-t border-gray-100 pt-4">
-                      {[
-                        { key: 'googleMeet', label: 'Google Meet', desc: 'Gerar link do Meet' },
-                        { key: 'consultHours', label: 'Consulta de horários', desc: 'Agente consulta horários' },
-                        { key: 'collectName', label: 'Coletar nome', desc: 'Solicitar nome do cliente' },
-                        { key: 'collectEmail', label: 'Coletar email', desc: 'Solicitar email' },
-                        { key: 'collectPhone', label: 'Coletar telefone', desc: 'Solicitar telefone' },
-                        { key: 'sendSummary', label: 'Enviar resumo', desc: 'Resumo da conversa no evento' },
-                      ].map((item) => (
-                        <div key={item.key} className="flex items-center justify-between py-2.5">
-                          <div>
-                            <p className="text-sm font-medium text-gray-700">{item.label}</p>
-                            <p className="text-xs text-gray-400">{item.desc}</p>
-                          </div>
-                          <button
-                            onClick={() => updateCalendarConfig.mutate({ [item.key]: !(calendarConfig as any)[item.key] })}
-                            className={`relative w-9 h-5 rounded-full transition-colors ${
-                              (calendarConfig as any)[item.key] ? 'bg-beacon-primary' : 'bg-gray-200'
-                            }`}>
-                            <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${
-                              (calendarConfig as any)[item.key] ? 'left-[18px]' : 'left-0.5'
-                            }`} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </>)}
-
-                  {!calendarConfig && (
-                    <p className="text-xs text-gray-400">
-                      Conecte o Google Calendar para que o agente consulte horários e agende consultas automaticamente.
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ─── Modal: Disparo de Lead ─── */}
-          {openModal === 'leadDispatch' && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setOpenModal(null)}>
-              <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-                  <div className="flex items-center gap-3">
-                    <Zap className="w-5 h-5 text-amber-500" />
-                    <h2 className="text-base font-semibold text-gray-900">Disparo de Lead</h2>
-                  </div>
-                  <button onClick={() => setOpenModal(null)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100">
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="px-6 py-5 space-y-5">
-                  <p className="text-sm text-gray-500">
-                    Quando o agente qualificar ou agendar um lead, envia um resumo automaticamente para o número configurado.
-                  </p>
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-700">Ativar disparo</p>
-                      <p className="text-xs text-gray-400">Envia resumo ao transferir para humano</p>
-                    </div>
-                    <button
-                      onClick={() => updateLeadDispatch.mutate({ leadDispatchEnabled: !agent.leadDispatchEnabled })}
-                      className={`relative w-9 h-5 rounded-full transition-colors ${
-                        agent.leadDispatchEnabled ? 'bg-beacon-primary' : 'bg-gray-200'
-                      }`}>
-                      <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${
-                        agent.leadDispatchEnabled ? 'left-[18px]' : 'left-0.5'
-                      }`} />
-                    </button>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Número de destino</label>
-                    <div className="flex gap-2">
-                      <div className="flex items-center gap-2 flex-1">
-                        <Phone className="w-4 h-4 text-gray-400 shrink-0" />
-                        <input
-                          value={dispatchPhone}
-                          onChange={(e) => setDispatchPhone(e.target.value)}
-                          placeholder="5567999999999"
-                          className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-beacon-primary"
-                        />
-                      </div>
-                      <Button
-                        size="sm"
-                        onClick={() => updateLeadDispatch.mutate({ leadDispatchPhone: dispatchPhone })}
-                        disabled={!dispatchPhone.trim() || updateLeadDispatch.isPending}
-                      >
-                        {updateLeadDispatch.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar'}
-                      </Button>
-                    </div>
-                    <p className="text-xs text-gray-400">Formato: código do país + DDD + número (ex: 5567999999999)</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ─── Tab: Configurações ─── */}
-      {tab === 'settings' && (
-        <div className="space-y-4">
-          {/* Comportamento */}
-          <div className="bg-white/5 border border-white/10 rounded-xl p-5 space-y-1">
-            <h3 className="text-sm font-semibold text-white/70 mb-3">Comportamento</h3>
-            {[
-              { key: 'useEmojis', label: 'Usar emojis', desc: 'Permite que o agente use emojis nas respostas', value: agent.useEmojis },
-              { key: 'splitResponse', label: 'Dividir resposta', desc: 'Separa mensagens longas em várias mensagens curtas', value: agent.splitResponse },
-              { key: 'restrictTopics', label: 'Restringir temas', desc: 'O agente só fala sobre assuntos da base de conhecimento', value: agent.restrictTopics },
-              { key: 'signName', label: 'Assinar nome', desc: 'Adiciona o nome do agente ao final de cada mensagem', value: agent.signName },
-            ].map((item) => (
-              <div key={item.key} className="flex items-center justify-between py-2.5">
-                <div>
-                  <p className="text-sm font-medium text-white/80">{item.label}</p>
-                  <p className="text-xs text-white/30">{item.desc}</p>
-                </div>
-                <button
-                  onClick={() => updateAgent.mutateAsync({ [item.key]: !item.value })}
-                  className={`relative w-9 h-5 rounded-full transition-colors ${
-                    item.value ? 'bg-beacon-primary' : 'bg-white/15'
-                  }`}>
-                  <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${
-                    item.value ? 'left-[18px]' : 'left-0.5'
-                  }`} />
-                </button>
-              </div>
-            ))}
-          </div>
-
-          {/* Limites */}
-          <div className="bg-white/5 border border-white/10 rounded-xl p-5 space-y-3">
-            <h3 className="text-sm font-semibold text-white/70 mb-1">Limites</h3>
-
-            <div className="flex items-center justify-between py-2">
-              <div>
-                <p className="text-sm font-medium text-white/80">Limite de trocas</p>
-                <p className="text-xs text-white/30">Encerra a conversa após um número máximo de interações</p>
-              </div>
-              <div className="flex items-center gap-2">
-                {agent.limitTurns && (
-                  <span className="text-xs text-white/50 bg-white/8 px-2 py-1 rounded">{agent.maxTurns} trocas</span>
+                key={item.id}
+                onClick={() => setSection(item.id)}
+                className={cn(
+                  'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                  active ? 'bg-[#0891B2]/10 text-[#0891B2]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700',
                 )}
-                <button
-                  onClick={() => updateAgent.mutateAsync({ limitTurns: !agent.limitTurns })}
-                  className={`relative w-9 h-5 rounded-full transition-colors ${
-                    agent.limitTurns ? 'bg-beacon-primary' : 'bg-white/15'
-                  }`}>
-                  <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${
-                    agent.limitTurns ? 'left-[18px]' : 'left-0.5'
-                  }`} />
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between py-2">
-              <div>
-                <p className="text-sm font-medium text-white/80">Fallback</p>
-                <p className="text-xs text-white/30">Envia mensagem de segurança se a IA falhar</p>
-              </div>
-              <button
-                onClick={() => updateAgent.mutateAsync({ fallbackEnabled: !agent.fallbackEnabled })}
-                className={`relative w-9 h-5 rounded-full transition-colors ${
-                  agent.fallbackEnabled ? 'bg-beacon-primary' : 'bg-white/15'
-                }`}>
-                <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${
-                  agent.fallbackEnabled ? 'left-[18px]' : 'left-0.5'
-                }`} />
+              >
+                <Icon className="w-4 h-4" />
+                {item.label}
               </button>
+            )
+          })}
+        </nav>
+
+        {/* Test button */}
+        <div className="p-4">
+          <Button className="w-full bg-[#0891B2] hover:bg-[#0E7490]" onClick={() => setShowTest(true)}>
+            <Play className="w-4 h-4" /> Teste sua IA
+          </Button>
+        </div>
+      </div>
+
+      {/* ═══ CONTENT ═══ */}
+      <div className="flex-1 overflow-y-auto bg-[#F5FAFA] p-8">
+        {/* ─── Perfil ─── */}
+        {section === 'profile' && (
+          <div className="max-w-2xl space-y-6">
+            <h2 className="text-lg font-bold text-[#134E4A]">Informações pessoais</h2>
+
+            <div className="grid grid-cols-[1fr_auto] gap-6">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-600">Nome do agente</label>
+                <Input defaultValue={agent.name} onBlur={(e) => save({ name: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-600">Comunicação</label>
+                <div className="flex gap-1">
+                  {TONE_OPTIONS.map((t) => (
+                    <button key={t.id} onClick={() => save({ communicationTone: t.id })}
+                      className={cn('px-4 py-2 rounded-lg text-sm font-semibold transition-colors',
+                        agent.communicationTone === t.id ? 'bg-[#0891B2] text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                      )}>
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            <div className="flex items-center justify-between py-2">
-              <div>
-                <p className="text-sm font-medium text-white/80">Inatividade</p>
-                <p className="text-xs text-white/30">O que fazer se o cliente parar de responder</p>
-              </div>
-              <span className="text-xs text-white/50 bg-white/8 px-2 py-1 rounded">
-                {agent.inactivityMinutes ?? 10}min → {
-                  (agent.inactivityAction ?? 'close') === 'close' ? 'Finalizar' :
-                  agent.inactivityAction === 'transfer' ? 'Transferir' : 'Mensagem'
-                }
-              </span>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-600">Comportamento</label>
+              <p className="text-xs text-gray-400">Descreva como o agente deve se comportar durante a conversa.</p>
+              <textarea
+                defaultValue={agent.personality ?? ''}
+                onBlur={(e) => save({ personality: e.target.value })}
+                rows={10}
+                className="w-full px-4 py-3 text-sm text-[#134E4A] bg-white rounded-xl border border-gray-200 resize-y focus:outline-none focus:border-[#0891B2] focus:ring-2 focus:ring-[#0891B2]/10"
+              />
             </div>
           </div>
+        )}
 
-          {/* Avançado (colapsável) */}
-          <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
-            <button
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              className="w-full flex items-center justify-between p-5 text-left hover:bg-white/5 transition-colors"
-            >
-              <div>
-                <h3 className="text-sm font-semibold text-white/70">Avançado</h3>
-                <p className="text-xs text-white/30">Parâmetros técnicos do modelo de IA</p>
+        {/* ─── Trabalho ─── */}
+        {section === 'work' && (
+          <div className="max-w-2xl space-y-6">
+            <h2 className="text-lg font-bold text-[#134E4A]">Informações sobre trabalho</h2>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-600">Finalidade</label>
+              <div className="grid grid-cols-4 gap-2">
+                {PURPOSE_OPTIONS.map((opt) => (
+                  <button key={opt.id} onClick={() => save({ purpose: opt.id })}
+                    className={cn('px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors border-2',
+                      agent.purpose === opt.id ? 'border-[#0891B2] bg-[#0891B2]/10 text-[#0891B2]' : 'border-gray-100 text-gray-500 hover:border-gray-200'
+                    )}>
+                    {opt.label}
+                  </button>
+                ))}
               </div>
-              <ChevronDown className={`w-4 h-4 text-white/40 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
-            </button>
-            {showAdvanced && (
-              <div className="px-5 pb-5 space-y-3 border-t border-white/10">
-                <div className="flex justify-between items-center py-2">
-                  <div>
-                    <p className="text-sm font-medium text-white/80">Temperatura</p>
-                    <p className="text-xs text-white/30">Controla a criatividade. Menor = mais previsível, maior = mais criativo</p>
-                  </div>
-                  <span className="text-sm text-white font-medium">{agent.temperature.toFixed(1)}</span>
-                </div>
-                <div className="flex justify-between items-center py-2">
-                  <div>
-                    <p className="text-sm font-medium text-white/80">Max Tokens</p>
-                    <p className="text-xs text-white/30">Tamanho máximo da resposta da IA em tokens (~palavras)</p>
-                  </div>
-                  <span className="text-sm text-white font-medium">{agent.maxTokens}</span>
-                </div>
-                <div className="flex justify-between items-center py-2">
-                  <div>
-                    <p className="text-sm font-medium text-white/80">Memória</p>
-                    <p className="text-xs text-white/30">Quantas mensagens anteriores a IA considera ao responder</p>
-                  </div>
-                  <span className="text-sm text-white font-medium">{agent.historyLimit} msgs</span>
-                </div>
-                <div className="pt-2">
-                  <Button variant="ghost" size="sm" onClick={() => navigate(`/agents/${agent.id}/edit`)}>
-                    <Settings2 className="w-3.5 h-3.5" /> Editar no wizard
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-600">Empresa</label>
+                <Input defaultValue={agent.companyName ?? ''} onBlur={(e) => save({ companyName: e.target.value })} placeholder="Nome da empresa" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-600">Site oficial (opcional)</label>
+                <Input defaultValue={agent.companyUrl ?? ''} onBlur={(e) => save({ companyUrl: e.target.value })} placeholder="https://..." />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-600">Descrição da empresa</label>
+              <textarea
+                defaultValue={agent.description ?? ''}
+                onBlur={(e) => save({ description: e.target.value })}
+                rows={4}
+                placeholder="Descreva brevemente o que a empresa faz..."
+                className="w-full px-4 py-3 text-sm text-[#134E4A] bg-white rounded-xl border border-gray-200 resize-y focus:outline-none focus:border-[#0891B2] focus:ring-2 focus:ring-[#0891B2]/10"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-600">Instrução de ação</label>
+              <p className="text-xs text-gray-400">O que o agente deve fazer nesta conversa especificamente.</p>
+              <textarea
+                defaultValue={agent.actionPrompt ?? ''}
+                onBlur={(e) => save({ actionPrompt: e.target.value })}
+                rows={8}
+                className="w-full px-4 py-3 text-sm text-[#134E4A] bg-white rounded-xl border border-gray-200 resize-y font-mono focus:outline-none focus:border-[#0891B2] focus:ring-2 focus:ring-[#0891B2]/10"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-600">Fluxo conversacional (opcional)</label>
+              <p className="text-xs text-gray-400">Sobrescreve o fluxo padrão do arquétipo.</p>
+              <textarea
+                defaultValue={agent.conversationFlow ?? ''}
+                onBlur={(e) => save({ conversationFlow: e.target.value })}
+                rows={5}
+                placeholder="1. Cumprimentar&#10;2. Entender necessidade&#10;3. Qualificar&#10;4. Agendar"
+                className="w-full px-4 py-3 text-sm text-[#134E4A] bg-white rounded-xl border border-gray-200 resize-y font-mono focus:outline-none focus:border-[#0891B2] focus:ring-2 focus:ring-[#0891B2]/10"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* ─── Treinamentos ─── */}
+        {section === 'trainings' && (
+          <div className="max-w-3xl space-y-4">
+            <h2 className="text-lg font-bold text-[#134E4A]">Treinamentos</h2>
+
+            <div className="flex gap-2">
+              {[
+                { id: 'text' as const, label: 'Texto', icon: FileText },
+                { id: 'url' as const, label: 'Website', icon: Globe },
+                { id: 'upload' as const, label: 'Documento', icon: Upload },
+              ].map((t) => (
+                <button key={t.id} onClick={() => setTrainingType(t.id)}
+                  className={cn('flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+                    trainingType === t.id ? 'bg-[#0891B2] text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                  )}>
+                  <t.icon className="w-4 h-4" /> {t.label}
+                </button>
+              ))}
+            </div>
+
+            {trainingType === 'text' && (
+              <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-3">
+                <input value={trainingTitle} onChange={(e) => setTrainingTitle(e.target.value)} placeholder="Título (opcional)"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#0891B2]" />
+                <textarea value={trainingContent} onChange={(e) => setTrainingContent(e.target.value)} placeholder="Cole ou escreva o conteúdo..."
+                  rows={5} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:border-[#0891B2]" />
+                <div className="flex justify-between items-center">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input type="checkbox" checked={useAiProcessing} onChange={(e) => setUseAiProcessing(e.target.checked)} className="accent-[#0891B2]" />
+                    <span className="text-xs text-gray-500 flex items-center gap-1"><Sparkles className="w-3 h-3" /> Processar com IA</span>
+                  </label>
+                  <Button onClick={() => useAiProcessing ? processText.mutate() : createTraining.mutate()}
+                    disabled={!trainingContent.trim() || processText.isPending || createTraining.isPending}>
+                    {(processText.isPending || createTraining.isPending) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                    {useAiProcessing ? 'Processar' : 'Cadastrar'}
                   </Button>
                 </div>
               </div>
             )}
-          </div>
-        </div>
-      )}
 
-      {/* ─── Tab: Testar ─── */}
-      {tab === 'test' && (
-        <div className="bg-white/5 border border-white/10 rounded-xl p-5 space-y-4">
-          <h3 className="text-sm font-semibold text-white/70 flex items-center gap-2">
-            <Play className="w-4 h-4 text-beacon-primary" /> Teste sua IA
-          </h3>
+            {trainingType === 'url' && (
+              <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-3">
+                <input value={trainingContent} onChange={(e) => setTrainingContent(e.target.value)} placeholder="https://exemplo.com.br"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#0891B2]" />
+                <div className="flex justify-between items-center">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input type="checkbox" checked={crawlEnabled} onChange={(e) => setCrawlEnabled(e.target.checked)} className="accent-[#0891B2]" />
+                    <span className="text-xs text-gray-500">Navegar links internos (até 5 páginas)</span>
+                  </label>
+                  <Button onClick={() => processUrl.mutate()} disabled={!trainingContent.trim() || processUrl.isPending}>
+                    {processUrl.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />} Importar
+                  </Button>
+                </div>
+              </div>
+            )}
 
-          {testReply && (
-            <div className="bg-beacon-primary/10 border border-beacon-primary/20 rounded-lg p-4">
-              <p className="text-xs text-white/40 mb-1">Resposta do agente:</p>
-              <p className="text-sm text-white whitespace-pre-wrap">{testReply}</p>
+            {trainingType === 'upload' && (
+              <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-3">
+                <label className="flex items-center justify-center gap-2 py-8 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-[#0891B2]/40 transition-colors">
+                  <Upload className="w-5 h-5 text-gray-300" />
+                  <span className="text-sm text-gray-400">Clique para selecionar (.md, .pdf, .docx)</span>
+                  <input type="file" accept=".md,.pdf,.docx" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile.mutate(f) }} />
+                </label>
+                {uploadFile.isPending && <p className="text-xs text-gray-400 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Processando...</p>}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              {trainings.length === 0 ? (
+                <p className="text-center text-sm text-gray-300 py-8">Nenhum treinamento cadastrado.</p>
+              ) : trainings.map((t: any) => (
+                <div key={t.id} className="bg-white border border-gray-100 rounded-lg px-4 py-3 flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="text-xs font-semibold text-gray-400 uppercase">{t.type}</span>
+                      {t.category && t.category !== 'general' && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#0891B2]/10 text-[#0891B2]">{t.category}</span>
+                      )}
+                      {t.title && <span className="text-xs text-gray-400">· {t.title}</span>}
+                      {t.status === 'processing' && <Loader2 className="w-3 h-3 animate-spin text-amber-500" />}
+                      {t.status === 'error' && <span className="text-[10px] text-red-500 font-semibold">ERRO</span>}
+                    </div>
+                    <p className="text-xs text-gray-500 line-clamp-2">{t.content}</p>
+                  </div>
+                  <button onClick={() => deleteTraining.mutate(t.id)} className="p-1.5 text-gray-300 hover:text-red-500 transition-colors">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
             </div>
-          )}
+          </div>
+        )}
 
-          <div className="flex gap-2">
-            <input
-              value={testMsg}
-              onChange={(e) => setTestMsg(e.target.value)}
-              placeholder="Envie uma mensagem para testar..."
-              className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-white/30"
-              onKeyDown={(e) => { if (e.key === 'Enter' && testMsg.trim()) testMutation.mutate() }}
-            />
-            <Button
-              onClick={() => testMutation.mutate()}
-              disabled={!testMsg.trim() || testMutation.isPending}
-              className="bg-beacon-primary"
-            >
-              {testMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            </Button>
+        {/* ─── Integrações ─── */}
+        {section === 'integrations' && (
+          <div className="max-w-3xl space-y-4">
+            <h2 className="text-lg font-bold text-[#134E4A]">Integrações</h2>
+            <p className="text-sm text-gray-400">Conecte seu agente a outros aplicativos.</p>
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* Google Calendar card */}
+              <div className="bg-white border border-gray-100 rounded-xl p-6 space-y-4">
+                <div className="flex items-center gap-3">
+                  <Calendar className="w-8 h-8 text-[#0891B2]" />
+                  <div>
+                    <h3 className="text-sm font-bold text-[#134E4A]">Google Calendar</h3>
+                    <p className="text-xs text-gray-400">{calendarConfig ? `Conectado: ${calendarConfig.calendarName}` : 'Agende consultas automaticamente'}</p>
+                  </div>
+                </div>
+                {calendarConfig ? (
+                  <button onClick={() => disconnectCalendar.mutate()} className="text-xs text-red-500 hover:text-red-600 font-medium flex items-center gap-1">
+                    <Unlink className="w-3.5 h-3.5" /> Desconectar
+                  </button>
+                ) : (
+                  <a href={`/api/integrations/google/auth/${id}?tenantId=t1`}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#0891B2] text-white rounded-lg text-sm font-medium hover:bg-[#0E7490]">
+                    Configurar integração
+                  </a>
+                )}
+              </div>
+
+              {/* Lead Dispatch card */}
+              <div className="bg-white border border-gray-100 rounded-xl p-6 space-y-4">
+                <div className="flex items-center gap-3">
+                  <Zap className="w-8 h-8 text-amber-500" />
+                  <div>
+                    <h3 className="text-sm font-bold text-[#134E4A]">Disparo de Lead</h3>
+                    <p className="text-xs text-gray-400">{agent.leadDispatchEnabled ? `Ativo: ${agent.leadDispatchPhone}` : 'Envie leads qualificados'}</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500">Ativar disparo</span>
+                    <button onClick={() => updateLeadDispatch.mutate({ leadDispatchEnabled: !agent.leadDispatchEnabled })}
+                      className={cn('relative w-9 h-5 rounded-full transition-colors', agent.leadDispatchEnabled ? 'bg-[#0891B2]' : 'bg-gray-200')}>
+                      <span className={cn('absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all', agent.leadDispatchEnabled ? 'left-[18px]' : 'left-0.5')} />
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <input value={dispatchPhone} onChange={(e) => setDispatchPhone(e.target.value)} placeholder="5567999999999"
+                      className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-[#0891B2]" />
+                    <Button size="sm" onClick={() => updateLeadDispatch.mutate({ leadDispatchPhone: dispatchPhone })} disabled={!dispatchPhone.trim()}>
+                      Salvar
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ─── Canais ─── */}
+        {section === 'channels' && (
+          <div className="max-w-3xl space-y-4">
+            <h2 className="text-lg font-bold text-[#134E4A]">Canais vinculados</h2>
+            <p className="text-sm text-gray-400">Canais de WhatsApp conectados a este agente.</p>
+
+            {channelAgents.length === 0 ? (
+              <div className="bg-white border border-gray-100 rounded-xl p-8 text-center">
+                <Radio className="w-8 h-8 text-gray-200 mx-auto mb-3" />
+                <p className="text-sm text-gray-400">Nenhum canal vinculado.</p>
+                <p className="text-xs text-gray-300 mt-1">Vincule um canal em Chat IA no menu principal.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {channelAgents.map((ca: any) => (
+                  <div key={ca.id} className="bg-white border border-gray-100 rounded-xl px-5 py-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-emerald-50 rounded-lg flex items-center justify-center">
+                        <MessageSquare className="w-5 h-5 text-emerald-500" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-semibold text-[#134E4A]">{ca.name}</h3>
+                        <p className="text-xs text-gray-400">Modelo: {ca.llmModel} · {ca.isActive ? 'Ativo' : 'Inativo'}</p>
+                      </div>
+                    </div>
+                    <Badge variant={ca.isActive ? 'active' : 'draft'}>{ca.isActive ? 'Ativo' : 'Inativo'}</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── Configurações ─── */}
+        {section === 'settings' && (
+          <div className="max-w-2xl space-y-4">
+            <h2 className="text-lg font-bold text-[#134E4A]">Preferências da conversa</h2>
+
+            <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+              {[
+                { id: 'conversa' as const, label: 'Conversa' },
+                { id: 'inatividade' as const, label: 'Ações de inatividade' },
+              ].map((t) => (
+                <button key={t.id} onClick={() => setConfigSubTab(t.id)}
+                  className={cn('flex-1 py-2 rounded-md text-sm font-medium transition-colors',
+                    configSubTab === t.id ? 'bg-white text-[#134E4A] shadow-sm' : 'text-gray-400 hover:text-gray-600'
+                  )}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {configSubTab === 'conversa' && (
+              <div className="bg-white border border-gray-100 rounded-xl p-5 space-y-1">
+                {[
+                  { key: 'fallbackEnabled', label: 'Transferir para humano', desc: 'O agente transfere quando não consegue responder', value: agent.fallbackEnabled },
+                  { key: 'useEmojis', label: 'Usar emojis nas respostas', desc: 'Define se o agente pode utilizar emojis', value: agent.useEmojis },
+                  { key: 'signName', label: 'Assinar nome do agente', desc: 'Adiciona assinatura em cada resposta', value: agent.signName },
+                  { key: 'restrictTopics', label: 'Restringir temas permitidos', desc: 'O agente não fala sobre outros assuntos', value: agent.restrictTopics },
+                  { key: 'splitResponse', label: 'Dividir resposta em partes', desc: 'Mensagens longas são separadas em várias', value: agent.splitResponse },
+                ].map((item) => (
+                  <div key={item.key} className="flex items-center justify-between py-3">
+                    <div>
+                      <p className="text-sm font-medium text-[#134E4A]">{item.label}</p>
+                      <p className="text-xs text-gray-400">{item.desc}</p>
+                    </div>
+                    <button onClick={() => save({ [item.key]: !item.value })}
+                      className={cn('relative w-9 h-5 rounded-full transition-colors', item.value ? 'bg-[#0891B2]' : 'bg-gray-200')}>
+                      <span className={cn('absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all', item.value ? 'left-[18px]' : 'left-0.5')} />
+                    </button>
+                  </div>
+                ))}
+
+                {/* Advanced */}
+                <button onClick={() => setShowAdvanced(!showAdvanced)}
+                  className="flex items-center justify-between w-full pt-3 mt-2 border-t border-gray-100">
+                  <span className="text-sm font-medium text-gray-400">Avançado</span>
+                  <ChevronDown className={cn('w-4 h-4 text-gray-300 transition-transform', showAdvanced && 'rotate-180')} />
+                </button>
+                {showAdvanced && (
+                  <div className="space-y-3 pt-2">
+                    {[
+                      { label: 'Temperatura', desc: 'Menor = previsível, maior = criativo', value: agent.temperature.toFixed(1) },
+                      { label: 'Max Tokens', desc: 'Tamanho máximo da resposta', value: String(agent.maxTokens) },
+                      { label: 'Memória', desc: 'Mensagens anteriores consideradas', value: `${agent.historyLimit} msgs` },
+                    ].map((item) => (
+                      <div key={item.label} className="flex items-center justify-between py-1">
+                        <div>
+                          <p className="text-sm text-gray-500">{item.label}</p>
+                          <p className="text-xs text-gray-300">{item.desc}</p>
+                        </div>
+                        <span className="text-sm font-medium text-[#134E4A]">{item.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {configSubTab === 'inatividade' && (
+              <div className="bg-white border border-gray-100 rounded-xl p-5 space-y-4">
+                <p className="text-xs text-gray-400">Configure ações quando o cliente parar de responder.</p>
+                <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                  <span className="text-sm text-gray-500">Se não responder em</span>
+                  <span className="text-sm font-semibold text-[#134E4A] bg-white border border-gray-200 rounded-lg px-3 py-1.5">
+                    {agent.inactivityMinutes ?? 10} min
+                  </span>
+                  <span className="text-sm text-gray-500">o agente deve</span>
+                  <span className="text-sm font-semibold text-[#134E4A] bg-white border border-gray-200 rounded-lg px-3 py-1.5">
+                    {(agent.inactivityAction ?? 'close') === 'close' ? 'Finalizar' : agent.inactivityAction === 'transfer' ? 'Transferir' : 'Enviar mensagem'}
+                  </span>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => navigate(`/agents/${agent.id}/edit`)}>
+                  <Pencil className="w-3.5 h-3.5" /> Editar no wizard
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ═══ TEST DRAWER ═══ */}
+      {showTest && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/30" onClick={() => setShowTest(false)}>
+          <div className="w-96 bg-white h-full flex flex-col shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <h3 className="text-sm font-bold text-[#134E4A] flex items-center gap-2"><Play className="w-4 h-4 text-[#0891B2]" /> Teste sua IA</h3>
+              <button onClick={() => setShowTest(false)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-5">
+              {testReply && (
+                <div className="bg-[#0891B2]/10 border border-[#0891B2]/20 rounded-xl p-4 mb-4">
+                  <p className="text-xs text-gray-400 mb-1">Resposta:</p>
+                  <p className="text-sm text-[#134E4A] whitespace-pre-wrap">{testReply}</p>
+                </div>
+              )}
+            </div>
+            <div className="p-4 border-t border-gray-100 flex gap-2">
+              <input value={testMsg} onChange={(e) => setTestMsg(e.target.value)} placeholder="Envie uma mensagem..."
+                className="flex-1 border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-[#0891B2]"
+                onKeyDown={(e) => { if (e.key === 'Enter' && testMsg.trim()) testMutation.mutate() }} />
+              <Button onClick={() => testMutation.mutate()} disabled={!testMsg.trim() || testMutation.isPending}>
+                {testMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              </Button>
+            </div>
           </div>
         </div>
       )}
