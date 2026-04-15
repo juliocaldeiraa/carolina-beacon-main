@@ -122,6 +122,19 @@ export function AgentDetail() {
     mutationFn: () => api.delete(`/integrations/google/${id}`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['calendar-config', id] }) },
   })
+  const { data: calendars = [] } = useQuery({
+    queryKey: ['google-calendars', id],
+    queryFn: () => api.get(`/integrations/google/calendars/${id}`).then((r) => r.data).catch(() => []),
+    enabled: !!id && !!calendarConfig,
+  })
+  const updateCalendarConfig = useMutation({
+    mutationFn: (dto: any) => api.patch(`/integrations/google/config/${id}`, dto),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['calendar-config', id] }),
+  })
+
+  // Integration modals
+  const [integrationModal, setIntegrationModal] = useState<'calendar' | 'webhook' | null>(null)
+
   // Lead Dispatch
   const [dispatchPhone, setDispatchPhone] = useState('')
   const updateLeadDispatch = useMutation({
@@ -425,57 +438,187 @@ export function AgentDetail() {
         {section === 'integrations' && (
           <div className="max-w-3xl space-y-4">
             <h2 className="text-lg font-bold text-[#134E4A]">Integrações</h2>
-            <p className="text-sm text-gray-400">Conecte seu agente a outros aplicativos.</p>
+            <p className="text-sm text-gray-400">Conecte seu agente a outros aplicativos para obter informações mais precisas ou acionar ações.</p>
 
-            <div className="grid grid-cols-2 gap-4">
-              {/* Google Calendar card */}
-              <div className="bg-white border border-gray-100 rounded-xl p-6 space-y-4">
-                <div className="flex items-center gap-3">
-                  <Calendar className="w-8 h-8 text-[#0891B2]" />
-                  <div>
-                    <h3 className="text-sm font-bold text-[#134E4A]">Google Calendar</h3>
-                    <p className="text-xs text-gray-400">{calendarConfig ? `Conectado: ${calendarConfig.calendarName}` : 'Agende consultas automaticamente'}</p>
-                  </div>
+            <div className="grid grid-cols-3 gap-4">
+              {/* Google Calendar */}
+              <div className="bg-white border border-gray-100 rounded-xl p-6 flex flex-col items-center text-center space-y-3">
+                <Calendar className="w-10 h-10 text-[#0891B2]" />
+                <div>
+                  <h3 className="text-sm font-bold text-[#134E4A]">Google Calendar</h3>
+                  <p className="text-xs text-gray-400 mt-1">Agende consultas e reuniões automaticamente durante a conversa.</p>
                 </div>
                 {calendarConfig ? (
-                  <button onClick={() => disconnectCalendar.mutate()} className="text-xs text-red-500 hover:text-red-600 font-medium flex items-center gap-1">
-                    <Unlink className="w-3.5 h-3.5" /> Desconectar
+                  <button onClick={() => setIntegrationModal('calendar')}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#0891B2] text-white rounded-lg text-sm font-medium hover:bg-[#0E7490]">
+                    Configurar
                   </button>
                 ) : (
                   <a href={`/api/integrations/google/auth/${id}?tenantId=t1`}
                     className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#0891B2] text-white rounded-lg text-sm font-medium hover:bg-[#0E7490]">
-                    Configurar integração
+                    Conectar
                   </a>
                 )}
               </div>
 
-              {/* Lead Dispatch card */}
-              <div className="bg-white border border-gray-100 rounded-xl p-6 space-y-4">
-                <div className="flex items-center gap-3">
-                  <Zap className="w-8 h-8 text-amber-500" />
-                  <div>
-                    <h3 className="text-sm font-bold text-[#134E4A]">Disparo de Lead</h3>
-                    <p className="text-xs text-gray-400">{agent.leadDispatchEnabled ? `Ativo: ${agent.leadDispatchPhone}` : 'Envie leads qualificados'}</p>
-                  </div>
+              {/* Disparo de Lead */}
+              <div className="bg-white border border-gray-100 rounded-xl p-6 flex flex-col items-center text-center space-y-3">
+                <Zap className="w-10 h-10 text-amber-500" />
+                <div>
+                  <h3 className="text-sm font-bold text-[#134E4A]">Disparo de Lead</h3>
+                  <p className="text-xs text-gray-400 mt-1">Envie resumo do lead qualificado para a equipe de agendamento.</p>
                 </div>
-                <div className="space-y-2">
+                <div className="w-full space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500">Ativar disparo</span>
+                    <span className="text-xs text-gray-500">Ativar</span>
                     <button onClick={() => updateLeadDispatch.mutate({ leadDispatchEnabled: !agent.leadDispatchEnabled })}
                       className={cn('relative w-9 h-5 rounded-full transition-colors', agent.leadDispatchEnabled ? 'bg-[#0891B2]' : 'bg-gray-200')}>
                       <span className={cn('absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all', agent.leadDispatchEnabled ? 'left-[18px]' : 'left-0.5')} />
                     </button>
                   </div>
-                  <div className="flex gap-2">
-                    <input value={dispatchPhone} onChange={(e) => setDispatchPhone(e.target.value)} placeholder="5567999999999"
-                      className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-[#0891B2]" />
+                  <div className="flex gap-1">
+                    <input value={dispatchPhone} onChange={(e) => setDispatchPhone(e.target.value)} placeholder="5567..."
+                      className="flex-1 border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-[#0891B2]" />
                     <Button size="sm" onClick={() => updateLeadDispatch.mutate({ leadDispatchPhone: dispatchPhone })} disabled={!dispatchPhone.trim()}>
                       Salvar
                     </Button>
                   </div>
                 </div>
               </div>
+
+              {/* Webhook */}
+              <div className="bg-white border border-gray-100 rounded-xl p-6 flex flex-col items-center text-center space-y-3">
+                <Globe className="w-10 h-10 text-violet-500" />
+                <div>
+                  <h3 className="text-sm font-bold text-[#134E4A]">Webhook</h3>
+                  <p className="text-xs text-gray-400 mt-1">Dispare eventos para sistemas externos quando o agente qualificar ou transferir.</p>
+                </div>
+                <button onClick={() => setIntegrationModal('webhook')}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-violet-500 text-white rounded-lg text-sm font-medium hover:bg-violet-600">
+                  Configurar
+                </button>
+              </div>
             </div>
+
+            {/* ═══ Modal: Calendar Config ═══ */}
+            {integrationModal === 'calendar' && calendarConfig && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setIntegrationModal(null)}>
+                <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                    <h2 className="text-base font-semibold text-[#134E4A] flex items-center gap-2"><Calendar className="w-5 h-5 text-[#0891B2]" /> Google Calendar</h2>
+                    <button onClick={() => setIntegrationModal(null)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100"><X className="w-4 h-4" /></button>
+                  </div>
+                  <div className="px-6 py-5 space-y-5">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-gray-600">Conectado: {calendarConfig.calendarName}</p>
+                      <button onClick={() => { disconnectCalendar.mutate(); setIntegrationModal(null) }}
+                        className="text-xs text-red-500 hover:text-red-600 font-medium flex items-center gap-1">
+                        <Unlink className="w-3.5 h-3.5" /> Desconectar
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Agenda</label>
+                      <select value={calendarConfig.calendarId}
+                        onChange={(e) => {
+                          const cal = calendars.find((c: any) => c.id === e.target.value)
+                          updateCalendarConfig.mutate({ calendarId: e.target.value, calendarName: cal?.summary ?? e.target.value })
+                        }}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-[#0891B2]">
+                        {calendars.map((c: any) => (
+                          <option key={c.id} value={c.id}>{c.summary} {c.primary ? '(principal)' : ''}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Duração do agendamento</label>
+                      <div className="flex gap-2">
+                        {[15, 30, 45, 60].map((min) => (
+                          <button key={min} onClick={() => updateCalendarConfig.mutate({ slotDuration: min })}
+                            className={cn('flex-1 py-2 rounded-lg text-sm font-medium transition-colors',
+                              calendarConfig.slotDuration === min ? 'bg-[#0891B2] text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
+                            )}>
+                            {min}min
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Título do evento</label>
+                      <input defaultValue={calendarConfig.eventTitle}
+                        onBlur={(e) => updateCalendarConfig.mutate({ eventTitle: e.target.value })}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#0891B2]"
+                        placeholder="Consulta - {userName}" />
+                    </div>
+
+                    <div className="space-y-1 border-t border-gray-100 pt-4">
+                      {[
+                        { key: 'googleMeet', label: 'Google Meet', desc: 'Gerar link do Meet' },
+                        { key: 'consultHours', label: 'Consulta de horários', desc: 'Agente consulta horários' },
+                        { key: 'collectName', label: 'Coletar nome', desc: 'Solicitar nome do cliente' },
+                        { key: 'collectEmail', label: 'Coletar email', desc: 'Solicitar email' },
+                        { key: 'collectPhone', label: 'Coletar telefone', desc: 'Solicitar telefone' },
+                        { key: 'sendSummary', label: 'Enviar resumo', desc: 'Resumo da conversa no evento' },
+                      ].map((item) => (
+                        <div key={item.key} className="flex items-center justify-between py-2.5">
+                          <div>
+                            <p className="text-sm font-medium text-gray-700">{item.label}</p>
+                            <p className="text-xs text-gray-400">{item.desc}</p>
+                          </div>
+                          <button onClick={() => updateCalendarConfig.mutate({ [item.key]: !(calendarConfig as any)[item.key] })}
+                            className={cn('relative w-9 h-5 rounded-full transition-colors',
+                              (calendarConfig as any)[item.key] ? 'bg-[#0891B2]' : 'bg-gray-200'
+                            )}>
+                            <span className={cn('absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all',
+                              (calendarConfig as any)[item.key] ? 'left-[18px]' : 'left-0.5'
+                            )} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ═══ Modal: Webhook Config ═══ */}
+            {integrationModal === 'webhook' && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setIntegrationModal(null)}>
+                <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                    <h2 className="text-base font-semibold text-[#134E4A] flex items-center gap-2"><Globe className="w-5 h-5 text-violet-500" /> Webhook de Eventos</h2>
+                    <button onClick={() => setIntegrationModal(null)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100"><X className="w-4 h-4" /></button>
+                  </div>
+                  <div className="px-6 py-5 space-y-5">
+                    <p className="text-sm text-gray-500">Dispare eventos para sistemas externos (CRM, N8N, Make, Zapier) quando ações acontecerem na conversa.</p>
+
+                    <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                      <p className="text-xs font-semibold text-gray-500 uppercase">Eventos disponíveis</p>
+                      {[
+                        { event: 'lead.qualified', label: 'Lead qualificado', desc: 'Quando o agente qualifica um lead com nome + interesse' },
+                        { event: 'lead.transferred', label: 'Lead transferido', desc: 'Quando o agente transfere para atendente humano' },
+                        { event: 'appointment.created', label: 'Agendamento criado', desc: 'Quando um evento é criado no Google Calendar' },
+                        { event: 'conversation.closed', label: 'Conversa encerrada', desc: 'Quando a conversa é fechada' },
+                      ].map((item) => (
+                        <div key={item.event} className="flex items-center justify-between py-2">
+                          <div>
+                            <p className="text-sm font-medium text-gray-700">{item.label}</p>
+                            <p className="text-xs text-gray-400">{item.desc}</p>
+                          </div>
+                          <code className="text-[10px] text-violet-500 bg-violet-50 px-2 py-1 rounded">{item.event}</code>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                      <p className="text-xs text-amber-700">Em breve — esta integração será implementada na próxima atualização. Você poderá configurar URLs de destino e selecionar quais eventos disparar.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
