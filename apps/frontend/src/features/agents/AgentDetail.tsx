@@ -10,11 +10,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Pencil, ArrowLeft, Bot, Brain, Settings2, BookOpen, Play,
   Trash2, Plus, FileText, Globe, Loader2, Send, Calendar, Link2, Unlink,
-  Upload, Sparkles, Tag, X, Phone, Zap, ChevronRight,
+  Upload, Sparkles, Tag, X, Phone, Zap, ChevronRight, ChevronDown,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { useAgent } from './hooks/useAgents'
+import { useAgent, useUpdateAgent } from './hooks/useAgents'
 import { api } from '@/services/api'
 
 const statusVariant = { ACTIVE: 'active', PAUSED: 'paused', DRAFT: 'draft', DELETED: 'error' } as const
@@ -123,6 +123,12 @@ export function AgentDetail() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['calendar-config', id] }),
   })
 
+  // Agent update (inline settings)
+  const updateAgent = useUpdateAgent(id ?? '')
+
+  // Settings
+  const [showAdvanced, setShowAdvanced] = useState(false)
+
   // Integration modals
   const [openModal, setOpenModal] = useState<'calendar' | 'leadDispatch' | null>(null)
 
@@ -177,7 +183,7 @@ export function AgentDetail() {
               <h1 className="text-xl font-bold text-white">{agent.name}</h1>
               <Badge variant={statusVariant[agent.status]}>{statusLabel[agent.status]}</Badge>
             </div>
-            <p className="text-sm text-white/50">{agent.description ?? 'Sem descrição'} · {agent.model}</p>
+            <p className="text-sm text-white/50">{agent.description ?? 'Sem descrição'}</p>
           </div>
         </div>
         <Button variant="secondary" onClick={() => navigate(`/agents/${agent.id}/edit`)}>
@@ -211,7 +217,6 @@ export function AgentDetail() {
             <h3 className="text-sm font-semibold text-white/70">Informações</h3>
             {[
               ['Tipo', agent.agentType === 'ATIVO' ? 'Ativo (Vendas)' : 'Passivo (Chat IA)'],
-              ['Modelo', agent.model],
               ['Objetivo', PURPOSE_LABELS[agent.purpose] ?? agent.purpose],
               ['Empresa', agent.companyName ?? '—'],
               ['Tom', agent.communicationTone ?? 'normal'],
@@ -627,28 +632,131 @@ export function AgentDetail() {
 
       {/* ─── Tab: Configurações ─── */}
       {tab === 'settings' && (
-        <div className="bg-white/5 border border-white/10 rounded-xl p-5 space-y-3">
-          {[
-            ['Temperatura', agent.temperature.toFixed(1)],
-            ['Max Tokens', String(agent.maxTokens)],
-            ['Memória', `${agent.historyLimit} mensagens`],
-            ['Limite de trocas', agent.limitTurns ? `${agent.maxTurns} trocas` : 'Sem limite'],
-            ['Fallback', agent.fallbackEnabled ? 'Ativado' : 'Desativado'],
-            ['Emojis', agent.useEmojis !== false ? 'Sim' : 'Não'],
-            ['Dividir resposta', agent.splitResponse !== false ? 'Sim' : 'Não'],
-            ['Restringir temas', agent.restrictTopics ? 'Sim' : 'Não'],
-            ['Assinar nome', agent.signName ? 'Sim' : 'Não'],
-            ['Inatividade', `${agent.inactivityMinutes ?? 10}min → ${agent.inactivityAction ?? 'close'}`],
-          ].map(([label, value]) => (
-            <div key={label} className="flex justify-between text-sm py-1">
-              <span className="text-white/40">{label}</span>
-              <span className="text-white font-medium">{value}</span>
+        <div className="space-y-4">
+          {/* Comportamento */}
+          <div className="bg-white/5 border border-white/10 rounded-xl p-5 space-y-1">
+            <h3 className="text-sm font-semibold text-white/70 mb-3">Comportamento</h3>
+            {[
+              { key: 'useEmojis', label: 'Usar emojis', desc: 'Permite que o agente use emojis nas respostas', value: agent.useEmojis },
+              { key: 'splitResponse', label: 'Dividir resposta', desc: 'Separa mensagens longas em várias mensagens curtas', value: agent.splitResponse },
+              { key: 'restrictTopics', label: 'Restringir temas', desc: 'O agente só fala sobre assuntos da base de conhecimento', value: agent.restrictTopics },
+              { key: 'signName', label: 'Assinar nome', desc: 'Adiciona o nome do agente ao final de cada mensagem', value: agent.signName },
+            ].map((item) => (
+              <div key={item.key} className="flex items-center justify-between py-2.5">
+                <div>
+                  <p className="text-sm font-medium text-white/80">{item.label}</p>
+                  <p className="text-xs text-white/30">{item.desc}</p>
+                </div>
+                <button
+                  onClick={() => updateAgent.mutateAsync({ [item.key]: !item.value })}
+                  className={`relative w-9 h-5 rounded-full transition-colors ${
+                    item.value ? 'bg-beacon-primary' : 'bg-white/15'
+                  }`}>
+                  <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${
+                    item.value ? 'left-[18px]' : 'left-0.5'
+                  }`} />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* Limites */}
+          <div className="bg-white/5 border border-white/10 rounded-xl p-5 space-y-3">
+            <h3 className="text-sm font-semibold text-white/70 mb-1">Limites</h3>
+
+            <div className="flex items-center justify-between py-2">
+              <div>
+                <p className="text-sm font-medium text-white/80">Limite de trocas</p>
+                <p className="text-xs text-white/30">Encerra a conversa após um número máximo de interações</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {agent.limitTurns && (
+                  <span className="text-xs text-white/50 bg-white/8 px-2 py-1 rounded">{agent.maxTurns} trocas</span>
+                )}
+                <button
+                  onClick={() => updateAgent.mutateAsync({ limitTurns: !agent.limitTurns })}
+                  className={`relative w-9 h-5 rounded-full transition-colors ${
+                    agent.limitTurns ? 'bg-beacon-primary' : 'bg-white/15'
+                  }`}>
+                  <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${
+                    agent.limitTurns ? 'left-[18px]' : 'left-0.5'
+                  }`} />
+                </button>
+              </div>
             </div>
-          ))}
-          <div className="pt-3 border-t border-white/10">
-            <Button variant="secondary" onClick={() => navigate(`/agents/${agent.id}/edit`)}>
-              <Settings2 className="w-4 h-4" /> Alterar configurações
-            </Button>
+
+            <div className="flex items-center justify-between py-2">
+              <div>
+                <p className="text-sm font-medium text-white/80">Fallback</p>
+                <p className="text-xs text-white/30">Envia mensagem de segurança se a IA falhar</p>
+              </div>
+              <button
+                onClick={() => updateAgent.mutateAsync({ fallbackEnabled: !agent.fallbackEnabled })}
+                className={`relative w-9 h-5 rounded-full transition-colors ${
+                  agent.fallbackEnabled ? 'bg-beacon-primary' : 'bg-white/15'
+                }`}>
+                <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${
+                  agent.fallbackEnabled ? 'left-[18px]' : 'left-0.5'
+                }`} />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between py-2">
+              <div>
+                <p className="text-sm font-medium text-white/80">Inatividade</p>
+                <p className="text-xs text-white/30">O que fazer se o cliente parar de responder</p>
+              </div>
+              <span className="text-xs text-white/50 bg-white/8 px-2 py-1 rounded">
+                {agent.inactivityMinutes ?? 10}min → {
+                  (agent.inactivityAction ?? 'close') === 'close' ? 'Finalizar' :
+                  agent.inactivityAction === 'transfer' ? 'Transferir' : 'Mensagem'
+                }
+              </span>
+            </div>
+          </div>
+
+          {/* Avançado (colapsável) */}
+          <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+            <button
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="w-full flex items-center justify-between p-5 text-left hover:bg-white/5 transition-colors"
+            >
+              <div>
+                <h3 className="text-sm font-semibold text-white/70">Avançado</h3>
+                <p className="text-xs text-white/30">Parâmetros técnicos do modelo de IA</p>
+              </div>
+              <ChevronDown className={`w-4 h-4 text-white/40 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
+            </button>
+            {showAdvanced && (
+              <div className="px-5 pb-5 space-y-3 border-t border-white/10">
+                <div className="flex justify-between items-center py-2">
+                  <div>
+                    <p className="text-sm font-medium text-white/80">Temperatura</p>
+                    <p className="text-xs text-white/30">Controla a criatividade. Menor = mais previsível, maior = mais criativo</p>
+                  </div>
+                  <span className="text-sm text-white font-medium">{agent.temperature.toFixed(1)}</span>
+                </div>
+                <div className="flex justify-between items-center py-2">
+                  <div>
+                    <p className="text-sm font-medium text-white/80">Max Tokens</p>
+                    <p className="text-xs text-white/30">Tamanho máximo da resposta da IA em tokens (~palavras)</p>
+                  </div>
+                  <span className="text-sm text-white font-medium">{agent.maxTokens}</span>
+                </div>
+                <div className="flex justify-between items-center py-2">
+                  <div>
+                    <p className="text-sm font-medium text-white/80">Memória</p>
+                    <p className="text-xs text-white/30">Quantas mensagens anteriores a IA considera ao responder</p>
+                  </div>
+                  <span className="text-sm text-white font-medium">{agent.historyLimit} msgs</span>
+                </div>
+                <div className="pt-2">
+                  <Button variant="ghost" size="sm" onClick={() => navigate(`/agents/${agent.id}/edit`)}>
+                    <Settings2 className="w-3.5 h-3.5" /> Editar no wizard
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
