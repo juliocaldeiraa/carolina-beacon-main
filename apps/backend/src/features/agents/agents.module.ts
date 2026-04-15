@@ -5,6 +5,7 @@ import { AgentsService }            from './agents.service'
 import { TrainingsService }         from './trainings.service'
 import { TrainingProcessorService } from './training-processor.service'
 import { FeedbackService }          from './feedback.service'
+import { AgentRefineService }       from './agent-refine.service'
 import { TrainingsController }      from './trainings.controller'
 import { AgentRepository }          from '../../infrastructure/database/repositories/agent.repository'
 import { AGENT_REPOSITORY }         from '../../core/repositories/IAgentRepository'
@@ -19,6 +20,7 @@ import { PrismaModule }             from '../../infrastructure/database/prisma/p
     TrainingsService,
     TrainingProcessorService,
     FeedbackService,
+    AgentRefineService,
     { provide: AGENT_REPOSITORY, useClass: AgentRepository },
   ],
   exports: [AgentsService, TrainingsService],

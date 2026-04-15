@@ -74,6 +74,33 @@ export function AgentDetail() {
   const [section, setSection] = useState<Section>('profile')
   const updateAgent = useUpdateAgent(id ?? '')
 
+  // AI Refine
+  const [refining, setRefining] = useState<string | null>(null)
+  const generateDna = useMutation({
+    mutationFn: () => api.post(`/agents/${id}/generate-dna`).then((r) => r.data),
+    onSuccess: async (data: any) => {
+      await updateAgent.mutateAsync({ personality: data.personality, actionPrompt: data.actionPrompt, conversationFlow: data.conversationFlow })
+      toast({ title: 'DNA gerado com sucesso', type: 'success' })
+      setRefining(null)
+    },
+  })
+  const refinePersonality = useMutation({
+    mutationFn: () => api.post(`/agents/${id}/refine-personality`).then((r) => r.data),
+    onSuccess: async (data: any) => {
+      await updateAgent.mutateAsync({ personality: data.personality })
+      toast({ title: 'Personalidade refinada', type: 'success' })
+      setRefining(null)
+    },
+  })
+  const refineAction = useMutation({
+    mutationFn: () => api.post(`/agents/${id}/refine-action`).then((r) => r.data),
+    onSuccess: async (data: any) => {
+      await updateAgent.mutateAsync({ actionPrompt: data.actionPrompt })
+      toast({ title: 'Instrução refinada', type: 'success' })
+      setRefining(null)
+    },
+  })
+
   // Trainings
   const { data: trainings = [] } = useQuery({
     queryKey: ['trainings', id],
@@ -263,9 +290,32 @@ export function AgentDetail() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-600">Comportamento</label>
-              <p className="text-xs text-gray-400">Descreva como o agente deve se comportar durante a conversa.</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Comportamento</label>
+                  <p className="text-xs text-gray-400">Descreva como o agente deve se comportar durante a conversa.</p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setRefining('personality'); refinePersonality.mutate() }}
+                    disabled={refinePersonality.isPending || !agent.personality}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#0891B2] bg-[#0891B2]/10 rounded-lg hover:bg-[#0891B2]/20 disabled:opacity-40 transition-colors"
+                  >
+                    {refinePersonality.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                    Refinar com IA
+                  </button>
+                  <button
+                    onClick={() => { setRefining('dna'); generateDna.mutate() }}
+                    disabled={generateDna.isPending}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-violet-600 bg-violet-50 rounded-lg hover:bg-violet-100 disabled:opacity-40 transition-colors"
+                  >
+                    {generateDna.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                    Gerar DNA
+                  </button>
+                </div>
+              </div>
               <textarea
+                key={agent.personality ?? 'empty'}
                 defaultValue={agent.personality ?? ''}
                 onBlur={(e) => save({ personality: e.target.value })}
                 rows={10}
@@ -317,9 +367,22 @@ export function AgentDetail() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-600">Instrução de ação</label>
-              <p className="text-xs text-gray-400">O que o agente deve fazer nesta conversa especificamente.</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Instrução de ação</label>
+                  <p className="text-xs text-gray-400">O que o agente deve fazer nesta conversa especificamente.</p>
+                </div>
+                <button
+                  onClick={() => { setRefining('action'); refineAction.mutate() }}
+                  disabled={refineAction.isPending || !agent.actionPrompt}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#0891B2] bg-[#0891B2]/10 rounded-lg hover:bg-[#0891B2]/20 disabled:opacity-40 transition-colors"
+                >
+                  {refineAction.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                  Refinar com IA
+                </button>
+              </div>
               <textarea
+                key={agent.actionPrompt ?? 'empty'}
                 defaultValue={agent.actionPrompt ?? ''}
                 onBlur={(e) => save({ actionPrompt: e.target.value })}
                 rows={8}

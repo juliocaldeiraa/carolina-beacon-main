@@ -7,6 +7,7 @@ import {
   IsArray, IsNumber, IsBoolean, Min, Max,
 } from 'class-validator'
 import { AgentsService } from '../../features/agents/agents.service'
+import { AgentRefineService } from '../../features/agents/agent-refine.service'
 import { JwtGuard } from '../../shared/guards/jwt.guard'
 import { AgentStatus, AgentType } from '../../core/entities/Agent'
 
@@ -213,7 +214,10 @@ class TestAgentDto {
 @Controller('agents')
 @UseGuards(JwtGuard)
 export class AgentsController {
-  constructor(private readonly svc: AgentsService) {}
+  constructor(
+    private readonly svc: AgentsService,
+    private readonly refine: AgentRefineService,
+  ) {}
 
   @Get()
   findAll(@Query('type') type?: string) {
@@ -249,5 +253,44 @@ export class AgentsController {
   @Post(':id/test')
   test(@Param('id') id: string, @Body() dto: TestAgentDto) {
     return this.svc.test(id, dto.message)
+  }
+
+  @Post(':id/generate-dna')
+  async generateDna(@Param('id') id: string) {
+    const agent = await this.svc.findById(id)
+    return this.refine.generateDna({
+      name: agent.name,
+      companyName: agent.companyName,
+      companyUrl: agent.companyUrl,
+      description: agent.description,
+      purpose: agent.purpose,
+      communicationTone: agent.communicationTone,
+    })
+  }
+
+  @Post(':id/refine-personality')
+  async refinePersonality(@Param('id') id: string) {
+    const agent = await this.svc.findById(id)
+    const refined = await this.refine.refinePersonality({
+      name: agent.name,
+      companyName: agent.companyName,
+      purpose: agent.purpose,
+      communicationTone: agent.communicationTone,
+      personality: agent.personality,
+    })
+    return { personality: refined }
+  }
+
+  @Post(':id/refine-action')
+  async refineAction(@Param('id') id: string) {
+    const agent = await this.svc.findById(id)
+    const refined = await this.refine.refineActionPrompt({
+      name: agent.name,
+      companyName: agent.companyName,
+      purpose: agent.purpose,
+      communicationTone: agent.communicationTone,
+      actionPrompt: agent.actionPrompt,
+    })
+    return { actionPrompt: refined }
   }
 }
