@@ -292,14 +292,7 @@ export function AgentDetail() {
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-gray-600">Comportamento</label>
               <p className="text-xs text-gray-400">Descreva como o agente deve se comportar durante a conversa.</p>
-              <textarea
-                key={agent.personality ?? 'empty'}
-                defaultValue={agent.personality ?? ''}
-                onBlur={(e) => save({ personality: e.target.value })}
-                rows={10}
-                className="w-full px-4 py-3 text-sm text-[#134E4A] bg-white rounded-xl border border-gray-200 resize-y focus:outline-none focus:border-[#0891B2] focus:ring-2 focus:ring-[#0891B2]/10"
-              />
-              <div className="flex gap-2">
+              <div className="flex gap-2 py-1">
                 <button
                   onClick={() => { setRefining('personality'); refinePersonality.mutate() }}
                   disabled={refinePersonality.isPending || !agent.personality}
@@ -317,6 +310,13 @@ export function AgentDetail() {
                   Gerar DNA
                 </button>
               </div>
+              <textarea
+                key={agent.personality ?? 'empty'}
+                defaultValue={agent.personality ?? ''}
+                onBlur={(e) => save({ personality: e.target.value })}
+                rows={10}
+                className="w-full px-4 py-3 text-sm text-[#134E4A] bg-white rounded-xl border border-gray-200 resize-y focus:outline-none focus:border-[#0891B2] focus:ring-2 focus:ring-[#0891B2]/10"
+              />
             </div>
           </div>
         )}
@@ -365,6 +365,16 @@ export function AgentDetail() {
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-gray-600">Instrução de ação</label>
               <p className="text-xs text-gray-400">O que o agente deve fazer nesta conversa especificamente.</p>
+              <div className="flex gap-2 py-1">
+                <button
+                  onClick={() => { setRefining('action'); refineAction.mutate() }}
+                  disabled={refineAction.isPending || !agent.actionPrompt}
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-[#0891B2] bg-[#0891B2]/10 rounded-lg hover:bg-[#0891B2]/20 disabled:opacity-40 transition-colors"
+                >
+                  {refineAction.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                  Refinar com IA
+                </button>
+              </div>
               <textarea
                 key={agent.actionPrompt ?? 'empty'}
                 defaultValue={agent.actionPrompt ?? ''}
@@ -372,14 +382,6 @@ export function AgentDetail() {
                 rows={8}
                 className="w-full px-4 py-3 text-sm text-[#134E4A] bg-white rounded-xl border border-gray-200 resize-y font-mono focus:outline-none focus:border-[#0891B2] focus:ring-2 focus:ring-[#0891B2]/10"
               />
-              <button
-                onClick={() => { setRefining('action'); refineAction.mutate() }}
-                disabled={refineAction.isPending || !agent.actionPrompt}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-[#0891B2] bg-[#0891B2]/10 rounded-lg hover:bg-[#0891B2]/20 disabled:opacity-40 transition-colors"
-              >
-                {refineAction.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-                Refinar com IA
-              </button>
             </div>
 
             <div className="space-y-1.5">
