@@ -34,11 +34,14 @@ export class ReminderService {
    */
   @Cron('*/5 * * * *')
   async checkReminders(): Promise<void> {
+    this.logger.log('[reminder cron] Verificando lembretes...')
+
     const agents = await this.prisma.agent.findMany({
       where: { reminderEnabled: true, deletedAt: null, status: 'ACTIVE' },
       select: { id: true, name: true, reminderMinutes: true, reminderMessage: true, channelId: true },
     })
 
+    this.logger.log(`[reminder cron] ${agents.length} agente(s) com lembrete ativo`)
     if (agents.length === 0) return
 
     for (const agent of agents) {
@@ -56,6 +59,7 @@ export class ReminderService {
         },
       })
 
+      this.logger.log(`[reminder cron] Agente ${agent.name}: janela ${windowStart.toISOString()} - ${windowEnd.toISOString()}, ${events.length} evento(s)`)
       if (events.length === 0) continue
 
       const channel = await this.getAgentChannel(agent.id)
