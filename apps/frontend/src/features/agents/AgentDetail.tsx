@@ -836,7 +836,7 @@ export function AgentDetail() {
                     <label className="text-sm font-medium text-gray-600">Mensagem do lembrete</label>
                     <p className="text-xs text-gray-400">Use {'{nome}'}, {'{data}'} e {'{horario}'} para personalizar.</p>
                     <textarea
-                      defaultValue={agent.reminderMessage ?? 'Oi {nome}! Passando pra lembrar do seu agendamento dia {data} as {horario}. Te esperamos!'}
+                      defaultValue={agent.reminderMessage ?? 'Oi {nome}! Lembrando do seu agendamento dia {data} as {horario}. Pode confirmar sua presenca?'}
                       onBlur={(e) => save({ reminderMessage: e.target.value })}
                       rows={3}
                       className="w-full px-4 py-3 text-sm text-[#134E4A] bg-white rounded-xl border border-gray-200 resize-y focus:outline-none focus:border-[#0891B2] focus:ring-2 focus:ring-[#0891B2]/10"

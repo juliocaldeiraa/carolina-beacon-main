@@ -235,6 +235,26 @@ export class GoogleCalendarService {
     }
   }
 
+  /**
+   * Atualiza a cor de um evento no Google Calendar.
+   * Cores: '2' = verde (confirmado), '11' = vermelho (cancelado), '5' = amarelo (pendente)
+   */
+  async updateEventColor(agentId: string, googleEventId: string, colorId: string): Promise<void> {
+    try {
+      const { oauth2, integration } = await this.getAuthenticatedClient(agentId)
+      const calendar = google.calendar({ version: 'v3', auth: oauth2 })
+
+      await calendar.events.patch({
+        calendarId: integration.calendarId,
+        eventId: googleEventId,
+        requestBody: { colorId },
+      })
+      this.logger.log(`Evento ${googleEventId} cor atualizada para ${colorId}`)
+    } catch (err) {
+      this.logger.error(`Falha ao atualizar cor do evento ${googleEventId}: ${err}`)
+    }
+  }
+
   async getIntegration(agentId: string) {
     return this.prisma.googleCalendarIntegration.findUnique({ where: { agentId } })
   }

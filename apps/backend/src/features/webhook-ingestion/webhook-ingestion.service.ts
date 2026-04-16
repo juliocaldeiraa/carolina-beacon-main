@@ -31,6 +31,7 @@ import { TrainingsService } from '@/features/agents/trainings.service'
 import { GoogleCalendarService } from '@/infrastructure/google-calendar/google-calendar.service'
 import { CALENDAR_TOOLS, getCalendarSystemPrompt, executeCalendarTool } from '@/infrastructure/google-calendar/calendar-tools'
 import { MediaProcessingService } from '@/infrastructure/media/media-processing.service'
+import { ReminderService } from '@/features/reminders/reminder.service'
 import { parseWebhookPayload }    from './webhook-ingestion.parser'
 import { buildEnrichedSystemPrompt } from '@/core/entities/Agent'
 import { brPhoneVariants }        from '@/shared/utils/phone.utils'
@@ -103,6 +104,7 @@ export class WebhookIngestionService {
     private readonly trainingsService: TrainingsService,
     private readonly calendarService: GoogleCalendarService,
     private readonly mediaProcessing: MediaProcessingService,
+    private readonly reminderService: ReminderService,
   ) {}
 
   // ─── Helpers de log ─────────────────────────────────────────────────────────
@@ -508,6 +510,16 @@ export class WebhookIngestionService {
       })
       return
     }
+
+    // Verificar se é resposta a lembrete de agendamento
+    try {
+      const isReminderReply = await this.reminderService.handleConfirmationReply(agentRow.id, phone, text, channel)
+      if (isReminderReply) {
+        this.logger.log(`[reminder] Resposta de confirmação processada para ${phone}`)
+        this.updateLog(logId, { status: 'completed', step: 'reminder_confirmation' })
+        return
+      }
+    } catch {}
 
     if (!conv) {
       conv = await this.prisma.conversation.create({

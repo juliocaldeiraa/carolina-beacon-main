@@ -4,6 +4,7 @@ import { AiEngineModule }            from '@/infrastructure/ai-engine/ai-engine.
 import { ChannelSendModule }         from '@/infrastructure/channel-send/channel-send.module'
 import { GoogleCalendarModule }      from '@/infrastructure/google-calendar/google-calendar.module'
 import { MediaProcessingModule }     from '@/infrastructure/media/media-processing.module'
+import { RemindersModule }           from '@/features/reminders/reminders.module'
 import { ContactsModule }            from '@/features/contacts/contacts.module'
 import { AutomationsModule }         from '@/features/automations/automations.module'
 import { CampaignsModule }          from '@/features/campaigns/campaigns.module'
@@ -18,6 +19,7 @@ import { WebhookIngestionController } from '@/presentation/webhook-ingestion/web
     ChannelSendModule,
     GoogleCalendarModule,
     MediaProcessingModule,
+    RemindersModule,
     ContactsModule,
     AutomationsModule,
     CampaignsModule,
