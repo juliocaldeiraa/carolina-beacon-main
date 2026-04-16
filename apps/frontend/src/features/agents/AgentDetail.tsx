@@ -817,18 +817,20 @@ export function AgentDetail() {
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-600">Quanto tempo antes?</label>
                     <div className="flex gap-2">
-                      {[
-                        { min: 60, label: '1 hora' },
-                        { min: 120, label: '2 horas' },
-                        { min: 1440, label: '24 horas' },
-                      ].map((opt) => (
-                        <button key={opt.min} onClick={() => save({ reminderMinutes: opt.min })}
-                          className={cn('flex-1 py-2 rounded-lg text-sm font-medium transition-colors',
-                            agent.reminderMinutes === opt.min ? 'bg-[#0891B2] text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
-                          )}>
-                          {opt.label}
-                        </button>
-                      ))}
+                      <select
+                        value={agent.reminderMinutes}
+                        onChange={(e) => save({ reminderMinutes: Number(e.target.value) })}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-[#134E4A] focus:outline-none focus:border-[#0891B2]"
+                      >
+                        <option value={30}>30 minutos antes</option>
+                        <option value={60}>1 hora antes</option>
+                        <option value={120}>2 horas antes</option>
+                        <option value={180}>3 horas antes</option>
+                        <option value={360}>6 horas antes</option>
+                        <option value={720}>12 horas antes</option>
+                        <option value={1440}>24 horas antes</option>
+                        <option value={2880}>48 horas antes</option>
+                      </select>
                     </div>
                   </div>
 
