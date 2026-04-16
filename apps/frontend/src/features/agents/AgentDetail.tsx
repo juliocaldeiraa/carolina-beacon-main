@@ -816,21 +816,34 @@ export function AgentDetail() {
                 {agent.reminderEnabled && (<>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-600">Quanto tempo antes?</label>
-                    <div className="flex gap-2">
-                      <select
-                        value={agent.reminderMinutes}
-                        onChange={(e) => save({ reminderMinutes: Number(e.target.value) })}
-                        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-[#134E4A] focus:outline-none focus:border-[#0891B2]"
-                      >
-                        <option value={30}>30 minutos antes</option>
-                        <option value={60}>1 hora antes</option>
-                        <option value={120}>2 horas antes</option>
-                        <option value={180}>3 horas antes</option>
-                        <option value={360}>6 horas antes</option>
-                        <option value={720}>12 horas antes</option>
-                        <option value={1440}>24 horas antes</option>
-                        <option value={2880}>48 horas antes</option>
-                      </select>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-500">Enviar lembrete</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={72}
+                        defaultValue={Math.floor((agent.reminderMinutes ?? 120) / 60)}
+                        onBlur={(e) => {
+                          const hours = Number(e.target.value) || 0
+                          const currentMin = (agent.reminderMinutes ?? 120) % 60
+                          save({ reminderMinutes: hours * 60 + currentMin })
+                        }}
+                        className="w-16 border border-gray-200 rounded-lg px-3 py-2 text-sm text-center text-[#134E4A] focus:outline-none focus:border-[#0891B2]"
+                      />
+                      <span className="text-sm text-gray-500">horas e</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={59}
+                        defaultValue={(agent.reminderMinutes ?? 120) % 60}
+                        onBlur={(e) => {
+                          const minutes = Number(e.target.value) || 0
+                          const currentHours = Math.floor((agent.reminderMinutes ?? 120) / 60)
+                          save({ reminderMinutes: currentHours * 60 + minutes })
+                        }}
+                        className="w-16 border border-gray-200 rounded-lg px-3 py-2 text-sm text-center text-[#134E4A] focus:outline-none focus:border-[#0891B2]"
+                      />
+                      <span className="text-sm text-gray-500">minutos antes</span>
                     </div>
                   </div>
 
