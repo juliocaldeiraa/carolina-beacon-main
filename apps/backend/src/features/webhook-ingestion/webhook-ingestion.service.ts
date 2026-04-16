@@ -285,6 +285,22 @@ export class WebhookIngestionService {
           .catch(() => this.createLog(logData))
       : await this.createLog(logData)
 
+    // 2c. Verificar se é resposta a lembrete de agendamento (antes de humanTakeover)
+    try {
+      const agentForReminder = await this.prisma.channelAgent.findFirst({
+        where: { channelId, isActive: true },
+        select: { agentId: true },
+      })
+      if (agentForReminder) {
+        const isReminderReply = await this.reminderService.handleConfirmationReply(agentForReminder.agentId, phone, text, channel)
+        if (isReminderReply) {
+          this.logger.log(`[reminder] Resposta de confirmação processada para ${phone}`)
+          this.updateLog(logId, { status: 'completed', step: 'reminder_confirmation' })
+          return
+        }
+      }
+    } catch {}
+
     // 3. Atendimento humano — verificado antes do debounce para resposta imediata
     const existingConv = await this.prisma.conversation.findFirst({
       where: { channelId, contactPhone: phone, tenantId: this.tenantId, status: 'OPEN' },
