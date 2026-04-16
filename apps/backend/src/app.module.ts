@@ -21,6 +21,7 @@ import { CampaignsModule }         from './features/campaigns/campaigns.module'
 import { DispatchModule }          from './features/dispatch/dispatch.module'
 import { FollowUpModule }          from './features/follow-up/follow-up.module'
 import { GoogleCalendarModule }     from './infrastructure/google-calendar/google-calendar.module'
+import { RemindersModule }          from './features/reminders/reminders.module'
 import { GoogleCalendarController } from './presentation/integrations/google-calendar.controller'
 import { PrismaModule }           from './infrastructure/database/prisma/prisma.module'
 
@@ -49,6 +50,7 @@ import { PrismaModule }           from './infrastructure/database/prisma/prisma.
     DispatchModule,
     FollowUpModule,
     GoogleCalendarModule,
+    RemindersModule,
   ],
   controllers: [GoogleCalendarController],
 })

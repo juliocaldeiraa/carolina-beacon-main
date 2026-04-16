@@ -113,6 +113,10 @@ model Agent {
   // Disparo de lead qualificado
   leadDispatchEnabled Boolean  @default(false)     @map("lead_dispatch_enabled")
   leadDispatchPhone   String?                      @map("lead_dispatch_phone")  // numero que recebe o resumo do lead
+  // Lembrete de agendamento
+  reminderEnabled     Boolean  @default(false)     @map("reminder_enabled")
+  reminderMinutes     Int      @default(120)       @map("reminder_minutes")     // minutos antes do agendamento (ex: 120 = 2h antes)
+  reminderMessage     String?  @db.Text            @map("reminder_message")     // mensagem customizada do lembrete
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   deletedAt       DateTime?   // soft delete
@@ -121,6 +125,7 @@ model Agent {
   metrics          Metric[]
   trainings        AgentTraining[]
   calendarIntegration GoogleCalendarIntegration?
+  calendarEvents   CalendarEvent[]
   feedbacks        ConversationFeedback[]
 
   @@index([tenantId])
@@ -174,6 +179,30 @@ model GoogleCalendarIntegration {
   updatedAt     DateTime @updatedAt @map("updated_at")
 
   @@map("google_calendar_integrations")
+}
+
+// =============================================
+// CALENDAR EVENT — Agendamentos criados pelo agente
+// =============================================
+model CalendarEvent {
+  id              String    @id @default(uuid())
+  agentId         String    @map("agent_id")
+  agent           Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  googleEventId   String    @map("google_event_id")
+  title           String
+  startTime       DateTime  @map("start_time")
+  clientName      String    @map("client_name")
+  clientPhone     String?   @map("client_phone")
+  clientEmail     String?   @map("client_email")
+  conversationId  String?   @map("conversation_id")
+  status          String    @default("scheduled")  // scheduled | reminded | completed | cancelled
+  reminderSentAt  DateTime? @map("reminder_sent_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  @@index([agentId])
+  @@index([startTime])
+  @@index([status])
+  @@map("calendar_events")
 }
 
 // =============================================

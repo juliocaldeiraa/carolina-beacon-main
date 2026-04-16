@@ -61,6 +61,9 @@ export interface Agent {
   conversationFlow?: string
   leadDispatchEnabled: boolean
   leadDispatchPhone?: string
+  reminderEnabled: boolean
+  reminderMinutes: number
+  reminderMessage?: string
   createdAt: Date
   updatedAt: Date
   deletedAt?: Date

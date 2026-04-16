@@ -187,7 +187,7 @@ export function AgentDetail() {
 
   // Settings
   const [showAdvanced, setShowAdvanced] = useState(false)
-  const [configSubTab, setConfigSubTab] = useState<'conversa' | 'inatividade'>('conversa')
+  const [configSubTab, setConfigSubTab] = useState<'conversa' | 'inatividade' | 'lembretes'>('conversa')
 
   // Init dispatch phone from agent
   useEffect(() => {
@@ -720,7 +720,8 @@ export function AgentDetail() {
             <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
               {[
                 { id: 'conversa' as const, label: 'Conversa' },
-                { id: 'inatividade' as const, label: 'Ações de inatividade' },
+                { id: 'inatividade' as const, label: 'Inatividade' },
+                { id: 'lembretes' as const, label: 'Lembretes' },
               ].map((t) => (
                 <button key={t.id} onClick={() => setConfigSubTab(t.id)}
                   className={cn('flex-1 py-2 rounded-md text-sm font-medium transition-colors',
@@ -794,6 +795,54 @@ export function AgentDetail() {
                 <Button variant="ghost" size="sm" onClick={() => navigate(`/agents/${agent.id}/edit`)}>
                   <Pencil className="w-3.5 h-3.5" /> Editar no wizard
                 </Button>
+              </div>
+            )}
+
+            {configSubTab === 'lembretes' && (
+              <div className="bg-white border border-gray-100 rounded-xl p-5 space-y-4">
+                <p className="text-xs text-gray-400">Envie lembretes automáticos antes dos agendamentos via WhatsApp.</p>
+
+                <div className="flex items-center justify-between py-2">
+                  <div>
+                    <p className="text-sm font-medium text-[#134E4A]">Ativar lembretes</p>
+                    <p className="text-xs text-gray-400">Envia mensagem antes do agendamento</p>
+                  </div>
+                  <button onClick={() => save({ reminderEnabled: !agent.reminderEnabled })}
+                    className={cn('relative w-9 h-5 rounded-full transition-colors', agent.reminderEnabled ? 'bg-[#0891B2]' : 'bg-gray-200')}>
+                    <span className={cn('absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all', agent.reminderEnabled ? 'left-[18px]' : 'left-0.5')} />
+                  </button>
+                </div>
+
+                {agent.reminderEnabled && (<>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-600">Quanto tempo antes?</label>
+                    <div className="flex gap-2">
+                      {[
+                        { min: 60, label: '1 hora' },
+                        { min: 120, label: '2 horas' },
+                        { min: 1440, label: '24 horas' },
+                      ].map((opt) => (
+                        <button key={opt.min} onClick={() => save({ reminderMinutes: opt.min })}
+                          className={cn('flex-1 py-2 rounded-lg text-sm font-medium transition-colors',
+                            agent.reminderMinutes === opt.min ? 'bg-[#0891B2] text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
+                          )}>
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-600">Mensagem do lembrete</label>
+                    <p className="text-xs text-gray-400">Use {'{nome}'}, {'{data}'} e {'{horario}'} para personalizar.</p>
+                    <textarea
+                      defaultValue={agent.reminderMessage ?? 'Oi {nome}! Passando pra lembrar do seu agendamento dia {data} as {horario}. Te esperamos!'}
+                      onBlur={(e) => save({ reminderMessage: e.target.value })}
+                      rows={3}
+                      className="w-full px-4 py-3 text-sm text-[#134E4A] bg-white rounded-xl border border-gray-200 resize-y focus:outline-none focus:border-[#0891B2] focus:ring-2 focus:ring-[#0891B2]/10"
+                    />
+                  </div>
+                </>)}
               </div>
             )}
           </div>

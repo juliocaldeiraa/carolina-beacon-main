@@ -29,6 +29,9 @@ export interface CreateAgentDto {
   conversationFlow?: string
   leadDispatchEnabled?: boolean
   leadDispatchPhone?: string
+  reminderEnabled?: boolean
+  reminderMinutes?: number
+  reminderMessage?: string
 }
 
 export interface UpdateAgentDto {
@@ -60,6 +63,9 @@ export interface UpdateAgentDto {
   conversationFlow?: string
   leadDispatchEnabled?: boolean
   leadDispatchPhone?: string
+  reminderEnabled?: boolean
+  reminderMinutes?: number
+  reminderMessage?: string
 }
 
 export interface IAgentRepository {

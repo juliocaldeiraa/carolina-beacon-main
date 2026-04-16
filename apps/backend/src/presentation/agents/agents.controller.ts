@@ -104,6 +104,9 @@ class CreateAgentDto {
   @IsOptional() @IsString()  conversationFlow?: string
   @IsOptional() @IsBoolean() leadDispatchEnabled?: boolean
   @IsOptional() @IsString()  leadDispatchPhone?: string
+  @IsOptional() @IsBoolean() reminderEnabled?: boolean
+  @IsOptional() @IsNumber()  reminderMinutes?: number
+  @IsOptional() @IsString()  reminderMessage?: string
 }
 
 class UpdateAgentDto {
@@ -194,6 +197,9 @@ class UpdateAgentDto {
   @IsOptional() @IsString()  conversationFlow?: string
   @IsOptional() @IsBoolean() leadDispatchEnabled?: boolean
   @IsOptional() @IsString()  leadDispatchPhone?: string
+  @IsOptional() @IsBoolean() reminderEnabled?: boolean
+  @IsOptional() @IsNumber()  reminderMinutes?: number
+  @IsOptional() @IsString()  reminderMessage?: string
 }
 
 class UpdateStatusDto {

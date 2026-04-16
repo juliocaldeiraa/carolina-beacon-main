@@ -90,8 +90,36 @@ export async function executeCalendarTool(
         email: input.email,
         notes: input.notes,
       })
-      // Transferir para humano após agendar — IA para de responder
+
       if (prisma) {
+        // Salvar evento no banco pra lembretes
+        try {
+          const [year, month, day] = input.date.split('-').map(Number)
+          const [hour, minute] = input.time.split(':').map(Number)
+          const startTime = new Date(year, month - 1, day, hour, minute)
+          // Ajuste BRT (-3h) se necessário
+          startTime.setHours(startTime.getHours() + 3)
+
+          const conv = await prisma.conversation.findFirst({
+            where: { agentId, status: 'OPEN' },
+            select: { id: true, contactPhone: true },
+          })
+
+          await prisma.calendarEvent.create({
+            data: {
+              agentId,
+              googleEventId: event.eventId,
+              title: `Consulta - ${input.name}`,
+              startTime,
+              clientName: input.name,
+              clientPhone: input.phone ?? conv?.contactPhone ?? null,
+              clientEmail: input.email ?? null,
+              conversationId: conv?.id ?? null,
+            },
+          })
+        } catch {}
+
+        // Transferir para humano após agendar
         try {
           await prisma.conversation.updateMany({
             where: { agentId, status: 'OPEN', humanTakeover: false },

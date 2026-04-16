@@ -98,6 +98,9 @@ export class AgentRepository implements IAgentRepository {
         ...(data.conversationFlow !== undefined && { conversationFlow: data.conversationFlow }),
         ...(data.leadDispatchEnabled !== undefined && { leadDispatchEnabled: data.leadDispatchEnabled }),
         ...(data.leadDispatchPhone !== undefined && { leadDispatchPhone: data.leadDispatchPhone }),
+        ...(data.reminderEnabled !== undefined && { reminderEnabled: data.reminderEnabled }),
+        ...(data.reminderMinutes !== undefined && { reminderMinutes: data.reminderMinutes }),
+        ...(data.reminderMessage !== undefined && { reminderMessage: data.reminderMessage }),
       },
     })
     return this.toEntity(row)
@@ -131,6 +134,7 @@ export class AgentRepository implements IAgentRepository {
     communicationTone: string; useEmojis: boolean; splitResponse: boolean
     restrictTopics: boolean; signName: boolean; conversationFlow: string | null
     leadDispatchEnabled: boolean; leadDispatchPhone: string | null
+    reminderEnabled: boolean; reminderMinutes: number; reminderMessage: string | null
     createdAt: Date; updatedAt: Date; deletedAt: Date | null
   }): Agent {
     return {
@@ -164,6 +168,9 @@ export class AgentRepository implements IAgentRepository {
       conversationFlow: row.conversationFlow ?? undefined,
       leadDispatchEnabled: row.leadDispatchEnabled ?? false,
       leadDispatchPhone: row.leadDispatchPhone ?? undefined,
+      reminderEnabled: row.reminderEnabled ?? false,
+      reminderMinutes: row.reminderMinutes ?? 120,
+      reminderMessage: row.reminderMessage ?? undefined,
       createdAt:       row.createdAt,
       updatedAt:       row.updatedAt,
       deletedAt:       row.deletedAt       ?? undefined,
