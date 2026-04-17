@@ -11,12 +11,12 @@ import { Agent, AgentType } from '../../../core/entities/Agent'
 export class AgentRepository implements IAgentRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  private get tenantId() { return process.env.DEFAULT_TENANT_ID! }
+  private get defaultTenantId() { return process.env.DEFAULT_TENANT_ID! }
 
-  async findAll(type?: AgentType): Promise<Agent[]> {
+  async findAll(type?: AgentType, tenantId?: string): Promise<Agent[]> {
     const rows = await this.prisma.agent.findMany({
       where: {
-        tenantId:  this.tenantId,
+        tenantId: tenantId ?? this.defaultTenantId,
         deletedAt: null,
         ...(type && { agentType: type }),
       },
@@ -25,17 +25,17 @@ export class AgentRepository implements IAgentRepository {
     return rows.map(this.toEntity)
   }
 
-  async findById(id: string): Promise<Agent | null> {
+  async findById(id: string, tenantId?: string): Promise<Agent | null> {
     const row = await this.prisma.agent.findFirst({
-      where: { id, tenantId: this.tenantId, deletedAt: null },
+      where: { id, tenantId: tenantId ?? this.defaultTenantId, deletedAt: null },
     })
     return row ? this.toEntity(row) : null
   }
 
-  async create(data: CreateAgentDto): Promise<Agent> {
+  async create(data: CreateAgentDto, tenantId?: string): Promise<Agent> {
     const row = await this.prisma.agent.create({
       data: {
-        tenantId:        this.tenantId,
+        tenantId: tenantId ?? this.defaultTenantId,
         name:            data.name,
         description:     data.description,
         model:           data.model,

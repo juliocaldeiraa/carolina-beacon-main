@@ -1,6 +1,6 @@
 import {
   Controller, Get, Post, Patch, Delete,
-  Body, Param, Query, UseGuards,
+  Body, Param, Query, UseGuards, Req,
 } from '@nestjs/common'
 import {
   IsString, IsOptional, IsEnum, IsIn, MinLength,
@@ -226,19 +226,19 @@ export class AgentsController {
   ) {}
 
   @Get()
-  findAll(@Query('type') type?: string) {
+  findAll(@Req() req: any, @Query('type') type?: string) {
     const agentType = (type === 'ATIVO' || type === 'PASSIVO') ? type as AgentType : undefined
-    return this.svc.findAll(agentType)
+    return this.svc.findAll(agentType, req.user?.tenantId)
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.svc.findById(id)
+  findOne(@Req() req: any, @Param('id') id: string) {
+    return this.svc.findById(id, req.user?.tenantId)
   }
 
   @Post()
-  create(@Body() dto: CreateAgentDto) {
-    return this.svc.create({ ...dto, model: dto.model || DEFAULT_AGENT_MODEL })
+  create(@Req() req: any, @Body() dto: CreateAgentDto) {
+    return this.svc.create({ ...dto, model: dto.model || DEFAULT_AGENT_MODEL }, req.user?.tenantId)
   }
 
   @Patch(':id')

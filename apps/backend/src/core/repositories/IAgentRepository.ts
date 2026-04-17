@@ -69,9 +69,9 @@ export interface UpdateAgentDto {
 }
 
 export interface IAgentRepository {
-  findAll(type?: AgentType): Promise<Agent[]>
-  findById(id: string): Promise<Agent | null>
-  create(data: CreateAgentDto): Promise<Agent>
+  findAll(type?: AgentType, tenantId?: string): Promise<Agent[]>
+  findById(id: string, tenantId?: string): Promise<Agent | null>
+  create(data: CreateAgentDto, tenantId?: string): Promise<Agent>
   update(id: string, data: UpdateAgentDto): Promise<Agent>
   updateStatus(id: string, status: Agent['status']): Promise<Agent>
   softDelete(id: string): Promise<void>

@@ -16,18 +16,18 @@ export class AgentsService {
     private readonly aiEngine: AiEngineService,
   ) {}
 
-  findAll(type?: AgentType): Promise<Agent[]> {
-    return this.repo.findAll(type)
+  findAll(type?: AgentType, tenantId?: string): Promise<Agent[]> {
+    return this.repo.findAll(type, tenantId)
   }
 
-  async findById(id: string): Promise<Agent> {
-    const agent = await this.repo.findById(id)
+  async findById(id: string, tenantId?: string): Promise<Agent> {
+    const agent = await this.repo.findById(id, tenantId)
     if (!agent) throw new NotFoundException(`Agente ${id} não encontrado`)
     return agent
   }
 
-  create(dto: CreateAgentDto): Promise<Agent> {
-    return this.repo.create(dto)
+  create(dto: CreateAgentDto, tenantId?: string): Promise<Agent> {
+    return this.repo.create(dto, tenantId)
   }
 
   async update(id: string, dto: UpdateAgentDto): Promise<Agent> {
