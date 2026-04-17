@@ -207,39 +207,94 @@ function DroppableColumn({ stage, children, count }: { stage: typeof STAGES[0]; 
   )
 }
 
-// ─── Dashboard ────────────────────────────────────────────────────────────
+// ─── Funnel Dashboard ─────────────────────────────────────────────────────
+
+const FUNNEL_STAGES = [
+  { key: 'contact_made', label: 'CONTATO FEITO', color: 'bg-[#0891B2]' },
+  { key: 'in_conversation', label: 'EM CONVERSA', color: 'bg-[#0E7490]' },
+  { key: 'scheduled', label: 'AGENDADO', color: 'bg-[#155E75]' },
+  { key: 'confirmed', label: 'CONFIRMADO', color: 'bg-[#16A34A]' },
+  { key: 'attended', label: 'COMPARECEU', color: 'bg-[#15803D]' },
+]
 
 function Dashboard({ stats }: { stats: Record<string, number> }) {
   const total = Object.values(stats).reduce((a, b) => a + b, 0)
   const attended = stats['attended'] ?? 0
   const lost = stats['lost'] ?? 0
-  const scheduled = stats['scheduled'] ?? 0
-  const confirmed = stats['confirmed'] ?? 0
-  const conversionRate = total > 0 ? Math.round((attended / total) * 100) : 0
-  const lostRate = total > 0 ? Math.round((lost / total) * 100) : 0
-  const schedulingRate = total > 0 ? Math.round(((scheduled + confirmed + attended) / total) * 100) : 0
+  const conversionRate = total > 0 ? ((attended / total) * 100).toFixed(1) : '0'
+
+  // Acumular: cada etapa inclui as etapas seguintes
+  const accumulated: Record<string, number> = {}
+  let acc = 0
+  for (let i = FUNNEL_STAGES.length - 1; i >= 0; i--) {
+    acc += stats[FUNNEL_STAGES[i].key] ?? 0
+    accumulated[FUNNEL_STAGES[i].key] = acc
+  }
 
   return (
-    <div className="grid grid-cols-4 gap-3 mb-4">
-      <div className="bg-white border border-gray-100 rounded-xl p-4">
-        <p className="text-xs text-gray-400">Total de leads</p>
-        <p className="text-2xl font-bold text-[#134E4A]">{total}</p>
+    <div className="bg-white border border-gray-100 rounded-xl p-6 mb-4">
+      {/* Top metrics */}
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="text-center">
+          <p className="text-xs text-gray-400 uppercase">Total de leads</p>
+          <p className="text-3xl font-bold text-[#0891B2]">{total.toLocaleString('pt-BR')}</p>
+          <p className="text-xs text-gray-300">leads no funil</p>
+        </div>
+        <div className="text-center">
+          <p className="text-xs text-gray-400 uppercase">Compareceram</p>
+          <p className="text-3xl font-bold text-emerald-500">{attended}</p>
+          <p className="text-xs text-gray-300">{conversionRate}% de conversão</p>
+        </div>
+        <div className="text-center">
+          <p className="text-xs text-gray-400 uppercase">Perdidos</p>
+          <p className="text-3xl font-bold text-red-500">{lost}</p>
+          <p className="text-xs text-gray-300">{total > 0 ? ((lost / total) * 100).toFixed(1) : '0'}% de perda</p>
+        </div>
       </div>
-      <div className="bg-white border border-gray-100 rounded-xl p-4">
-        <p className="text-xs text-gray-400">Taxa de agendamento</p>
-        <p className="text-2xl font-bold text-amber-500">{schedulingRate}%</p>
-        <p className="text-[10px] text-gray-300">{scheduled + confirmed + attended} agendados</p>
+
+      {/* Visual funnel */}
+      <div className="flex flex-col items-center gap-2">
+        {FUNNEL_STAGES.map((stage, idx) => {
+          const count = stats[stage.key] ?? 0
+          const maxWidth = 100
+          const width = total > 0 ? Math.max(20, maxWidth - idx * 15) : maxWidth - idx * 15
+          const prevCount = idx > 0 ? (stats[FUNNEL_STAGES[idx - 1].key] ?? 0) : total
+          const convRate = prevCount > 0 ? ((count / prevCount) * 100).toFixed(1) : '0'
+
+          return (
+            <div key={stage.key} className="w-full flex flex-col items-center">
+              <div
+                className={cn('rounded-lg py-4 text-center text-white transition-all', stage.color)}
+                style={{ width: `${width}%` }}
+              >
+                <p className="text-xs font-semibold tracking-wider opacity-80">{stage.label}</p>
+                <p className="text-2xl font-bold">{count.toLocaleString('pt-BR')}</p>
+                <p className="text-[10px] opacity-60">{total > 0 ? ((count / total) * 100).toFixed(1) : '0'}% do total</p>
+              </div>
+              {idx < FUNNEL_STAGES.length - 1 && (
+                <div className="py-1">
+                  <span className="text-[10px] text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">
+                    ↓ {convRate}% convertido
+                  </span>
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
-      <div className="bg-white border border-gray-100 rounded-xl p-4">
-        <p className="text-xs text-gray-400">Taxa de comparecimento</p>
-        <p className="text-2xl font-bold text-emerald-500">{conversionRate}%</p>
-        <p className="text-[10px] text-gray-300">{attended} compareceram</p>
-      </div>
-      <div className="bg-white border border-gray-100 rounded-xl p-4">
-        <p className="text-xs text-gray-400">Taxa de perda</p>
-        <p className="text-2xl font-bold text-red-500">{lostRate}%</p>
-        <p className="text-[10px] text-gray-300">{lost} perdidos</p>
-      </div>
+
+      {/* Lost bar */}
+      {lost > 0 && (
+        <div className="mt-4 pt-4 border-t border-gray-100">
+          <div className="bg-red-50 rounded-lg p-3 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-red-600">PERDIDOS</p>
+              <p className="text-lg font-bold text-red-500">{lost}</p>
+            </div>
+            <p className="text-xs text-red-400">{total > 0 ? ((lost / total) * 100).toFixed(1) : '0'}% do total</p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
