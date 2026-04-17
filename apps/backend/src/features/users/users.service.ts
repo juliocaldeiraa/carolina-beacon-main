@@ -14,26 +14,26 @@ export interface UpdateUserRoleDto {
 
 @Injectable()
 export class UsersService {
-  private get tenantId() { return process.env.DEFAULT_TENANT_ID! }
+  private get defaultTenantId() { return process.env.DEFAULT_TENANT_ID! }
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll() {
+  async findAll(tenantId?: string) {
     const users = await this.prisma.user.findMany({
-      where: { tenantId: this.tenantId },
+      where: { tenantId: tenantId ?? this.defaultTenantId },
       orderBy: { createdAt: 'asc' },
     })
     return users.map((u) => ({ id: u.id, email: u.email, role: u.role, createdAt: u.createdAt }))
   }
 
-  async create(dto: CreateUserDto) {
+  async create(dto: CreateUserDto, tenantId?: string) {
     const existing = await this.prisma.user.findUnique({ where: { email: dto.email } })
     if (existing) throw new ConflictException('Email já cadastrado')
 
     const passwordHash = await bcrypt.hash(dto.password, 10)
     const user = await this.prisma.user.create({
       data: {
-        tenantId:     this.tenantId,
+        tenantId:     tenantId ?? this.defaultTenantId,
         email:        dto.email,
         passwordHash,
         role:         dto.role,
@@ -42,8 +42,8 @@ export class UsersService {
     return { id: user.id, email: user.email, role: user.role, createdAt: user.createdAt }
   }
 
-  async updateRole(id: string, dto: UpdateUserRoleDto) {
-    const user = await this.prisma.user.findFirst({ where: { id, tenantId: this.tenantId } })
+  async updateRole(id: string, dto: UpdateUserRoleDto, tenantId?: string) {
+    const user = await this.prisma.user.findFirst({ where: { id, tenantId: tenantId ?? this.defaultTenantId } })
     if (!user) throw new NotFoundException('Usuário não encontrado')
 
     const updated = await this.prisma.user.update({
@@ -53,8 +53,8 @@ export class UsersService {
     return { id: updated.id, email: updated.email, role: updated.role }
   }
 
-  async remove(id: string) {
-    const user = await this.prisma.user.findFirst({ where: { id, tenantId: this.tenantId } })
+  async remove(id: string, tenantId?: string) {
+    const user = await this.prisma.user.findFirst({ where: { id, tenantId: tenantId ?? this.defaultTenantId } })
     if (!user) throw new NotFoundException('Usuário não encontrado')
     await this.prisma.user.delete({ where: { id } })
   }

@@ -9,7 +9,7 @@
 
 import {
   Body, Controller, Delete, Get, Param,
-  Patch, Post, UseGuards,
+  Patch, Post, UseGuards, Req,
 } from '@nestjs/common'
 import {
   IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString, Max, Min,
@@ -141,26 +141,26 @@ export class ChatIaController {
 
   @Get()
   @Roles('ADMIN', 'EQUIPE')
-  findAll() {
-    return this.svc.findAll()
+  findAll(@Req() req: any) {
+    return this.svc.findAll(req.user?.tenantId)
   }
 
   @Post()
   @Roles('ADMIN', 'EQUIPE')
-  create(@Body() dto: CreateChannelAgentDto) {
-    return this.svc.create(dto)
+  create(@Body() dto: CreateChannelAgentDto, @Req() req: any) {
+    return this.svc.create(dto, req.user?.tenantId)
   }
 
   @Patch(':id')
   @Roles('ADMIN', 'EQUIPE')
-  update(@Param('id') id: string, @Body() dto: UpdateChannelAgentDto) {
+  update(@Param('id') id: string, @Body() dto: UpdateChannelAgentDto, @Req() req: any) {
     return this.svc.update(id, dto)
   }
 
   @Post(':id/test')
   @Roles('ADMIN', 'EQUIPE')
-  testConnection(@Param('id') id: string) {
-    return this.svc.testConnection(id)
+  testConnection(@Param('id') id: string, @Req() req: any) {
+    return this.svc.testConnection(id, req.user?.tenantId)
   }
 
   @Delete(':id')

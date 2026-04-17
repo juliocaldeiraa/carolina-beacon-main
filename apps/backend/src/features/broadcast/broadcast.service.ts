@@ -38,12 +38,12 @@ export class BroadcastService {
   }
 
   /** Lança campanha: DRAFT → QUEUED → enfileira no BullMQ */
-  async launch(id: string) {
+  async launch(id: string, tenantId?: string) {
     const broadcast = await this.findById(id)
     await this.repo.updateStatus(id, 'QUEUED')
     await this.queue.enqueue({
       broadcastId:            id,
-      tenantId:               process.env.DEFAULT_TENANT_ID!,
+      tenantId:               tenantId ?? process.env.DEFAULT_TENANT_ID!,
       channelId:              broadcast.channelId ?? undefined,
       contacts:               broadcast.audience,
       template:               broadcast.template,

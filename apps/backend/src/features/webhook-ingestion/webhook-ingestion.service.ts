@@ -89,7 +89,7 @@ interface RateLimitEntry {
 @Injectable()
 export class WebhookIngestionService {
   private readonly logger   = new Logger(WebhookIngestionService.name)
-  private get tenantId()    { return process.env.DEFAULT_TENANT_ID! }
+  private get defaultTenantId() { return process.env.DEFAULT_TENANT_ID! }
 
   private readonly debounce   = new Map<string, DebounceEntry>()
   private readonly rateLimits = new Map<string, RateLimitEntry>()
@@ -120,7 +120,7 @@ export class WebhookIngestionService {
   }): Promise<string> {
     try {
       const log = await this.prisma.ingestionLog.create({
-        data: { tenantId: this.tenantId, ...data },
+        data: { tenantId: this.defaultTenantId, ...data },
       })
       return log.id
     } catch {
@@ -253,7 +253,7 @@ export class WebhookIngestionService {
 
     // 2b. Verificar filtros do ChannelAgent (grupos, gatilhos) antes de criar log
     const channelAgentFilters = await this.prisma.channelAgent.findFirst({
-      where:  { channelId, tenantId: this.tenantId, isActive: true },
+      where:  { channelId, tenantId: this.defaultTenantId, isActive: true },
       select: { allowGroups: true, triggerMode: true, triggerKeywords: true, debounceMs: true },
     })
 
@@ -305,7 +305,7 @@ export class WebhookIngestionService {
 
     // 3. Atendimento humano — verificado antes do debounce para resposta imediata
     const existingConv = await this.prisma.conversation.findFirst({
-      where: { channelId, contactPhone: phone, tenantId: this.tenantId, status: 'OPEN' },
+      where: { channelId, contactPhone: phone, tenantId: this.defaultTenantId, status: 'OPEN' },
     })
     if (existingConv?.humanTakeover) {
       this.logger.debug(`Conversa ${existingConv.id} em atendimento humano — salva msg sem IA`)
@@ -471,15 +471,15 @@ export class WebhookIngestionService {
       agentRow = await this.prisma.agent.findFirst({ where: { id: agentOverride.agentId, deletedAt: null } })
       // Busca channelAgent do canal para aplicar sendDelayMs / fragmentDelayMs configurados
       channelAgentRow = await this.prisma.channelAgent.findFirst({
-        where: { channelId, tenantId: this.tenantId, isActive: true },
+        where: { channelId, tenantId: this.defaultTenantId, isActive: true },
       })
     } else {
       channelAgentRow = await this.prisma.channelAgent.findFirst({
-        where: { channelId, tenantId: this.tenantId, isActive: true },
+        where: { channelId, tenantId: this.defaultTenantId, isActive: true },
       })
       agentRow = channelAgentRow
         ? await this.prisma.agent.findFirst({ where: { id: channelAgentRow.agentId, deletedAt: null } })
-        : await this.prisma.agent.findFirst({ where: { channelId, deletedAt: null, status: 'ACTIVE', tenantId: this.tenantId } })
+        : await this.prisma.agent.findFirst({ where: { channelId, deletedAt: null, status: 'ACTIVE', tenantId: this.defaultTenantId } })
     }
 
     if (!agentRow) {
@@ -497,14 +497,14 @@ export class WebhookIngestionService {
     // Verifica variantes do número (com/sem 9º dígito) para compatibilidade com Evolution API
     const convPhoneVariants = brPhoneVariants(phone)
     let conv = await this.prisma.conversation.findFirst({
-      where: { channelId, contactPhone: { in: convPhoneVariants }, agentId: agentRow.id, tenantId: this.tenantId, status: 'OPEN' },
+      where: { channelId, contactPhone: { in: convPhoneVariants }, agentId: agentRow.id, tenantId: this.defaultTenantId, status: 'OPEN' },
     })
 
     // Fallback cross-canal: se o número foi migrado (ex: JRWHATS001 caiu → JRWHATS002),
     // reutiliza a conversa existente de qualquer canal para preservar o histórico completo.
     if (!conv) {
       const crossChanConv = await this.prisma.conversation.findFirst({
-        where: { contactPhone: { in: convPhoneVariants }, agentId: agentRow.id, tenantId: this.tenantId, status: 'OPEN' },
+        where: { contactPhone: { in: convPhoneVariants }, agentId: agentRow.id, tenantId: this.defaultTenantId, status: 'OPEN' },
         orderBy: { lastMessageAt: 'desc' },
       })
       if (crossChanConv && crossChanConv.channelId !== channelId) {
@@ -542,7 +542,7 @@ export class WebhookIngestionService {
     if (!conv) {
       conv = await this.prisma.conversation.create({
         data: {
-          tenantId:     this.tenantId,
+          tenantId:     this.defaultTenantId,
           agentId:      agentRow.id,
           channelId,
           contactPhone: phone,
@@ -806,7 +806,7 @@ export class WebhookIngestionService {
   @Cron('*/5 * * * *')
   async resumeHumanTakeoverOnTimeout(): Promise<void> {
     const channelAgents = await this.prisma.channelAgent.findMany({
-      where: { tenantId: this.tenantId, isActive: true, humanTakeoverTimeoutMin: { gt: 0 } },
+      where: { tenantId: this.defaultTenantId, isActive: true, humanTakeoverTimeoutMin: { gt: 0 } },
     })
     if (!channelAgents.length) return
 
@@ -815,7 +815,7 @@ export class WebhookIngestionService {
       const staleConvs = await this.prisma.conversation.findMany({
         where: {
           channelId:     ca.channelId,
-          tenantId:      this.tenantId,
+          tenantId:      this.defaultTenantId,
           humanTakeover: true,
           status:        { in: ['OPEN', 'IN_PROGRESS'] },
           lastMessageAt: { lt: cutoff },
@@ -839,7 +839,7 @@ export class WebhookIngestionService {
     const cutoff = new Date(Date.now() - 5 * 60_000) // > 5 min em 'processing'
     const result = await this.prisma.ingestionLog.updateMany({
       where: {
-        tenantId:  this.tenantId,
+        tenantId:  this.defaultTenantId,
         status:    'processing',
         createdAt: { lt: cutoff },
       },

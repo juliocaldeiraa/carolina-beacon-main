@@ -28,30 +28,30 @@ export interface UpdateChannelAgentDto {
 @Injectable()
 export class ChatIaService {
   private readonly logger = new Logger(ChatIaService.name)
-  private get tenantId() { return process.env.DEFAULT_TENANT_ID! }
+  private get defaultTenantId() { return process.env.DEFAULT_TENANT_ID! }
 
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll() {
+  findAll(tenantId?: string) {
     return this.prisma.channelAgent.findMany({
-      where:   { tenantId: this.tenantId },
+      where:   { tenantId: tenantId ?? this.defaultTenantId },
       orderBy: { createdAt: 'desc' },
     })
   }
 
-  findById(id: string) {
+  findById(id: string, tenantId?: string) {
     return this.prisma.channelAgent.findFirst({
-      where: { id, tenantId: this.tenantId },
+      where: { id, tenantId: tenantId ?? this.defaultTenantId },
     })
   }
 
-  findByChannelId(channelId: string) {
+  findByChannelId(channelId: string, tenantId?: string) {
     return this.prisma.channelAgent.findFirst({
-      where: { channelId, tenantId: this.tenantId, isActive: true },
+      where: { channelId, tenantId: tenantId ?? this.defaultTenantId, isActive: true },
     })
   }
 
-  async create(dto: CreateChannelAgentDto) {
+  async create(dto: CreateChannelAgentDto, tenantId?: string) {
     // Valida que o agente é do tipo PASSIVO (Chat IA não suporta agentes ATIVO)
     const agent = await this.prisma.agent.findFirst({ where: { id: dto.agentId } })
     if (agent && (agent as any).agentType === 'ATIVO') {
@@ -62,7 +62,7 @@ export class ChatIaService {
 
     const record = await this.prisma.channelAgent.create({
       data: {
-        tenantId:  this.tenantId,
+        tenantId:  tenantId ?? this.defaultTenantId,
         name:      dto.name,
         channelId: dto.channelId,
         agentId:   dto.agentId,
@@ -104,7 +104,7 @@ export class ChatIaService {
 
   // ─── Connection Test ───────────────────────────────────────────────────────
 
-  async testConnection(id: string): Promise<{
+  async testConnection(id: string, tenantId?: string): Promise<{
     ok:             boolean
     channelName:    string
     channelStatus:  string
@@ -114,7 +114,7 @@ export class ChatIaService {
     error?:         string
   }> {
     const record = await this.prisma.channelAgent.findFirst({
-      where: { id, tenantId: this.tenantId },
+      where: { id, tenantId: tenantId ?? this.defaultTenantId },
     })
     if (!record) {
       return { ok: false, channelName: '', channelStatus: 'UNKNOWN', webhookMatch: false, registeredUrl: null, expectedUrl: null, error: 'Configuração não encontrada' }

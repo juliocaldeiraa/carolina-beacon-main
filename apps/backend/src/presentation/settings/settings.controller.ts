@@ -111,32 +111,32 @@ export class SettingsController {
 
   @Get('central-ai')
   @Roles('ADMIN')
-  findAllCentralAi() {
-    return this.centralAiService.findAll()
+  findAllCentralAi(@Request() req: any) {
+    return this.centralAiService.findAll(req.user?.tenantId)
   }
 
   @Post('central-ai')
   @Roles('ADMIN')
-  createCentralAi(@Body() dto: CreateCentralAiDto) {
-    return this.centralAiService.create(dto)
+  createCentralAi(@Body() dto: CreateCentralAiDto, @Request() req: any) {
+    return this.centralAiService.create(dto, req.user?.tenantId)
   }
 
   @Patch('central-ai/:id')
   @Roles('ADMIN')
-  updateCentralAi(@Param('id') id: string, @Body() dto: UpdateCentralAiDto) {
-    return this.centralAiService.update(id, dto)
+  updateCentralAi(@Param('id') id: string, @Body() dto: UpdateCentralAiDto, @Request() req: any) {
+    return this.centralAiService.update(id, dto, req.user?.tenantId)
   }
 
   @Delete('central-ai/:id')
   @Roles('ADMIN')
-  removeCentralAi(@Param('id') id: string) {
-    return this.centralAiService.remove(id)
+  removeCentralAi(@Param('id') id: string, @Request() req: any) {
+    return this.centralAiService.remove(id, req.user?.tenantId)
   }
 
   @Post('central-ai/:id/activate')
   @Roles('ADMIN')
-  activateCentralAi(@Param('id') id: string) {
-    return this.centralAiService.setActive(id)
+  activateCentralAi(@Param('id') id: string, @Request() req: any) {
+    return this.centralAiService.setActive(id, req.user?.tenantId)
   }
 
   // ─── Banco de Dados (ADMIN only) ──────────────────────────────────────────

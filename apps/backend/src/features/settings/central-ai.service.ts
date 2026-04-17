@@ -46,21 +46,21 @@ export class UpdateCentralAiDto {
 
 @Injectable()
 export class CentralAiService {
-  private get tenantId() { return process.env.DEFAULT_TENANT_ID! }
+  private get defaultTenantId() { return process.env.DEFAULT_TENANT_ID! }
 
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll() {
+  findAll(tenantId?: string) {
     return this.prisma.centralAiConfig.findMany({
-      where:   { tenantId: this.tenantId },
+      where:   { tenantId: tenantId ?? this.defaultTenantId },
       orderBy: { createdAt: 'asc' },
     })
   }
 
-  async create(dto: CreateCentralAiDto) {
+  async create(dto: CreateCentralAiDto, tenantId?: string) {
     return this.prisma.centralAiConfig.create({
       data: {
-        tenantId: this.tenantId,
+        tenantId: tenantId ?? this.defaultTenantId,
         name:     dto.name,
         provider: dto.provider,
         model:    dto.model,
@@ -70,9 +70,10 @@ export class CentralAiService {
     })
   }
 
-  async update(id: string, dto: UpdateCentralAiDto) {
+  async update(id: string, dto: UpdateCentralAiDto, tenantId?: string) {
+    const tid = tenantId ?? this.defaultTenantId
     const existing = await this.prisma.centralAiConfig.findFirst({
-      where: { id, tenantId: this.tenantId },
+      where: { id, tenantId: tid },
     })
     if (!existing) throw new NotFoundException('Configuração não encontrada')
 
@@ -88,24 +89,25 @@ export class CentralAiService {
     })
   }
 
-  async remove(id: string) {
+  async remove(id: string, tenantId?: string) {
     const existing = await this.prisma.centralAiConfig.findFirst({
-      where: { id, tenantId: this.tenantId },
+      where: { id, tenantId: tenantId ?? this.defaultTenantId },
     })
     if (!existing) throw new NotFoundException('Configuração não encontrada')
     return this.prisma.centralAiConfig.delete({ where: { id } })
   }
 
   /** Define qual config é a ativa — desativa todas as outras */
-  async setActive(id: string) {
+  async setActive(id: string, tenantId?: string) {
+    const tid = tenantId ?? this.defaultTenantId
     const existing = await this.prisma.centralAiConfig.findFirst({
-      where: { id, tenantId: this.tenantId },
+      where: { id, tenantId: tid },
     })
     if (!existing) throw new NotFoundException('Configuração não encontrada')
 
     await this.prisma.$transaction([
       this.prisma.centralAiConfig.updateMany({
-        where: { tenantId: this.tenantId },
+        where: { tenantId: tid },
         data:  { isActive: false },
       }),
       this.prisma.centralAiConfig.update({
@@ -114,7 +116,7 @@ export class CentralAiService {
       }),
     ])
     return this.prisma.centralAiConfig.findMany({
-      where:   { tenantId: this.tenantId },
+      where:   { tenantId: tid },
       orderBy: { createdAt: 'asc' },
     })
   }

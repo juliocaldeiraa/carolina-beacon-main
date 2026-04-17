@@ -31,15 +31,15 @@ export interface UpsertContactDto {
 
 @Injectable()
 export class ContactsService {
-  private get tenantId() { return process.env.DEFAULT_TENANT_ID! }
+  private get defaultTenantId() { return process.env.DEFAULT_TENANT_ID! }
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(filters: ContactFilters = {}) {
+  async findAll(filters: ContactFilters = {}, tenantId?: string) {
     const { search, channelId, tag, page = 1, limit = 50 } = filters
     const skip = (page - 1) * limit
 
-    const where: Record<string, unknown> = { tenantId: this.tenantId }
+    const where: Record<string, unknown> = { tenantId: tenantId ?? this.defaultTenantId }
     if (channelId) where['channelId'] = channelId
     if (search) {
       where['OR'] = [
@@ -69,15 +69,16 @@ export class ContactsService {
     return { items, total, page, limit }
   }
 
-  async findById(id: string) {
+  async findById(id: string, tenantId?: string) {
+    const tid = tenantId ?? this.defaultTenantId
     const contact = await this.prisma.contact.findFirst({
-      where: { id, tenantId: this.tenantId },
+      where: { id, tenantId: tid },
     })
     if (!contact) throw new NotFoundException('Contato não encontrado')
 
     // Busca conversas vinculadas pelo telefone do contato
     const conversations = await this.prisma.conversation.findMany({
-      where: { tenantId: this.tenantId, contactPhone: contact.phone },
+      where: { tenantId: tid, contactPhone: contact.phone },
       orderBy: { startedAt: 'desc' },
       take: 20,
       select: {
@@ -99,8 +100,8 @@ export class ContactsService {
     return { ...contact, conversations }
   }
 
-  async update(id: string, dto: UpdateContactDto) {
-    const existing = await this.prisma.contact.findFirst({ where: { id, tenantId: this.tenantId } })
+  async update(id: string, dto: UpdateContactDto, tenantId?: string) {
+    const existing = await this.prisma.contact.findFirst({ where: { id, tenantId: tenantId ?? this.defaultTenantId } })
     if (!existing) throw new NotFoundException('Contato não encontrado')
 
     return this.prisma.contact.update({
@@ -115,8 +116,8 @@ export class ContactsService {
     })
   }
 
-  async remove(id: string): Promise<void> {
-    const existing = await this.prisma.contact.findFirst({ where: { id, tenantId: this.tenantId } })
+  async remove(id: string, tenantId?: string): Promise<void> {
+    const existing = await this.prisma.contact.findFirst({ where: { id, tenantId: tenantId ?? this.defaultTenantId } })
     if (!existing) throw new NotFoundException('Contato não encontrado')
     await this.prisma.contact.delete({ where: { id } })
   }
@@ -125,15 +126,15 @@ export class ContactsService {
    * Cria ou atualiza o contato quando uma nova conversa é recebida.
    * Chamado pelo WebhookIngestionService após criar/encontrar conversa.
    */
-  async upsertByPhone(dto: UpsertContactDto): Promise<void> {
+  async upsertByPhone(dto: UpsertContactDto, tenantId?: string): Promise<void> {
     const { phone, name, channelId } = dto
-    const tenantId = this.tenantId
+    const tid = tenantId ?? this.defaultTenantId
 
     try {
       await this.prisma.contact.upsert({
-        where:  { tenantId_phone: { tenantId, phone } },
+        where:  { tenantId_phone: { tenantId: tid, phone } },
         create: {
-          tenantId,
+          tenantId: tid,
           phone,
           name:          name ?? phone,
           channelId,

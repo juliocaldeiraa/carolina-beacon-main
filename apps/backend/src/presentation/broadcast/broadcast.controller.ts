@@ -7,7 +7,7 @@
  * POST   /broadcast/:id/launch → lança campanha (DRAFT → QUEUED)
  */
 
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common'
+import { Body, Controller, Get, Param, Post, UseGuards, Req } from '@nestjs/common'
 import { IsArray, IsInt, IsNotEmpty, IsOptional, IsString, ArrayMinSize, Min } from 'class-validator'
 import { JwtGuard }          from '@/shared/guards/jwt.guard'
 import { BroadcastService }  from '@/features/broadcast/broadcast.service'
@@ -93,7 +93,7 @@ export class BroadcastController {
   }
 
   @Post(':id/launch')
-  launch(@Param('id') id: string) {
-    return this.svc.launch(id)
+  launch(@Param('id') id: string, @Req() req: any) {
+    return this.svc.launch(id, req.user?.tenantId)
   }
 }

@@ -1,6 +1,6 @@
 import {
   Controller, Get, Patch, Delete,
-  Param, Body, Query, UseGuards, HttpCode,
+  Param, Body, Query, UseGuards, HttpCode, Req,
 } from '@nestjs/common'
 import { IsString, IsEmail, IsOptional, IsArray } from 'class-validator'
 import { ContactsService, ContactFilters } from '@/features/contacts/contacts.service'
@@ -27,7 +27,7 @@ export class ContactsController {
     tag?:       string
     page?:      string
     limit?:     string
-  }) {
+  }, @Req() req: any) {
     const filters: ContactFilters = {
       search:    query.search,
       channelId: query.channelId,
@@ -35,24 +35,24 @@ export class ContactsController {
       page:      query.page  ? parseInt(query.page)  : undefined,
       limit:     query.limit ? parseInt(query.limit) : undefined,
     }
-    return this.svc.findAll(filters)
+    return this.svc.findAll(filters, req.user?.tenantId)
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.svc.findById(id)
+  findOne(@Param('id') id: string, @Req() req: any) {
+    return this.svc.findById(id, req.user?.tenantId)
   }
 
   @Patch(':id')
   @Roles('ADMIN', 'EQUIPE')
-  update(@Param('id') id: string, @Body() dto: UpdateContactDto) {
-    return this.svc.update(id, dto)
+  update(@Param('id') id: string, @Body() dto: UpdateContactDto, @Req() req: any) {
+    return this.svc.update(id, dto, req.user?.tenantId)
   }
 
   @Delete(':id')
   @Roles('ADMIN')
   @HttpCode(204)
-  remove(@Param('id') id: string) {
-    return this.svc.remove(id)
+  remove(@Param('id') id: string, @Req() req: any) {
+    return this.svc.remove(id, req.user?.tenantId)
   }
 }
