@@ -51,8 +51,6 @@ function timeAgo(date: string) {
 function LeadCard({ lead, onMove }: { lead: WhatsAppLead; onMove: (stage: string) => void }) {
   const [expanded, setExpanded] = useState(false)
   const navigate = useNavigate()
-  const _stage = STAGES.find((s) => s.key === lead.stage)
-
   const appointmentStr = lead.appointmentDate
     ? new Date(lead.appointmentDate).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
     : null
