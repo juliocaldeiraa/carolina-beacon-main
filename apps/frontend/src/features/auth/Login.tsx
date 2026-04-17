@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom'
 import { Heart, ArrowRight } from 'lucide-react'
 import { useAuthStore } from '@/store/useAuthStore'
 import { authService } from '@/services/auth'
+import { api } from '@/services/api'
 
 const loginSchema = z.object({
   email: z.string().email('E-mail inválido'),
@@ -19,7 +20,7 @@ type LoginForm = z.infer<typeof loginSchema>
 
 export function Login() {
   const navigate = useNavigate()
-  const { setAuth } = useAuthStore()
+  const { setAuth, setActiveTenant } = useAuthStore()
 
   const {
     register,
@@ -36,6 +37,14 @@ export function Login() {
         refreshToken: response.refreshToken,
         user:         response.user,
       })
+      // Buscar tenant info e setar como ativo
+      try {
+        const tenants = await api.get('/auth/tenants').then((r) => r.data)
+        if (tenants.length > 0) {
+          const userTenant = tenants.find((t: any) => t.id === response.user.tenantId) ?? tenants[0]
+          setActiveTenant({ id: userTenant.id, name: userTenant.name, slug: userTenant.slug })
+        }
+      } catch {}
       navigate('/agents')
     } catch {
       setError('root', { message: 'E-mail ou senha incorretos.' })

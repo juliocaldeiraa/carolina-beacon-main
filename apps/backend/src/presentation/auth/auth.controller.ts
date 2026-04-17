@@ -44,4 +44,22 @@ export class AuthController {
   me(@CurrentUserId() userId: string) {
     return this.authService.me(userId)
   }
+
+  @Get('tenants')
+  @UseGuards(JwtGuard)
+  listTenants(@CurrentUserId() userId: string) {
+    return this.authService.listTenants(userId)
+  }
+
+  @Post('switch-tenant')
+  @UseGuards(JwtGuard)
+  switchTenant(@CurrentUserId() userId: string, @Body() body: { tenantId: string }) {
+    return this.authService.switchTenant(userId, body.tenantId)
+  }
+
+  @Post('tenants')
+  @UseGuards(JwtGuard)
+  createTenant(@Body() body: { name: string; slug: string }) {
+    return this.authService.createTenant(body.name, body.slug)
+  }
 }

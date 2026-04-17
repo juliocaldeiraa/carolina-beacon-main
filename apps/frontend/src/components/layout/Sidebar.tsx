@@ -46,7 +46,7 @@ const navItems: NavItem[] = [
 ]
 
 export function Sidebar() {
-  const { user } = useAuthStore()
+  const { user, activeTenant } = useAuthStore()
   const role = user?.role ?? 'SUPORTE'
 
   const visible = navItems.filter((item) =>
@@ -73,9 +73,9 @@ export function Sidebar() {
       <div className="px-5 py-3 border-b border-gray-100">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-[#0891B2]/10 flex items-center justify-center text-[#0891B2] text-xs font-bold">
-            C
+            {activeTenant?.name?.[0]?.toUpperCase() ?? 'B'}
           </div>
-          <span className="text-sm text-gray-500 truncate font-medium">Carolina Beacon</span>
+          <span className="text-sm text-gray-500 truncate font-medium">{activeTenant?.name ?? 'Beacon'}</span>
         </div>
       </div>
 

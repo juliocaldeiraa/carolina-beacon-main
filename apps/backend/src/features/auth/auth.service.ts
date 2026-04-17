@@ -43,11 +43,11 @@ export class AuthService {
 
   async refresh(refreshToken: string) {
     try {
-      const payload = this.jwt.verify<{ sub: string; role: string }>(
+      const payload = this.jwt.verify<{ sub: string; role: string; tenantId: string }>(
         refreshToken,
         { secret: this.config.get<string>('JWT_REFRESH_SECRET') },
       )
-      const newPayload = { sub: payload.sub, role: payload.role }
+      const newPayload = { sub: payload.sub, role: payload.role, tenantId: payload.tenantId }
       return { accessToken: this.jwt.sign(newPayload) }
     } catch {
       throw new UnauthorizedException('Refresh token inválido')
@@ -56,6 +56,33 @@ export class AuthService {
 
   async me(userId: string) {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } })
-    return { id: user.id, email: user.email, role: user.role }
+    return { id: user.id, email: user.email, role: user.role, tenantId: user.tenantId }
+  }
+
+  async listTenants(userId: string) {
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } })
+    // Admin vê todos os tenants, outros veem só o deles
+    if (user.role === 'ADMIN') {
+      return this.prisma.tenant.findMany({ orderBy: { name: 'asc' } })
+    }
+    return this.prisma.tenant.findMany({ where: { id: user.tenantId } })
+  }
+
+  async switchTenant(userId: string, tenantId: string) {
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } })
+    // Admin pode trocar pra qualquer tenant
+    if (user.role !== 'ADMIN') {
+      if (user.tenantId !== tenantId) throw new UnauthorizedException('Sem permissão para este workspace')
+    }
+    const tenant = await this.prisma.tenant.findUniqueOrThrow({ where: { id: tenantId } })
+    const payload = { sub: user.id, role: user.role, tenantId: tenant.id }
+    return {
+      accessToken: this.jwt.sign(payload),
+      tenant: { id: tenant.id, name: tenant.name, slug: tenant.slug },
+    }
+  }
+
+  async createTenant(name: string, slug: string) {
+    return this.prisma.tenant.create({ data: { name, slug } })
   }
 }
