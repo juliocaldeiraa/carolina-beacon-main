@@ -11,6 +11,8 @@ import { PrismaService } from '@/infrastructure/database/prisma/prisma.service'
 export class WhatsAppCrmService {
   private readonly logger = new Logger(WhatsAppCrmService.name)
 
+  constructor(private readonly prisma: PrismaService) {}
+
   private get tenantId() { return process.env.DEFAULT_TENANT_ID! }
 
   async findLeads(filters: { agentId?: string; stage?: string; search?: string } = {}) {
@@ -121,5 +123,4 @@ export class WhatsAppCrmService {
     return stats
   }
 
-  constructor(private readonly prisma: PrismaService) {}
 }

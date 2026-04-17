@@ -599,16 +599,16 @@ export class WebhookIngestionService {
         personality:       agentRow.personality ?? undefined,
         actionPrompt:      agentRow.actionPrompt ?? undefined,
         systemPrompt:      agentRow.systemPrompt ?? undefined,
-        agentType:         (agentRow as any).agentType ?? 'PASSIVO',
-        purpose:           (agentRow as any).purpose ?? 'support',
-        companyName:       (agentRow as any).companyName ?? undefined,
-        companyUrl:        (agentRow as any).companyUrl ?? undefined,
-        communicationTone: (agentRow as any).communicationTone ?? 'normal',
-        useEmojis:         (agentRow as any).useEmojis ?? true,
-        splitResponse:     (agentRow as any).splitResponse ?? true,
-        restrictTopics:    (agentRow as any).restrictTopics ?? false,
-        signName:          (agentRow as any).signName ?? false,
-        conversationFlow:  (agentRow as any).conversationFlow ?? undefined,
+        agentType:         agentRow.agentType ?? 'PASSIVO',
+        purpose:           agentRow.purpose ?? 'support',
+        companyName:       agentRow.companyName ?? undefined,
+        companyUrl:        agentRow.companyUrl ?? undefined,
+        communicationTone: agentRow.communicationTone ?? 'normal',
+        useEmojis:         agentRow.useEmojis ?? true,
+        splitResponse:     agentRow.splitResponse ?? true,
+        restrictTopics:    agentRow.restrictTopics ?? false,
+        signName:          agentRow.signName ?? false,
+        conversationFlow:  agentRow.conversationFlow ?? undefined,
       },
       contactName: name ?? undefined,
       trainingsByCategory,
@@ -651,7 +651,7 @@ export class WebhookIngestionService {
     // 8. Fatia resposta via IA Central (só se splitResponse estiver ativo)
     // Remove trigger "atendente humano" antes de enviar ao cliente (é comando interno)
     const cleanContent = aiResult.content.replace(/\n*atendente humano\n*/gi, '').trim()
-    const shouldSplit = (agentRow as any).splitResponse !== false
+    const shouldSplit = agentRow.splitResponse !== false
     const fragments = shouldSplit ? await this.splitter.split(cleanContent) : [cleanContent]
 
     // 9. Salva resposta COMPLETA no DB
@@ -724,7 +724,7 @@ export class WebhookIngestionService {
       })
 
       // Disparar resumo se configurado
-      if ((agentRow as any).leadDispatchEnabled && (agentRow as any).leadDispatchPhone) {
+      if (agentRow.leadDispatchEnabled && agentRow.leadDispatchPhone) {
         this.dispatchLeadSummary(conv.id, agentRow, phone, name, channel)
           .catch((err) => this.logger.error(`[leadDispatch] falha: ${err}`))
       }

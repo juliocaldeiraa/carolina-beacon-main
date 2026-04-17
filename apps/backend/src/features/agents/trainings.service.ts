@@ -62,28 +62,6 @@ export class TrainingsService {
   }
 
   /**
-   * Retorna todos os treinamentos concatenados como contexto para o system prompt.
-   * Usado pelo AiEngineService antes de chamar a IA.
-   * @deprecated Use getTrainingsByCategory para prompt enriquecido.
-   */
-  async getTrainingContext(agentId: string): Promise<string> {
-    const trainings = await this.prisma.agentTraining.findMany({
-      where:   { agentId, status: 'ready' },
-      orderBy: { createdAt: 'asc' },
-      select:  { type: true, title: true, content: true },
-    })
-
-    if (trainings.length === 0) return ''
-
-    return trainings
-      .map((t) => {
-        const header = t.title ? `[${t.type.toUpperCase()}: ${t.title}]` : `[${t.type.toUpperCase()}]`
-        return `${header}\n${t.content}`
-      })
-      .join('\n\n---\n\n')
-  }
-
-  /**
    * Retorna trainings agrupados por categoria para o prompt enriquecido.
    */
   async getTrainingsByCategory(agentId: string): Promise<Record<string, Array<{ title?: string; content: string }>>> {
