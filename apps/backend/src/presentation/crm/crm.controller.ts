@@ -9,6 +9,7 @@ import { Roles } from '../../shared/decorators/roles.decorator'
 import {
   CrmService, CreateCardDto, UpdateCardDto, CreatePipelineDto,
 } from '../../features/crm/crm.service'
+import { WhatsAppCrmService } from '../../features/crm/whatsapp-crm.service'
 
 class UpdateLeadKanbanDto {
   @IsString()
@@ -36,7 +37,10 @@ function tenantId(req: any): string {
 @UseGuards(JwtGuard, RolesGuard)
 @Roles('ADMIN', 'EQUIPE', 'SUPORTE', 'COMERCIAL')
 export class CrmController {
-  constructor(private readonly svc: CrmService) {}
+  constructor(
+    private readonly svc: CrmService,
+    private readonly whatsappCrm: WhatsAppCrmService,
+  ) {}
 
   // ─── Kanban de Leads (Campanhas) ─────────────────────────────
 
@@ -119,5 +123,37 @@ export class CrmController {
   @HttpCode(HttpStatus.NO_CONTENT)
   removeCard(@Param('id') id: string) {
     return this.svc.removeCard(id)
+  }
+
+  // ─── WhatsApp Leads CRM ──────────────────────────────────────
+
+  @Get('whatsapp-leads')
+  findWhatsAppLeads(
+    @Query('agentId') agentId?: string,
+    @Query('stage') stage?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.whatsappCrm.findLeads({ agentId, stage, search })
+  }
+
+  @Patch('whatsapp-leads/:id/stage')
+  moveWhatsAppLead(
+    @Param('id') id: string,
+    @Body() body: { stage: string; lostReason?: string },
+  ) {
+    return this.whatsappCrm.moveToStage(id, body.stage, body.lostReason)
+  }
+
+  @Patch('whatsapp-leads/:id/notes')
+  updateWhatsAppLeadNotes(
+    @Param('id') id: string,
+    @Body() body: { notes: string },
+  ) {
+    return this.whatsappCrm.updateNotes(id, body.notes)
+  }
+
+  @Get('whatsapp-leads/stats')
+  getWhatsAppLeadStats(@Query('agentId') agentId?: string) {
+    return this.whatsappCrm.getStats(agentId)
   }
 }

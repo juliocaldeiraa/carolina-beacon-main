@@ -8,6 +8,7 @@ import { RemindersModule }           from '@/features/reminders/reminders.module
 import { ContactsModule }            from '@/features/contacts/contacts.module'
 import { AutomationsModule }         from '@/features/automations/automations.module'
 import { CampaignsModule }          from '@/features/campaigns/campaigns.module'
+import { CrmModule }                from '@/features/crm/crm.module'
 import { AgentsModule }             from '@/features/agents/agents.module'
 import { WebhookIngestionService }   from './webhook-ingestion.service'
 import { WebhookIngestionController } from '@/presentation/webhook-ingestion/webhook-ingestion.controller'
@@ -23,6 +24,7 @@ import { WebhookIngestionController } from '@/presentation/webhook-ingestion/web
     ContactsModule,
     AutomationsModule,
     CampaignsModule,
+    CrmModule,
     AgentsModule,
   ],
   controllers: [WebhookIngestionController],

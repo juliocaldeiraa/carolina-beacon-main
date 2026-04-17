@@ -119,6 +119,18 @@ export async function executeCalendarTool(
           })
         } catch {}
 
+        // CRM: mover lead pra "scheduled"
+        try {
+          const clientPhone = input.phone ?? conv?.contactPhone
+          if (clientPhone) {
+            const calendarEvt = await prisma.calendarEvent.findFirst({ where: { agentId, clientPhone }, orderBy: { createdAt: 'desc' } })
+            await prisma.whatsAppLead.updateMany({
+              where: { agentId, contactPhone: clientPhone },
+              data: { stage: 'scheduled', calendarEventId: calendarEvt?.id ?? null, appointmentDate: startTime, updatedAt: new Date() },
+            })
+          }
+        } catch {}
+
         // Transferir para humano após agendar
         try {
           await prisma.conversation.updateMany({

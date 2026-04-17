@@ -30,6 +30,7 @@ import { CampaignCreatePage }    from '@/features/campaigns/CampaignCreatePage'
 import { CampaignDetailPage }    from '@/features/campaigns/CampaignDetailPage'
 import { CampaignFunnelPage }   from '@/features/campaigns/funnel/CampaignFunnelPage'
 import { CrmPage }              from '@/features/crm/CrmPage'
+import { WhatsAppCrmPage }      from '@/features/crm/WhatsAppCrmPage'
 import { ConversationsPage }      from '@/features/conversations/ConversationsPage'
 import { ContactsPage }          from '@/features/contacts/ContactsPage'
 import { ContactDetail }         from '@/features/contacts/ContactDetail'
@@ -57,6 +58,7 @@ function usePageMeta(pathname: string) {
   if (pathname.match(/\/campaigns\/new/))        return { title: 'Nova Campanha',            subtitle: 'Crie uma campanha de disparo avançada' }
   if (pathname.match(/\/campaigns\/.+/))         return { title: 'Detalhes da Campanha',     subtitle: 'Leads, progresso, follow-ups e configurações' }
   if (pathname.startsWith('/campaigns'))         return { title: 'Campanhas',                subtitle: 'Gerencie campanhas de disparo com spintext, follow-ups e anti-ban' }
+  if (pathname === '/crm/whatsapp')              return { title: 'CRM WhatsApp',              subtitle: 'Acompanhe leads do atendimento via WhatsApp' }
   if (pathname.startsWith('/crm'))              return { title: 'CRM',                      subtitle: 'Acompanhe a jornada dos leads no kanban de conversão' }
   if (pathname.match(/\/vendedor\/campanhas\/.+/)) return { title: 'Detalhe da Campanha',  subtitle: 'Configurações, métricas e logs de execução' }
   if (pathname.startsWith('/vendedor'))          return { title: 'Vendedor',                subtitle: 'Agente ativo de vendas: disparos, leads e CRM em um só lugar' }
@@ -139,6 +141,7 @@ export function MainLayout() {
               <Route path="/automations/:id"  element={<Navigate to="/vendedor" replace />} />
               {/* CRM Kanban */}
               <Route path="/crm"              element={<CrmPage />} />
+              <Route path="/crm/whatsapp"     element={<WhatsAppCrmPage />} />
 
               {/* Configurações — SettingsShell com sub-nav interno */}
               <Route path="/settings/*"       element={<SettingsShell />} />

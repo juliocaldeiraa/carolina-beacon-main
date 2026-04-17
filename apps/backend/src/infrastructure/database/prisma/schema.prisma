@@ -127,6 +127,7 @@ model Agent {
   calendarIntegration GoogleCalendarIntegration?
   calendarEvents   CalendarEvent[]
   feedbacks        ConversationFeedback[]
+  whatsappLeads    WhatsAppLead[]
 
   @@index([tenantId])
   @@index([tenantId, status])
@@ -203,6 +204,32 @@ model CalendarEvent {
   @@index([startTime])
   @@index([status])
   @@map("calendar_events")
+}
+
+// =============================================
+// WHATSAPP LEAD — CRM de leads do WhatsApp
+// =============================================
+model WhatsAppLead {
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  agentId         String    @map("agent_id")
+  agent           Agent     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  conversationId  String?   @map("conversation_id")
+  calendarEventId String?   @map("calendar_event_id")
+  contactPhone    String    @map("contact_phone")
+  contactName     String?   @map("contact_name")
+  stage           String    @default("contact_made") // contact_made | in_conversation | scheduled | confirmed | attended | lost
+  notes           String?   @db.Text
+  appointmentDate DateTime? @map("appointment_date")
+  lostReason      String?   @map("lost_reason")
+  lastMessage     String?   @db.Text  @map("last_message")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@unique([agentId, contactPhone])
+  @@index([tenantId])
+  @@index([agentId, stage])
+  @@map("whatsapp_leads")
 }
 
 // =============================================

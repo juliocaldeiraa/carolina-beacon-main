@@ -32,6 +32,7 @@ import { GoogleCalendarService } from '@/infrastructure/google-calendar/google-c
 import { CALENDAR_TOOLS, getCalendarSystemPrompt, executeCalendarTool } from '@/infrastructure/google-calendar/calendar-tools'
 import { MediaProcessingService } from '@/infrastructure/media/media-processing.service'
 import { ReminderService } from '@/features/reminders/reminder.service'
+import { WhatsAppCrmService } from '@/features/crm/whatsapp-crm.service'
 import { parseWebhookPayload }    from './webhook-ingestion.parser'
 import { buildEnrichedSystemPrompt } from '@/core/entities/Agent'
 import { brPhoneVariants }        from '@/shared/utils/phone.utils'
@@ -105,6 +106,7 @@ export class WebhookIngestionService {
     private readonly calendarService: GoogleCalendarService,
     private readonly mediaProcessing: MediaProcessingService,
     private readonly reminderService: ReminderService,
+    private readonly whatsappCrm: WhatsAppCrmService,
   ) {}
 
   // ─── Helpers de log ─────────────────────────────────────────────────────────
@@ -548,6 +550,9 @@ export class WebhookIngestionService {
           status:       'OPEN',
         },
       })
+
+      // CRM: lead criado no primeiro contato
+      this.whatsappCrm.upsertLead({ agentId: agentRow.id, phone, name, stage: 'contact_made', conversationId: conv.id, lastMessage: text }).catch(() => {})
     }
 
     // 3. Salva mensagem USER
@@ -669,6 +674,9 @@ export class WebhookIngestionService {
 
     // 11. Upsert contato
     await this.contacts.upsertByPhone({ phone, name, channelId })
+
+    // 11b. CRM: lead em conversa
+    this.whatsappCrm.upsertLead({ agentId: agentRow.id, phone, name, stage: 'in_conversation', conversationId: conv.id, lastMessage: cleanContent }).catch(() => {})
 
     // 12. Log de sucesso
     this.updateLog(logId, {

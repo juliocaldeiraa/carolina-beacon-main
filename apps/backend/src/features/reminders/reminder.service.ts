@@ -122,6 +122,14 @@ export class ReminderService {
       // Mudar cor no Google Calendar (verde)
       await this.calendarService.updateEventColor(agentId, event.googleEventId, COLOR_GREEN)
 
+      // CRM: mover pra confirmed
+      try {
+        await this.prisma.whatsAppLead.updateMany({
+          where: { agentId, contactPhone: phone },
+          data: { stage: 'confirmed', updatedAt: new Date() },
+        })
+      } catch {}
+
       // Responder ao paciente
       await this.channelSend.send(channel, phone, `Agendamento confirmado! Te esperamos dia ${dateStr} as ${timeStr}. Ate la!`)
 
@@ -137,6 +145,14 @@ export class ReminderService {
 
       // Mudar cor no Google Calendar (vermelho)
       await this.calendarService.updateEventColor(agentId, event.googleEventId, COLOR_RED)
+
+      // CRM: mover pra lost
+      try {
+        await this.prisma.whatsAppLead.updateMany({
+          where: { agentId, contactPhone: phone },
+          data: { stage: 'lost', lostReason: 'Cancelou via lembrete', updatedAt: new Date() },
+        })
+      } catch {}
 
       // Perguntar motivo e oferecer reagendamento
       await this.channelSend.send(channel, phone, `Entendi! Cancelei seu agendamento do dia ${dateStr}. Posso te ajudar a remarcar pra outro dia?`)
