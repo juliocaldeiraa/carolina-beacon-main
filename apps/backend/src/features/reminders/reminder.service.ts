@@ -161,12 +161,12 @@ export class ReminderService {
   private async interpretResponse(text: string): Promise<'confirmed' | 'cancelled'> {
     const lower = text.toLowerCase().trim()
 
-    // Atalhos diretos sem IA
-    const positiveWords = ['sim', 'confirmo', 'confirmado', 'vou', 'vou sim', 'ok', 'certo', 'pode ser', 'com certeza', 'estarei', 'estarei la']
-    const negativeWords = ['nao', 'não', 'cancela', 'cancelar', 'nao vou', 'não vou', 'desmarcar', 'nao posso', 'não posso']
+    // Atalhos diretos sem IA — NEGATIVAS primeiro (evita "não vou" matchando "vou")
+    const negativeWords = ['nao vou', 'não vou', 'nao posso', 'não posso', 'nao consigo', 'não consigo', 'cancela', 'cancelar', 'desmarcar', 'remarcar', 'nao da', 'não da', 'nao vai dar', 'não vai dar', 'infelizmente']
+    const positiveWords = ['sim', 'confirmo', 'confirmado', 'vou sim', 'vou', 'ok', 'certo', 'pode ser', 'com certeza', 'estarei', 'estarei la', 'la estarei', 'combinado']
 
-    if (positiveWords.some((w) => lower.includes(w))) return 'confirmed'
     if (negativeWords.some((w) => lower.includes(w))) return 'cancelled'
+    if (positiveWords.some((w) => lower.includes(w))) return 'confirmed'
 
     // Ambíguo — usar IA
     try {
