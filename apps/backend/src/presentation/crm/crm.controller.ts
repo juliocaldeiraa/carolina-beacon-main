@@ -129,11 +129,12 @@ export class CrmController {
 
   @Get('whatsapp-leads')
   findWhatsAppLeads(
+    @Req() req: any,
     @Query('agentId') agentId?: string,
     @Query('stage') stage?: string,
     @Query('search') search?: string,
   ) {
-    return this.whatsappCrm.findLeads({ agentId, stage, search })
+    return this.whatsappCrm.findLeads({ agentId, stage, search }, tenantId(req))
   }
 
   @Patch('whatsapp-leads/:id/stage')
@@ -153,7 +154,7 @@ export class CrmController {
   }
 
   @Get('whatsapp-leads/stats')
-  getWhatsAppLeadStats(@Query('agentId') agentId?: string) {
-    return this.whatsappCrm.getStats(agentId)
+  getWhatsAppLeadStats(@Req() req: any, @Query('agentId') agentId?: string) {
+    return this.whatsappCrm.getStats(agentId, tenantId(req))
   }
 }

@@ -11,15 +11,15 @@ export interface ConversationFilters {
 
 @Injectable()
 export class ConversationsService {
-  private get tenantId() { return process.env.DEFAULT_TENANT_ID! }
+  private get defaultTenantId() { return process.env.DEFAULT_TENANT_ID! }
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(filters: ConversationFilters = {}) {
+  async findAll(filters: ConversationFilters = {}, tenantId?: string) {
     const { channelId, status, search, page = 1, limit = 30 } = filters
     const skip = (page - 1) * limit
 
-    const where: Record<string, unknown> = { tenantId: this.tenantId }
+    const where: Record<string, unknown> = { tenantId: tenantId ?? this.defaultTenantId }
     if (channelId) where['channelId'] = channelId
     if (status)    where['status']    = status
     if (search) {
@@ -53,9 +53,9 @@ export class ConversationsService {
     return { items, total, page, limit }
   }
 
-  async findById(id: string) {
+  async findById(id: string, tenantId?: string) {
     const conv = await this.prisma.conversation.findFirst({
-      where: { id, tenantId: this.tenantId },
+      where: { id, tenantId: tenantId ?? this.defaultTenantId },
       include: {
         agent:    { select: { id: true, name: true, model: true } },
         messages: { orderBy: { createdAt: 'asc' } },
@@ -66,7 +66,7 @@ export class ConversationsService {
   }
 
   async updateStatus(id: string, status: string) {
-    const conv = await this.prisma.conversation.findFirst({ where: { id, tenantId: this.tenantId } })
+    const conv = await this.prisma.conversation.findFirst({ where: { id, tenantId: this.defaultTenantId } })
     if (!conv) throw new NotFoundException('Conversa não encontrada')
 
     return this.prisma.conversation.update({
@@ -76,7 +76,7 @@ export class ConversationsService {
   }
 
   async setHumanTakeover(id: string, active: boolean) {
-    const conv = await this.prisma.conversation.findFirst({ where: { id, tenantId: this.tenantId } })
+    const conv = await this.prisma.conversation.findFirst({ where: { id, tenantId: this.defaultTenantId } })
     if (!conv) throw new NotFoundException('Conversa não encontrada')
 
     return this.prisma.conversation.update({

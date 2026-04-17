@@ -13,10 +13,10 @@ export class WhatsAppCrmService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  private get tenantId() { return process.env.DEFAULT_TENANT_ID! }
+  private get defaultTenantId() { return process.env.DEFAULT_TENANT_ID! }
 
-  async findLeads(filters: { agentId?: string; stage?: string; search?: string } = {}) {
-    const where: any = { tenantId: this.tenantId }
+  async findLeads(filters: { agentId?: string; stage?: string; search?: string } = {}, tenantId?: string) {
+    const where: any = { tenantId: tenantId ?? this.defaultTenantId }
     if (filters.agentId) where.agentId = filters.agentId
     if (filters.stage) where.stage = filters.stage
     if (filters.search) {
@@ -71,7 +71,7 @@ export class WhatsAppCrmService {
       } else {
         await this.prisma.whatsAppLead.create({
           data: {
-            tenantId: this.tenantId,
+            tenantId: this.defaultTenantId,
             agentId: data.agentId,
             contactPhone: data.phone,
             contactName: data.name ?? null,
@@ -106,8 +106,8 @@ export class WhatsAppCrmService {
     })
   }
 
-  async getStats(agentId?: string) {
-    const where: any = { tenantId: this.tenantId }
+  async getStats(agentId?: string, tenantId?: string) {
+    const where: any = { tenantId: tenantId ?? this.defaultTenantId }
     if (agentId) where.agentId = agentId
 
     const leads = await this.prisma.whatsAppLead.groupBy({

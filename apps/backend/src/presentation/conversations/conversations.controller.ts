@@ -1,11 +1,15 @@
 import {
   Controller, Get, Patch,
-  Param, Query, Body, UseGuards,
+  Param, Query, Body, UseGuards, Req,
 } from '@nestjs/common'
 import { JwtGuard } from '../../shared/guards/jwt.guard'
 import { RolesGuard } from '../../shared/guards/roles.guard'
 import { Roles } from '../../shared/decorators/roles.decorator'
 import { ConversationsService } from '../../features/conversations/conversations.service'
+
+function tenantId(req: any): string {
+  return req.user?.tenantId
+}
 
 @Controller('conversations')
 @UseGuards(JwtGuard, RolesGuard)
@@ -15,6 +19,7 @@ export class ConversationsController {
 
   @Get()
   findAll(
+    @Req() req: any,
     @Query('channelId') channelId?: string,
     @Query('status')    status?: string,
     @Query('search')    search?: string,
@@ -27,12 +32,12 @@ export class ConversationsController {
       search,
       page:  page  ? Number(page)  : 1,
       limit: limit ? Number(limit) : 30,
-    })
+    }, tenantId(req))
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.svc.findById(id)
+  findOne(@Req() req: any, @Param('id') id: string) {
+    return this.svc.findById(id, tenantId(req))
   }
 
   @Patch(':id/status')
