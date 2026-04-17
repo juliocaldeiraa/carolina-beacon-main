@@ -209,7 +209,7 @@ function DroppableColumn({ stage, children, count }: { stage: typeof STAGES[0]; 
 
 // ─── Dashboard ────────────────────────────────────────────────────────────
 
-function Dashboard({ stats, leads }: { stats: Record<string, number>; leads: WhatsAppLead[] }) {
+function Dashboard({ stats }: { stats: Record<string, number> }) {
   const total = Object.values(stats).reduce((a, b) => a + b, 0)
   const attended = stats['attended'] ?? 0
   const lost = stats['lost'] ?? 0
@@ -405,7 +405,7 @@ export function WhatsAppCrmPage() {
       </div>
 
       {/* Dashboard */}
-      {showDashboard && <Dashboard stats={stats as Record<string, number>} leads={filteredLeads} />}
+      {showDashboard && <Dashboard stats={stats as Record<string, number>} />}
 
       {/* Kanban */}
       {isLoading ? (
