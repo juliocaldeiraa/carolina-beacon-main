@@ -121,12 +121,16 @@ export async function executeCalendarTool(
 
         // CRM: mover lead pra "scheduled"
         try {
-          const clientPhone = input.phone ?? conv?.contactPhone
+          const openConv = await prisma.conversation.findFirst({ where: { agentId, status: 'OPEN' }, select: { contactPhone: true } })
+          const clientPhone = input.phone ?? openConv?.contactPhone
           if (clientPhone) {
+            const [year, month, day] = input.date.split('-').map(Number)
+            const [hour, minute] = input.time.split(':').map(Number)
+            const apptDate = new Date(year, month - 1, day, hour, minute)
             const calendarEvt = await prisma.calendarEvent.findFirst({ where: { agentId, clientPhone }, orderBy: { createdAt: 'desc' } })
             await prisma.whatsAppLead.updateMany({
               where: { agentId, contactPhone: clientPhone },
-              data: { stage: 'scheduled', calendarEventId: calendarEvt?.id ?? null, appointmentDate: startTime, updatedAt: new Date() },
+              data: { stage: 'scheduled', calendarEventId: calendarEvt?.id ?? null, appointmentDate: apptDate, updatedAt: new Date() },
             })
           }
         } catch {}
