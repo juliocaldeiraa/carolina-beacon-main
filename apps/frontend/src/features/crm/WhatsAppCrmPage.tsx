@@ -190,7 +190,7 @@ function DraggableLeadCard({ lead, onMove, onSaveNotes }: {
 function DroppableColumn({ stage, children, count }: { stage: typeof STAGES[0]; children: React.ReactNode; count: number }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.key })
   return (
-    <div className="w-64 shrink-0 flex flex-col">
+    <div className="w-80 shrink-0 flex flex-col">
       <div className={cn('flex items-center justify-between px-3 py-2 rounded-t-xl', stage.bg, stage.border, 'border')}>
         <div className="flex items-center gap-2">
           <span className={cn('w-2 h-2 rounded-full', stage.color)} />
@@ -459,11 +459,29 @@ export function WhatsAppCrmPage() {
         </div>
       </div>
 
-      {/* Dashboard */}
-      {showDashboard && <Dashboard stats={stats as Record<string, number>} />}
+      {/* Metrics — always visible */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-white border border-gray-100 rounded-xl p-4 text-center">
+          <p className="text-xs text-gray-400 uppercase">Total de leads</p>
+          <p className="text-3xl font-bold text-[#0891B2]">{Object.values(stats as Record<string, number>).reduce((a, b) => a + b, 0).toLocaleString('pt-BR')}</p>
+          <p className="text-xs text-gray-300">leads no funil</p>
+        </div>
+        <div className="bg-white border border-gray-100 rounded-xl p-4 text-center">
+          <p className="text-xs text-gray-400 uppercase">Compareceram</p>
+          <p className="text-3xl font-bold text-emerald-500">{(stats as any)['attended'] ?? 0}</p>
+          <p className="text-xs text-gray-300">{Object.values(stats as Record<string, number>).reduce((a, b) => a + b, 0) > 0 ? (((stats as any)['attended'] ?? 0) / Object.values(stats as Record<string, number>).reduce((a, b) => a + b, 0) * 100).toFixed(1) : '0'}% de conversão</p>
+        </div>
+        <div className="bg-white border border-gray-100 rounded-xl p-4 text-center">
+          <p className="text-xs text-gray-400 uppercase">Perdidos</p>
+          <p className="text-3xl font-bold text-red-500">{(stats as any)['lost'] ?? 0}</p>
+          <p className="text-xs text-gray-300">{Object.values(stats as Record<string, number>).reduce((a, b) => a + b, 0) > 0 ? (((stats as any)['lost'] ?? 0) / Object.values(stats as Record<string, number>).reduce((a, b) => a + b, 0) * 100).toFixed(1) : '0'}% de perda</p>
+        </div>
+      </div>
 
-      {/* Kanban */}
-      {isLoading ? (
+      {/* Funnel OR Kanban */}
+      {showDashboard ? (
+        <Dashboard stats={stats as Record<string, number>} />
+      ) : isLoading ? (
         <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-[#0891B2]" /></div>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
