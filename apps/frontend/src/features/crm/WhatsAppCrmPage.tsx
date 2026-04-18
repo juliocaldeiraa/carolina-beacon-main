@@ -219,38 +219,11 @@ const FUNNEL_STAGES = [
 
 function Dashboard({ stats }: { stats: Record<string, number> }) {
   const total = Object.values(stats).reduce((a, b) => a + b, 0)
-  const attended = stats['attended'] ?? 0
   const lost = stats['lost'] ?? 0
-  const conversionRate = total > 0 ? ((attended / total) * 100).toFixed(1) : '0'
-
-  // Acumular: cada etapa inclui as etapas seguintes
-  const accumulated: Record<string, number> = {}
-  let acc = 0
-  for (let i = FUNNEL_STAGES.length - 1; i >= 0; i--) {
-    acc += stats[FUNNEL_STAGES[i].key] ?? 0
-    accumulated[FUNNEL_STAGES[i].key] = acc
-  }
 
   return (
-    <div className="bg-white border border-gray-100 rounded-xl p-6 mb-4">
-      {/* Top metrics */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="text-center">
-          <p className="text-xs text-gray-400 uppercase">Total de leads</p>
-          <p className="text-3xl font-bold text-[#0891B2]">{total.toLocaleString('pt-BR')}</p>
-          <p className="text-xs text-gray-300">leads no funil</p>
-        </div>
-        <div className="text-center">
-          <p className="text-xs text-gray-400 uppercase">Compareceram</p>
-          <p className="text-3xl font-bold text-emerald-500">{attended}</p>
-          <p className="text-xs text-gray-300">{conversionRate}% de conversão</p>
-        </div>
-        <div className="text-center">
-          <p className="text-xs text-gray-400 uppercase">Perdidos</p>
-          <p className="text-3xl font-bold text-red-500">{lost}</p>
-          <p className="text-xs text-gray-300">{total > 0 ? ((lost / total) * 100).toFixed(1) : '0'}% de perda</p>
-        </div>
-      </div>
+    <div className="bg-white border border-gray-100 rounded-xl p-6">
+      <h3 className="text-sm font-semibold text-[#134E4A] mb-4">Funil de Conversão</h3>
 
       {/* Visual funnel */}
       <div className="flex flex-col items-center gap-2">
