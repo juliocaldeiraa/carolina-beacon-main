@@ -80,10 +80,10 @@ export interface CreateAutomationLogDto {
 }
 
 export interface IAutomationRepository {
-  findAll(): Promise<Automation[]>
-  findById(id: string): Promise<Automation | null>
-  findByChannelId(channelId: string): Promise<Automation | null>
-  create(dto: CreateAutomationDto): Promise<Automation>
+  findAll(tenantId?: string): Promise<Automation[]>
+  findById(id: string, tenantId?: string): Promise<Automation | null>
+  findByChannelId(channelId: string, tenantId?: string): Promise<Automation | null>
+  create(dto: CreateAutomationDto, tenantId: string): Promise<Automation>
   update(id: string, dto: UpdateAutomationDto): Promise<Automation>
   remove(id: string): Promise<void>
   addLog(automationId: string, dto: CreateAutomationLogDto): Promise<AutomationLog>

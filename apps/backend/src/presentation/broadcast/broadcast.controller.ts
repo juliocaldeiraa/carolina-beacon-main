@@ -7,9 +7,10 @@
  * POST   /broadcast/:id/launch → lança campanha (DRAFT → QUEUED)
  */
 
-import { Body, Controller, Get, Param, Post, UseGuards, Req } from '@nestjs/common'
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common'
 import { IsArray, IsInt, IsNotEmpty, IsOptional, IsString, ArrayMinSize, Min } from 'class-validator'
 import { JwtGuard }          from '@/shared/guards/jwt.guard'
+import { CurrentTenantId }   from '@/shared/decorators/tenant.decorator'
 import { BroadcastService }  from '@/features/broadcast/broadcast.service'
 
 class CreateBroadcastDto {
@@ -67,12 +68,12 @@ export class BroadcastController {
   constructor(private readonly svc: BroadcastService) {}
 
   @Get()
-  findAll() {
-    return this.svc.findAll()
+  findAll(@CurrentTenantId() tenantId: string) {
+    return this.svc.findAll(tenantId)
   }
 
   @Post()
-  create(@Body() dto: CreateBroadcastDto) {
+  create(@CurrentTenantId() tenantId: string, @Body() dto: CreateBroadcastDto) {
     return this.svc.create({
       channelId:               dto.channelId,
       name:                    dto.name,
@@ -84,16 +85,16 @@ export class BroadcastController {
       batchSizeMax:            dto.batchSizeMax,
       batchIntervalMinMinutes: dto.batchIntervalMinMinutes,
       batchIntervalMaxMinutes: dto.batchIntervalMaxMinutes,
-    })
+    }, tenantId)
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.svc.findById(id)
+  findOne(@CurrentTenantId() tenantId: string, @Param('id') id: string) {
+    return this.svc.findById(id, tenantId)
   }
 
   @Post(':id/launch')
-  launch(@Param('id') id: string, @Req() req: any) {
-    return this.svc.launch(id, req.user?.tenantId)
+  launch(@CurrentTenantId() tenantId: string, @Param('id') id: string) {
+    return this.svc.launch(id, tenantId)
   }
 }

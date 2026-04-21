@@ -199,11 +199,16 @@ export class PlaygroundService {
     userMessage: string,
     aiResult: { content: string; inputTokens?: number; outputTokens?: number; latencyMs?: number },
   ) {
-    const tenantId = process.env.DEFAULT_TENANT_ID!
+    // Tenant derivado do agente (playground não tem contexto de request durante o fluxo)
+    const agent = await this.prisma.agent.findUnique({
+      where:  { id: agentId },
+      select: { tenantId: true },
+    })
+    const tenantId = agent?.tenantId ?? process.env.DEFAULT_TENANT_ID!
 
     // FindOrCreate conversa do playground usando sessionId como contactPhone
     let conv = await this.prisma.conversation.findFirst({
-      where: { agentId, channelId: 'PLAYGROUND', contactPhone: sessionId },
+      where: { agentId, channelId: 'PLAYGROUND', contactPhone: sessionId, tenantId },
     })
 
     if (!conv) {
@@ -246,8 +251,7 @@ export class PlaygroundService {
 
   // ─── Listagens para seleção no playground ────────────────────────────────
 
-  async getBroadcasts(): Promise<PlaygroundBroadcast[]> {
-    const tenantId = process.env.DEFAULT_TENANT_ID!
+  async getBroadcasts(tenantId: string): Promise<PlaygroundBroadcast[]> {
     const rows = await this.prisma.broadcast.findMany({
       where:   { tenantId },
       orderBy: { createdAt: 'desc' },
@@ -271,8 +275,7 @@ export class PlaygroundService {
     }))
   }
 
-  async getAutomations(): Promise<PlaygroundAutomation[]> {
-    const tenantId = process.env.DEFAULT_TENANT_ID!
+  async getAutomations(tenantId: string): Promise<PlaygroundAutomation[]> {
     const rows = await this.prisma.automation.findMany({
       where:   { tenantId },
       orderBy: { createdAt: 'desc' },

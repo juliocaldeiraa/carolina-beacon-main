@@ -9,6 +9,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import { MetricsService } from '../../features/metrics/metrics.service'
 
 export interface LLMCallEvent {
+  tenantId:      string
   agentId:       string
   conversationId?: string
   // Performance
@@ -53,7 +54,7 @@ export class TelemetryService {
         : undefined
 
       await this.metricsService.record({
-        tenantId:       process.env.DEFAULT_TENANT_ID!,
+        tenantId:       event.tenantId,
         agentId:        event.agentId,
         conversationId: event.conversationId,
         latencyMs:      event.latencyMs,

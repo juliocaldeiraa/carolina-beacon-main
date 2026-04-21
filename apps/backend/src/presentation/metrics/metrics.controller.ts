@@ -3,6 +3,7 @@ import { IsString, IsOptional, IsEnum, IsNumber } from 'class-validator'
 import { MetricsService } from '../../features/metrics/metrics.service'
 import { TelemetryService, LLMCallEvent } from '../../infrastructure/telemetry/telemetry.service'
 import { JwtGuard } from '../../shared/guards/jwt.guard'
+import { CurrentTenantId } from '../../shared/decorators/tenant.decorator'
 
 class TimeRangeQuery {
   @IsOptional()
@@ -22,7 +23,7 @@ class TimeRangeQuery {
   granularity?: 'hour' | 'day' | 'week'
 }
 
-class RecordMetricDto implements LLMCallEvent {
+class RecordMetricDto implements Omit<LLMCallEvent, 'tenantId'> {
   @IsString() agentId!: string
   @IsOptional() @IsString() conversationId?: string
   @IsNumber() latencyMs!: number
@@ -48,8 +49,9 @@ export class MetricsController {
   ) {}
 
   @Get('summary')
-  summary(@Query() q: TimeRangeQuery) {
+  summary(@CurrentTenantId() tenantId: string, @Query() q: TimeRangeQuery) {
     return this.svc.getSummary({
+      tenantId,
       agentId: q.agentId,
       from: q.from ? new Date(q.from) : undefined,
       to:   q.to   ? new Date(q.to)   : undefined,
@@ -57,14 +59,15 @@ export class MetricsController {
   }
 
   @Get('agent')
-  byAgent(@Query('agentId') agentId: string) {
-    return this.svc.findByAgent(agentId)
+  byAgent(@CurrentTenantId() tenantId: string, @Query('agentId') agentId: string) {
+    return this.svc.findByAgent(agentId, tenantId)
   }
 
   @Get('timeseries')
-  timeseries(@Query() q: TimeRangeQuery) {
+  timeseries(@CurrentTenantId() tenantId: string, @Query() q: TimeRangeQuery) {
     return this.svc.getTimeseries(
       {
+        tenantId,
         agentId: q.agentId,
         from: q.from ? new Date(q.from) : undefined,
         to:   q.to   ? new Date(q.to)   : undefined,
@@ -74,7 +77,7 @@ export class MetricsController {
   }
 
   @Post()
-  record(@Body() dto: RecordMetricDto) {
-    return this.telemetry.recordLLMCall(dto)
+  record(@CurrentTenantId() tenantId: string, @Body() dto: RecordMetricDto) {
+    return this.telemetry.recordLLMCall({ ...dto, tenantId })
   }
 }

@@ -18,8 +18,8 @@ export interface CreateBroadcastDto {
 }
 
 export interface IBroadcastRepository {
-  findAll(): Promise<Broadcast[]>
-  findById(id: string): Promise<Broadcast | null>
-  create(dto: CreateBroadcastDto): Promise<Broadcast>
+  findAll(tenantId: string): Promise<Broadcast[]>
+  findById(id: string, tenantId: string): Promise<Broadcast | null>
+  create(dto: CreateBroadcastDto, tenantId: string): Promise<Broadcast>
   updateStatus(id: string, status: BroadcastStatus): Promise<Broadcast>
 }

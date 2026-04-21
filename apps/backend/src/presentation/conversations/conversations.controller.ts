@@ -42,17 +42,19 @@ export class ConversationsController {
 
   @Patch(':id/status')
   updateStatus(
+    @Req() req: any,
     @Param('id') id: string,
     @Body('status') status: string,
   ) {
-    return this.svc.updateStatus(id, status)
+    return this.svc.updateStatus(id, status, tenantId(req))
   }
 
   @Patch(':id/takeover')
   setTakeover(
+    @Req() req: any,
     @Param('id') id: string,
     @Body('active') active: boolean,
   ) {
-    return this.svc.setHumanTakeover(id, active)
+    return this.svc.setHumanTakeover(id, active, tenantId(req))
   }
 }

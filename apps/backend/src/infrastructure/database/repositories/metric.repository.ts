@@ -16,9 +16,9 @@ export class MetricRepository implements IMetricRepository {
     return this.toEntity(row)
   }
 
-  async findByAgent(agentId: string): Promise<Metric[]> {
+  async findByAgent(agentId: string, tenantId: string): Promise<Metric[]> {
     const rows = await this.prisma.metric.findMany({
-      where: { agentId, tenantId: process.env.DEFAULT_TENANT_ID },
+      where: { agentId, tenantId },
       orderBy: { recordedAt: 'desc' },
       take: 500,
     })
@@ -111,7 +111,7 @@ export class MetricRepository implements IMetricRepository {
 
   private buildWhere(filters: MetricFilters) {
     return {
-      tenantId: process.env.DEFAULT_TENANT_ID,
+      tenantId: filters.tenantId,
       ...(filters.agentId && { agentId: filters.agentId }),
       ...(filters.from || filters.to
         ? {

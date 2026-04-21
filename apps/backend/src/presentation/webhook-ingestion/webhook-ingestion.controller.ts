@@ -11,12 +11,12 @@ import { WebhookIngestionService } from '@/features/webhook-ingestion/webhook-in
 import { AiEngineService }         from '@/infrastructure/ai-engine/ai-engine.service'
 import { PrismaService }           from '@/infrastructure/database/prisma/prisma.service'
 import { JwtGuard }                from '@/shared/guards/jwt.guard'
+import { CurrentTenantId }         from '@/shared/decorators/tenant.decorator'
 import type { Channel, ChannelType, ChannelConfig } from '@/core/entities/Channel'
 
 @Controller()
 export class WebhookIngestionController {
   private readonly logger = new Logger(WebhookIngestionController.name)
-  private get tenantId() { return process.env.DEFAULT_TENANT_ID! }
 
   constructor(
     private readonly svc:      WebhookIngestionService,
@@ -32,17 +32,11 @@ export class WebhookIngestionController {
     @Param('channelId') channelId: string,
     @Body() payload: unknown,
   ): Promise<{ ok: boolean }> {
-    // Cria log inicial (fire & forget) com rawPayload — service atualiza com dados do contato
-    const rawLogPromise = this.prisma.ingestionLog.create({
-      data: { tenantId: this.tenantId, channelId, status: 'received', rawPayload: payload as object },
-    }).catch(() => null)
-
-    // Inicia ingestão assíncrona após log criado (para ter o ID disponível)
-    rawLogPromise.then((rawLog) => {
-      this.svc.ingest(channelId, payload, rawLog?.id).catch((err) =>
-        this.logger.error(`[ingest] erro não tratado canal=${channelId}: ${err}`)
-      )
-    })
+    // Webhook não tem JWT. TenantId é derivado no service via ChannelAgent/Agent vinculado.
+    // Pra simplificar, deixamos o service criar o log inicial com o tenant correto.
+    this.svc.ingest(channelId, payload, undefined).catch((err) =>
+      this.logger.error(`[ingest] erro não tratado canal=${channelId}: ${err}`),
+    )
 
     this.logger.log(`Webhook recebido: canal ${channelId}`)
     return { ok: true }
@@ -53,6 +47,7 @@ export class WebhookIngestionController {
   @UseGuards(JwtGuard)
   @Get('inbound-logs')
   async getLogs(
+    @CurrentTenantId() tenantId: string,
     @Query('channelId') channelId?: string,
     @Query('status')    status?: string,
     @Query('search')    search?: string,
@@ -61,7 +56,7 @@ export class WebhookIngestionController {
     const take = Math.min(Number(limit ?? 50), 200)
     return this.prisma.ingestionLog.findMany({
       where: {
-        tenantId: this.tenantId,
+        tenantId,
         ...(channelId ? { channelId } : {}),
         ...(status && status !== 'all' ? { status } : {}),
         ...(search ? {
@@ -80,11 +75,14 @@ export class WebhookIngestionController {
 
   @UseGuards(JwtGuard)
   @Post('inbound-logs/:id/explain')
-  async explainLog(@Param('id') id: string): Promise<{ explanation: string }> {
+  async explainLog(
+    @CurrentTenantId() tenantId: string,
+    @Param('id') id: string,
+  ): Promise<{ explanation: string }> {
     const [log, centralAi] = await Promise.all([
-      this.prisma.ingestionLog.findUnique({ where: { id } }),
+      this.prisma.ingestionLog.findFirst({ where: { id, tenantId } }),
       this.prisma.centralAiConfig.findFirst({
-        where: { tenantId: this.tenantId, isActive: true },
+        where: { tenantId, isActive: true },
       }),
     ])
 
@@ -176,6 +174,7 @@ Responda de forma direta em exatamente 3 tópicos:
   @UseGuards(JwtGuard)
   @Post('debug/pipeline-test')
   async pipelineTest(
+    @CurrentTenantId() userTenantId: string,
     @Body() body: { channelId: string; phone: string; text: string },
   ): Promise<object> {
     const { channelId, phone, text } = body
@@ -185,6 +184,19 @@ Responda de forma direta em exatamente 3 tópicos:
       const channelRow = await this.prisma.channel.findUnique({ where: { id: channelId } })
       if (!channelRow) {
         return { success: false, step: 'channel_lookup', error: `Canal ${channelId} não encontrado` }
+      }
+
+      // Valida que o canal pertence ao tenant do usuário (via ChannelAgent ou Agent vinculado)
+      const ownership = await this.prisma.channelAgent.findFirst({
+        where: { channelId, tenantId: userTenantId },
+        select: { id: true },
+      })
+      const ownershipAgent = ownership ? null : await this.prisma.agent.findFirst({
+        where: { channelId, tenantId: userTenantId, deletedAt: null },
+        select: { id: true },
+      })
+      if (!ownership && !ownershipAgent) {
+        return { success: false, step: 'channel_lookup', error: `Canal ${channelId} não pertence ao seu workspace` }
       }
 
       const channel: Channel = {
@@ -199,7 +211,7 @@ Responda de forma direta em exatamente 3 tópicos:
 
       const logId = await this.prisma.ingestionLog.create({
         data: {
-          tenantId:       this.tenantId,
+          tenantId:       userTenantId,
           channelId,
           channelName:    channel.name,
           contactPhone:   phone,
@@ -210,7 +222,7 @@ Responda de forma direta em exatamente 3 tópicos:
         },
       }).then(l => l.id).catch(() => '')
 
-      await this.svc.runProcessMessage(channelId, phone, 'debug-test', text, channel, logId)
+      await this.svc.runProcessMessage(channelId, phone, 'debug-test', text, channel, logId, userTenantId)
 
       const log = logId
         ? await this.prisma.ingestionLog.findUnique({ where: { id: logId } })

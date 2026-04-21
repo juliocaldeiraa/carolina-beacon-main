@@ -1,6 +1,7 @@
 import { Metric } from '../entities/Metric'
 
 export interface MetricFilters {
+  tenantId: string
   agentId?: string
   from?: Date
   to?: Date
@@ -32,7 +33,7 @@ export interface ObservabilitySummary {
 
 export interface IMetricRepository {
   create(data: Omit<Metric, 'id' | 'recordedAt'>): Promise<Metric>
-  findByAgent(agentId: string): Promise<Metric[]>
+  findByAgent(agentId: string, tenantId: string): Promise<Metric[]>
   getSummary(filters: MetricFilters): Promise<ObservabilitySummary>
   getTimeseries(filters: MetricFilters, granularity: 'hour' | 'day' | 'week'): Promise<unknown[]>
 }

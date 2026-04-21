@@ -12,36 +12,34 @@ import type { Automation, AutomationLog, AutomationStatus, FollowupStep } from '
 export class AutomationRepository implements IAutomationRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  private get tenantId() { return process.env.DEFAULT_TENANT_ID! }
-
-  async findAll(): Promise<Automation[]> {
+  async findAll(tenantId?: string): Promise<Automation[]> {
     const rows = await this.prisma.automation.findMany({
-      where:   { tenantId: this.tenantId },
+      where:   tenantId ? { tenantId } : {},
       orderBy: { createdAt: 'desc' },
     })
     return rows.map(this.toEntity)
   }
 
-  async findById(id: string): Promise<Automation | null> {
+  async findById(id: string, tenantId?: string): Promise<Automation | null> {
     const row = await this.prisma.automation.findFirst({
-      where:   { id, tenantId: this.tenantId },
+      where:   tenantId ? { id, tenantId } : { id },
       include: { logs: { orderBy: { executedAt: 'desc' }, take: 20 } },
     })
     return row ? this.toEntity(row) : null
   }
 
-  async findByChannelId(channelId: string): Promise<Automation | null> {
+  async findByChannelId(channelId: string, tenantId?: string): Promise<Automation | null> {
     const row = await this.prisma.automation.findFirst({
-      where: { channelId, status: 'ACTIVE', tenantId: this.tenantId },
+      where: tenantId ? { channelId, status: 'ACTIVE', tenantId } : { channelId, status: 'ACTIVE' },
     })
     return row ? this.toEntity(row) : null
   }
 
-  async create(dto: CreateAutomationDto): Promise<Automation> {
+  async create(dto: CreateAutomationDto, tenantId: string): Promise<Automation> {
     const primaryCh = dto.primaryChannelId ?? dto.channelId ?? null
     const row = await this.prisma.automation.create({
       data: {
-        tenantId:             this.tenantId,
+        tenantId,
         name:                 dto.name,
         channelId:            dto.channelId               ?? null,
         primaryChannelId:     primaryCh,

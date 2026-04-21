@@ -72,13 +72,14 @@ async function withRetry<T>(fn: () => Promise<T>, delaysMs: number[]): Promise<T
 }
 
 interface DebounceEntry {
-  timer:   ReturnType<typeof setTimeout>
-  texts:   string[]
-  name:    string
-  channel: Channel
-  logId:   string  // ID do ingestion_log criado no 1º recebimento
-  tl:      any     // test lead pré-buscado — evita re-lookup e viabiliza effectiveDebounceMs correto
-  auto:    any     // automation pré-buscada — idem
+  timer:    ReturnType<typeof setTimeout>
+  texts:    string[]
+  name:     string
+  channel:  Channel
+  tenantId: string
+  logId:    string  // ID do ingestion_log criado no 1º recebimento
+  tl:       any     // test lead pré-buscado — evita re-lookup e viabiliza effectiveDebounceMs correto
+  auto:     any     // automation pré-buscada — idem
 }
 
 interface RateLimitEntry {
@@ -111,16 +112,19 @@ export class WebhookIngestionService {
 
   // ─── Helpers de log ─────────────────────────────────────────────────────────
 
-  private async createLog(data: {
-    channelId?: string; channelName?: string
-    contactPhone?: string; contactName?: string
-    messagePreview?: string; status: string
-    step?: string; errorMsg?: string; model?: string; latencyMs?: number
-    messageId?: string | null
-  }): Promise<string> {
+  private async createLog(
+    data: {
+      channelId?: string; channelName?: string
+      contactPhone?: string; contactName?: string
+      messagePreview?: string; status: string
+      step?: string; errorMsg?: string; model?: string; latencyMs?: number
+      messageId?: string | null
+    },
+    tenantId?: string,
+  ): Promise<string> {
     try {
       const log = await this.prisma.ingestionLog.create({
-        data: { tenantId: this.defaultTenantId, ...data },
+        data: { tenantId: tenantId ?? this.defaultTenantId, ...data },
       })
       return log.id
     } catch {
@@ -147,6 +151,26 @@ export class WebhookIngestionService {
       this.logger.warn(`Canal ${channelId} não encontrado`)
       this.createLog({ channelId, status: 'no_channel', step: 'channel_lookup', errorMsg: 'Canal não encontrado no banco' })
       return
+    }
+
+    // tenantId é derivado do ChannelAgent (ou Agent vinculado, como fallback).
+    // Canais são globais no schema — o vínculo canal↔tenant vem via ChannelAgent/Agent.
+    const channelAgentBootstrap = await this.prisma.channelAgent.findFirst({
+      where: { channelId, isActive: true },
+      select: { tenantId: true },
+    })
+    const agentBootstrap = channelAgentBootstrap ? null : await this.prisma.agent.findFirst({
+      where: { channelId, deletedAt: null, status: 'ACTIVE' },
+      select: { tenantId: true },
+    })
+    const tenantId = channelAgentBootstrap?.tenantId ?? agentBootstrap?.tenantId ?? this.defaultTenantId
+
+    // Cria log inicial com rawPayload (fire & forget) no tenant correto.
+    // Sobrescrevemos o initialLogId se não foi passado pelo caller.
+    if (!initialLogId) {
+      initialLogId = await this.prisma.ingestionLog.create({
+        data: { tenantId, channelId, status: 'received', rawPayload: payload as object },
+      }).then((l) => l.id).catch(() => undefined)
     }
 
     const channel: Channel = {
@@ -253,7 +277,7 @@ export class WebhookIngestionService {
 
     // 2b. Verificar filtros do ChannelAgent (grupos, gatilhos) antes de criar log
     const channelAgentFilters = await this.prisma.channelAgent.findFirst({
-      where:  { channelId, tenantId: this.defaultTenantId, isActive: true },
+      where:  { channelId, tenantId, isActive: true },
       select: { allowGroups: true, triggerMode: true, triggerKeywords: true, debounceMs: true },
     })
 
@@ -284,8 +308,8 @@ export class WebhookIngestionService {
     const logId = initialLogId
       ? await this.prisma.ingestionLog.update({ where: { id: initialLogId }, data: logData })
           .then(() => initialLogId)
-          .catch(() => this.createLog(logData))
-      : await this.createLog(logData)
+          .catch(() => this.createLog(logData, tenantId))
+      : await this.createLog(logData, tenantId)
 
     // 2c. Verificar se é resposta a lembrete de agendamento (antes de humanTakeover)
     try {
@@ -305,7 +329,7 @@ export class WebhookIngestionService {
 
     // 3. Atendimento humano — verificado antes do debounce para resposta imediata
     const existingConv = await this.prisma.conversation.findFirst({
-      where: { channelId, contactPhone: phone, tenantId: this.defaultTenantId, status: 'OPEN' },
+      where: { channelId, contactPhone: phone, tenantId, status: 'OPEN' },
     })
     if (existingConv?.humanTakeover) {
       this.logger.debug(`Conversa ${existingConv.id} em atendimento humano — salva msg sem IA`)
@@ -415,7 +439,7 @@ export class WebhookIngestionService {
         }
 
         await withRetry(
-          () => this.processMessage(channelId, phone, name, combined, channel, firstLogId),
+          () => this.processMessage(channelId, phone, name, combined, channel, firstLogId, tenantId),
           [3_000, 8_000],
         )
       } catch (err) {
@@ -431,7 +455,7 @@ export class WebhookIngestionService {
       }
     }, effectiveDebounceMs)
 
-    this.debounce.set(key, { timer, texts, name, channel, logId: firstLogId, tl, auto })
+    this.debounce.set(key, { timer, texts, name, channel, tenantId, logId: firstLogId, tl, auto })
 
     if (entry) {
       this.updateLog(logId, { status: 'debounced', step: 'debounce_merge' })
@@ -448,8 +472,9 @@ export class WebhookIngestionService {
     text:      string,
     channel:   Channel,
     logId:     string,
+    tenantId:  string,
   ): Promise<void> {
-    return this.processMessage(channelId, phone, name, text, channel, logId)
+    return this.processMessage(channelId, phone, name, text, channel, logId, tenantId)
   }
 
   private async processMessage(
@@ -459,6 +484,7 @@ export class WebhookIngestionService {
     text:          string,
     channel:       Channel,
     logId:         string,
+    tenantId:      string,
     agentOverride?: { agentId: string; automationId?: string; extraSystemCtx?: string; sendDelayMs?: number; fragmentDelayMs?: number; modelOverride?: string },
   ): Promise<void> {
     const startMs = Date.now()
@@ -471,15 +497,15 @@ export class WebhookIngestionService {
       agentRow = await this.prisma.agent.findFirst({ where: { id: agentOverride.agentId, deletedAt: null } })
       // Busca channelAgent do canal para aplicar sendDelayMs / fragmentDelayMs configurados
       channelAgentRow = await this.prisma.channelAgent.findFirst({
-        where: { channelId, tenantId: this.defaultTenantId, isActive: true },
+        where: { channelId, tenantId, isActive: true },
       })
     } else {
       channelAgentRow = await this.prisma.channelAgent.findFirst({
-        where: { channelId, tenantId: this.defaultTenantId, isActive: true },
+        where: { channelId, tenantId, isActive: true },
       })
       agentRow = channelAgentRow
         ? await this.prisma.agent.findFirst({ where: { id: channelAgentRow.agentId, deletedAt: null } })
-        : await this.prisma.agent.findFirst({ where: { channelId, deletedAt: null, status: 'ACTIVE', tenantId: this.defaultTenantId } })
+        : await this.prisma.agent.findFirst({ where: { channelId, deletedAt: null, status: 'ACTIVE', tenantId } })
     }
 
     if (!agentRow) {
@@ -497,14 +523,14 @@ export class WebhookIngestionService {
     // Verifica variantes do número (com/sem 9º dígito) para compatibilidade com Evolution API
     const convPhoneVariants = brPhoneVariants(phone)
     let conv = await this.prisma.conversation.findFirst({
-      where: { channelId, contactPhone: { in: convPhoneVariants }, agentId: agentRow.id, tenantId: this.defaultTenantId, status: 'OPEN' },
+      where: { channelId, contactPhone: { in: convPhoneVariants }, agentId: agentRow.id, tenantId, status: 'OPEN' },
     })
 
     // Fallback cross-canal: se o número foi migrado (ex: JRWHATS001 caiu → JRWHATS002),
     // reutiliza a conversa existente de qualquer canal para preservar o histórico completo.
     if (!conv) {
       const crossChanConv = await this.prisma.conversation.findFirst({
-        where: { contactPhone: { in: convPhoneVariants }, agentId: agentRow.id, tenantId: this.defaultTenantId, status: 'OPEN' },
+        where: { contactPhone: { in: convPhoneVariants }, agentId: agentRow.id, tenantId, status: 'OPEN' },
         orderBy: { lastMessageAt: 'desc' },
       })
       if (crossChanConv && crossChanConv.channelId !== channelId) {
@@ -542,7 +568,7 @@ export class WebhookIngestionService {
     if (!conv) {
       conv = await this.prisma.conversation.create({
         data: {
-          tenantId:     this.defaultTenantId,
+          tenantId,
           agentId:      agentRow.id,
           channelId,
           contactPhone: phone,
@@ -805,8 +831,9 @@ export class WebhookIngestionService {
 
   @Cron('*/5 * * * *')
   async resumeHumanTakeoverOnTimeout(): Promise<void> {
+    // Roda em todos os tenants — cada ChannelAgent já carrega seu próprio tenantId
     const channelAgents = await this.prisma.channelAgent.findMany({
-      where: { tenantId: this.defaultTenantId, isActive: true, humanTakeoverTimeoutMin: { gt: 0 } },
+      where: { isActive: true, humanTakeoverTimeoutMin: { gt: 0 } },
     })
     if (!channelAgents.length) return
 
@@ -815,7 +842,7 @@ export class WebhookIngestionService {
       const staleConvs = await this.prisma.conversation.findMany({
         where: {
           channelId:     ca.channelId,
-          tenantId:      this.defaultTenantId,
+          tenantId:      ca.tenantId,
           humanTakeover: true,
           status:        { in: ['OPEN', 'IN_PROGRESS'] },
           lastMessageAt: { lt: cutoff },
@@ -828,7 +855,7 @@ export class WebhookIngestionService {
         where: { id: { in: staleConvs.map((c) => c.id) } },
         data:  { humanTakeover: false },
       })
-      this.logger.log(`[humanTakeover cron] ${staleConvs.length} conversa(s) retomadas pela IA (canal ${ca.channelId}, timeout ${ca.humanTakeoverTimeoutMin}min)`)
+      this.logger.log(`[humanTakeover cron] ${staleConvs.length} conversa(s) retomadas pela IA (canal ${ca.channelId}, tenant ${ca.tenantId}, timeout ${ca.humanTakeoverTimeoutMin}min)`)
     }
   }
 
@@ -836,10 +863,10 @@ export class WebhookIngestionService {
 
   @Cron('*/5 * * * *')
   async cleanStaleProcessingLogs(): Promise<void> {
+    // Roda em todos os tenants — ingestion_log carrega seu próprio tenantId
     const cutoff = new Date(Date.now() - 5 * 60_000) // > 5 min em 'processing'
     const result = await this.prisma.ingestionLog.updateMany({
       where: {
-        tenantId:  this.defaultTenantId,
         status:    'processing',
         createdAt: { lt: cutoff },
       },

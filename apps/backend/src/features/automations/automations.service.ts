@@ -65,18 +65,18 @@ export class AutomationsService {
     private readonly channelResolver: ChannelResolverService,
   ) {}
 
-  findAll() {
-    return this.repo.findAll()
+  findAll(tenantId?: string) {
+    return this.repo.findAll(tenantId)
   }
 
-  async findById(id: string) {
-    const automation = await this.repo.findById(id)
+  async findById(id: string, tenantId?: string) {
+    const automation = await this.repo.findById(id, tenantId)
     if (!automation) throw new NotFoundException('Automação não encontrada')
     return automation
   }
 
-  async create(dto: CreateAutomationDto) {
-    return this.repo.create(dto)
+  async create(dto: CreateAutomationDto, tenantId: string) {
+    return this.repo.create(dto, tenantId)
   }
 
   async update(id: string, dto: UpdateAutomationDto) {
@@ -236,7 +236,7 @@ export class AutomationsService {
         const linkedAgentId = (automation as any).linkedAgentId as string | null
         if (linkedAgentId) {
           try {
-            const tenantId   = process.env.DEFAULT_TENANT_ID!
+            const tenantId   = (automation as any).tenantId as string
             const channelId2 = channel.id
             const existing = await this.prisma.conversation.findMany({
               where: { agentId: linkedAgentId, channelId: channelId2, contactPhone: phone, tenantId, status: 'OPEN' },
@@ -282,7 +282,7 @@ export class AutomationsService {
     const cleaned = phones.map((p) => p.replace(/\D/g, '').trim()).filter(Boolean)
 
     const linkedAgentId = (automation as any).linkedAgentId as string | null
-    const tenantId      = process.env.DEFAULT_TENANT_ID!
+    const tenantId      = (automation as any).tenantId as string
 
     // Apaga conversas + mensagens da infra unificada para esses phones
     if (linkedAgentId) {
@@ -331,7 +331,7 @@ export class AutomationsService {
 
     const automation    = await this.findById(id)
     const linkedAgentId = (automation as any).linkedAgentId as string | null
-    const tenantId      = process.env.DEFAULT_TENANT_ID!
+    const tenantId      = (automation as any).tenantId as string
 
     const [leads, logs] = await Promise.all([
       this.prisma.leadManyInsta.findMany({

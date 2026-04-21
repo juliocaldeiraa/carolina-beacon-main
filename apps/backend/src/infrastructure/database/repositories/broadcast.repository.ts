@@ -7,25 +7,23 @@ import type { Broadcast, BroadcastStatus }               from '@/core/entities/B
 export class BroadcastRepository implements IBroadcastRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  private get tenantId() { return process.env.DEFAULT_TENANT_ID! }
-
-  async findAll(): Promise<Broadcast[]> {
+  async findAll(tenantId: string): Promise<Broadcast[]> {
     const rows = await this.prisma.broadcast.findMany({
-      where:   { tenantId: this.tenantId },
+      where:   { tenantId },
       orderBy: { createdAt: 'desc' },
     })
     return rows.map(this.toEntity)
   }
 
-  async findById(id: string): Promise<Broadcast | null> {
-    const row = await this.prisma.broadcast.findFirst({ where: { id, tenantId: this.tenantId } })
+  async findById(id: string, tenantId: string): Promise<Broadcast | null> {
+    const row = await this.prisma.broadcast.findFirst({ where: { id, tenantId } })
     return row ? this.toEntity(row) : null
   }
 
-  async create(dto: CreateBroadcastDto): Promise<Broadcast> {
+  async create(dto: CreateBroadcastDto, tenantId: string): Promise<Broadcast> {
     const row = await this.prisma.broadcast.create({
       data: {
-        tenantId:  this.tenantId,
+        tenantId,
         agentId:   dto.agentId ?? null,
         channelId: dto.channelId ?? null,
         name:      dto.name,

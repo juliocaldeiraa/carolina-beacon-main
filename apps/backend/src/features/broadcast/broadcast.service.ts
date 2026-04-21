@@ -22,38 +22,38 @@ export class BroadcastService {
     private readonly queue: BroadcastQueueService,
   ) {}
 
-  findAll() {
-    return this.repo.findAll()
+  findAll(tenantId: string) {
+    return this.repo.findAll(tenantId)
   }
 
-  async findById(id: string) {
-    const broadcast = await this.repo.findById(id)
+  async findById(id: string, tenantId: string) {
+    const broadcast = await this.repo.findById(id, tenantId)
     if (!broadcast) throw new NotFoundException('Campanha não encontrada')
     return broadcast
   }
 
   /** Cria a campanha em DRAFT — não enfileira ainda */
-  async create(dto: CreateBroadcastDto) {
-    return this.repo.create(dto)
+  async create(dto: CreateBroadcastDto, tenantId: string) {
+    return this.repo.create(dto, tenantId)
   }
 
   /** Lança campanha: DRAFT → QUEUED → enfileira no BullMQ */
-  async launch(id: string, tenantId?: string) {
-    const broadcast = await this.findById(id)
+  async launch(id: string, tenantId: string) {
+    const broadcast = await this.findById(id, tenantId)
     await this.repo.updateStatus(id, 'QUEUED')
     await this.queue.enqueue({
       broadcastId:            id,
-      tenantId:               tenantId ?? process.env.DEFAULT_TENANT_ID!,
+      tenantId,
       channelId:              broadcast.channelId ?? undefined,
       contacts:               broadcast.audience,
       template:               broadcast.template,
       messageDelayMinSeconds: broadcast.messageDelayMinSeconds,
       messageDelayMaxSeconds: broadcast.messageDelayMaxSeconds,
     })
-    return this.repo.findById(id)
+    return this.repo.findById(id, tenantId)
   }
 
-  // Chamados pelo BroadcastProcessorService
+  // Chamados pelo BroadcastProcessorService (worker — sem contexto de request)
   markRunning(id: string)   { return this.repo.updateStatus(id, 'RUNNING') }
   markCompleted(id: string) { return this.repo.updateStatus(id, 'COMPLETED') }
   markFailed(id: string)    { return this.repo.updateStatus(id, 'FAILED') }

@@ -65,8 +65,8 @@ export class ConversationsService {
     return conv
   }
 
-  async updateStatus(id: string, status: string) {
-    const conv = await this.prisma.conversation.findFirst({ where: { id, tenantId: this.defaultTenantId } })
+  async updateStatus(id: string, status: string, tenantId?: string) {
+    const conv = await this.prisma.conversation.findFirst({ where: { id, tenantId: tenantId ?? this.defaultTenantId } })
     if (!conv) throw new NotFoundException('Conversa não encontrada')
 
     return this.prisma.conversation.update({
@@ -75,8 +75,8 @@ export class ConversationsService {
     })
   }
 
-  async setHumanTakeover(id: string, active: boolean) {
-    const conv = await this.prisma.conversation.findFirst({ where: { id, tenantId: this.defaultTenantId } })
+  async setHumanTakeover(id: string, active: boolean, tenantId?: string) {
+    const conv = await this.prisma.conversation.findFirst({ where: { id, tenantId: tenantId ?? this.defaultTenantId } })
     if (!conv) throw new NotFoundException('Conversa não encontrada')
 
     return this.prisma.conversation.update({

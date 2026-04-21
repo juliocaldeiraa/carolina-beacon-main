@@ -484,7 +484,7 @@ export class AutomationReplyHandlerService {
     // Espelha user + assistant na tabela Conversation/Message para o monitor de teste.
     // Fire-and-forget — não bloqueia nem quebra o fluxo principal.
     if (automation.linkedAgentId) {
-      const tenantId = process.env.DEFAULT_TENANT_ID!
+      const tenantId = (automation as any).tenantId as string
       this.prisma.conversation.findFirst({
         // Sem filtro status: qualquer conversa aberta ou ativa serve para o espelho
         where: { contactPhone: { in: allPhoneVariants }, agentId: automation.linkedAgentId, tenantId },

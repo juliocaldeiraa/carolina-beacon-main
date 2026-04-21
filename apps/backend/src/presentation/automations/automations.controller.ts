@@ -22,6 +22,7 @@ import { Type } from 'class-transformer'
 import { JwtGuard }           from '@/shared/guards/jwt.guard'
 import { RolesGuard }         from '@/shared/guards/roles.guard'
 import { Roles }              from '@/shared/decorators/roles.decorator'
+import { CurrentTenantId }    from '@/shared/decorators/tenant.decorator'
 import { AutomationsService } from '@/features/automations/automations.service'
 
 class FollowupStepDto {
@@ -317,8 +318,8 @@ export class AutomationsController {
 
   @Get()
   @Roles('ADMIN', 'EQUIPE')
-  findAll() {
-    return this.svc.findAll()
+  findAll(@CurrentTenantId() tenantId: string) {
+    return this.svc.findAll(tenantId)
   }
 
   @Get('lead-statuses')
@@ -329,16 +330,16 @@ export class AutomationsController {
 
   @Get(':id')
   @Roles('ADMIN', 'EQUIPE')
-  async findOne(@Param('id') id: string) {
-    const automation = await this.svc.findById(id)
+  async findOne(@CurrentTenantId() tenantId: string, @Param('id') id: string) {
+    const automation = await this.svc.findById(id, tenantId)
     const stats      = await this.svc.getStats(id)
     return { ...automation, stats }
   }
 
   @Post()
   @Roles('ADMIN')
-  create(@Body() dto: CreateAutomationDto) {
-    return this.svc.create(dto)
+  create(@CurrentTenantId() tenantId: string, @Body() dto: CreateAutomationDto) {
+    return this.svc.create(dto, tenantId)
   }
 
   @Patch(':id')

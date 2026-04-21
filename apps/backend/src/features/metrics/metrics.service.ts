@@ -19,8 +19,8 @@ export class MetricsService {
   }
 
   /** Métricas por agente (lista raw) */
-  findByAgent(agentId: string) {
-    return this.repo.findByAgent(agentId)
+  findByAgent(agentId: string, tenantId: string) {
+    return this.repo.findByAgent(agentId, tenantId)
   }
 
   /** Série temporal para gráficos */

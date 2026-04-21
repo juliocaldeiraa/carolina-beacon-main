@@ -14,6 +14,7 @@ import {
 } from 'class-validator'
 import { Type } from 'class-transformer'
 import { JwtGuard }          from '@/shared/guards/jwt.guard'
+import { CurrentTenantId }   from '@/shared/decorators/tenant.decorator'
 import { PlaygroundService } from '@/features/playground/playground.service'
 import type { SessionMessage } from '@/features/playground/playground.service'
 
@@ -80,12 +81,12 @@ export class PlaygroundController {
   }
 
   @Get('broadcasts')
-  getBroadcasts() {
-    return this.svc.getBroadcasts()
+  getBroadcasts(@CurrentTenantId() tenantId: string) {
+    return this.svc.getBroadcasts(tenantId)
   }
 
   @Get('automations')
-  getAutomations() {
-    return this.svc.getAutomations()
+  getAutomations(@CurrentTenantId() tenantId: string) {
+    return this.svc.getAutomations(tenantId)
   }
 }

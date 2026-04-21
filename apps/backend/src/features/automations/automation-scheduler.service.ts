@@ -185,6 +185,7 @@ export class AutomationSchedulerService implements OnModuleInit {
         leadsEtapa0, templates, channel, sentPhones, now, 0, automationId, automation.name,
         automation.dispatchDelayMinMs ?? undefined, automation.dispatchDelayMaxMs ?? undefined,
         (automation as any).linkedAgentId ?? undefined,
+        (automation as any).tenantId as string,
       )
       totalSent   += sent
       totalErrors += errors
@@ -222,6 +223,7 @@ export class AutomationSchedulerService implements OnModuleInit {
         leadsEtapaN, step.templates, channel, sentPhones, now, stepNum, automationId, automation.name,
         automation.dispatchDelayMinMs ?? undefined, automation.dispatchDelayMaxMs ?? undefined,
         (automation as any).linkedAgentId ?? undefined,
+        (automation as any).tenantId as string,
       )
       totalSent   += sent
       totalErrors += errors
@@ -271,6 +273,7 @@ export class AutomationSchedulerService implements OnModuleInit {
     dispatchDelayMinMs?: number,
     dispatchDelayMaxMs?: number,
     linkedAgentId?:    string,
+    tenantId?:         string,
   ): Promise<{ sent: number; errors: number; skipped: number }> {
     let sent    = 0
     let errors  = 0
@@ -379,8 +382,7 @@ export class AutomationSchedulerService implements OnModuleInit {
         }).catch(() => {})
 
         // Registra mensagem enviada como ASSISTANT na conversa da IA (para histórico cross-canal)
-        if (linkedAgentId) {
-          const tenantId = process.env.DEFAULT_TENANT_ID!
+        if (linkedAgentId && tenantId) {
           const phoneVariants = brPhoneVariants(phone)
           this.prisma.conversation.findFirst({
             where: { agentId: linkedAgentId, contactPhone: { in: phoneVariants }, tenantId, status: 'OPEN' },
