@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, UseGuards } from '@nestjs/common'
+import { Controller, Post, Get, Delete, Body, Param, UseGuards } from '@nestjs/common'
 import { IsEmail, IsString, MinLength } from 'class-validator'
 import { AuthService } from '../../features/auth/auth.service'
 import { JwtGuard } from '../../shared/guards/jwt.guard'
@@ -61,5 +61,11 @@ export class AuthController {
   @UseGuards(JwtGuard)
   createTenant(@Body() body: { name: string; slug: string; niche?: string }) {
     return this.authService.createTenant(body.name, body.slug, body.niche)
+  }
+
+  @Delete('tenants/:id')
+  @UseGuards(JwtGuard)
+  deleteTenant(@CurrentUserId() userId: string, @Param('id') id: string) {
+    return this.authService.deleteTenant(userId, id)
   }
 }

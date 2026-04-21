@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common'
+import { Injectable, UnauthorizedException, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import { ConfigService } from '@nestjs/config'
 import * as bcrypt from 'bcryptjs'
@@ -61,11 +61,11 @@ export class AuthService {
 
   async listTenants(userId: string) {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } })
-    // Admin vê todos os tenants, outros veem só o deles
+    // Admin vê todos os tenants não deletados, outros veem só o deles
     if (user.role === 'ADMIN') {
-      return this.prisma.tenant.findMany({ orderBy: { name: 'asc' } })
+      return this.prisma.tenant.findMany({ where: { deletedAt: null }, orderBy: { name: 'asc' } })
     }
-    return this.prisma.tenant.findMany({ where: { id: user.tenantId } })
+    return this.prisma.tenant.findMany({ where: { id: user.tenantId, deletedAt: null } })
   }
 
   async switchTenant(userId: string, tenantId: string) {
@@ -74,7 +74,8 @@ export class AuthService {
     if (user.role !== 'ADMIN') {
       if (user.tenantId !== tenantId) throw new UnauthorizedException('Sem permissão para este workspace')
     }
-    const tenant = await this.prisma.tenant.findUniqueOrThrow({ where: { id: tenantId } })
+    const tenant = await this.prisma.tenant.findFirst({ where: { id: tenantId, deletedAt: null } })
+    if (!tenant) throw new NotFoundException('Workspace não encontrado')
     const payload = { sub: user.id, role: user.role, tenantId: tenant.id }
     return {
       accessToken: this.jwt.sign(payload),
@@ -86,5 +87,38 @@ export class AuthService {
     const allowed = ['healthcare', 'launch', 'services', 'generic']
     const safeNiche = niche && allowed.includes(niche) ? niche : 'generic'
     return this.prisma.tenant.create({ data: { name, slug, niche: safeNiche } })
+  }
+
+  async deleteTenant(userId: string, tenantId: string) {
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } })
+    if (user.role !== 'ADMIN') throw new ForbiddenException('Apenas ADMIN pode excluir workspace')
+
+    const tenant = await this.prisma.tenant.findFirst({ where: { id: tenantId, deletedAt: null } })
+    if (!tenant) throw new NotFoundException('Workspace não encontrado')
+
+    const active = await this.prisma.tenant.count({ where: { deletedAt: null } })
+    if (active <= 1) throw new BadRequestException('Não é possível excluir o último workspace')
+
+    await this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: { deletedAt: new Date() },
+    })
+
+    // Se o admin excluiu o próprio workspace ativo, retorna switch automático pro primeiro disponível
+    let nextToken: string | null = null
+    let nextTenant: { id: string; name: string; slug: string; niche: string } | null = null
+    if (user.tenantId === tenantId) {
+      const fallback = await this.prisma.tenant.findFirst({
+        where: { deletedAt: null },
+        orderBy: { name: 'asc' },
+      })
+      if (fallback) {
+        nextTenant = { id: fallback.id, name: fallback.name, slug: fallback.slug, niche: fallback.niche }
+        const payload = { sub: user.id, role: user.role, tenantId: fallback.id }
+        nextToken = this.jwt.sign(payload)
+      }
+    }
+
+    return { deleted: true, accessToken: nextToken, tenant: nextTenant }
   }
 }

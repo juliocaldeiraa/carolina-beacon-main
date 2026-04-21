@@ -3,7 +3,7 @@
  */
 
 import { useState } from 'react'
-import { LogOut, Settings, ChevronDown, Plus, Building2 } from 'lucide-react'
+import { LogOut, Settings, ChevronDown, Plus, Building2, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore, type NicheKey } from '@/store/useAuthStore'
@@ -65,6 +65,29 @@ export function Header({ title, subtitle }: HeaderProps) {
     },
   })
 
+  const deleteTenant = useMutation({
+    mutationFn: (tenantId: string) => api.delete(`/auth/tenants/${tenantId}`).then((r) => r.data),
+    onSuccess: (data: any) => {
+      qc.invalidateQueries({ queryKey: ['tenants'] })
+      if (data.accessToken && data.tenant) {
+        setToken(data.accessToken)
+        setActiveTenant(data.tenant)
+      }
+      qc.invalidateQueries()
+    },
+    onError: (err: any) => {
+      alert(err?.response?.data?.message ?? 'Erro ao excluir workspace')
+    },
+  })
+
+  function handleDelete(tenantId: string, tenantName: string, e: React.MouseEvent) {
+    e.stopPropagation()
+    const confirmed = window.confirm(
+      `Excluir o workspace "${tenantName}"?\n\nOs dados permanecem no banco, mas o workspace deixa de ficar visível. Esta ação não pode ser desfeita pela interface.`,
+    )
+    if (confirmed) deleteTenant.mutate(tenantId)
+  }
+
   function handleLogout() {
     logout()
     navigate('/login')
@@ -90,17 +113,31 @@ export function Header({ title, subtitle }: HeaderProps) {
                 <div className="fixed inset-0 z-40" onClick={() => setShowTenants(false)} />
                 <div className="absolute left-0 top-10 z-50 bg-white rounded-xl shadow-lg border border-gray-100 py-1 min-w-[220px]">
                   {(tenants as any[]).map((t: any) => (
-                    <button
+                    <div
                       key={t.id}
-                      onClick={() => switchTenant.mutate(t.id)}
                       className={cn(
-                        'w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left transition-colors',
+                        'group w-full flex items-center gap-2 pl-4 pr-2 py-2.5 text-sm transition-colors',
                         activeTenant?.id === t.id ? 'bg-[#0891B2]/10 text-[#0891B2] font-medium' : 'text-gray-600 hover:bg-gray-50',
                       )}
                     >
-                      <Building2 className="w-3.5 h-3.5" />
-                      {t.name}
-                    </button>
+                      <button
+                        onClick={() => switchTenant.mutate(t.id)}
+                        className="flex-1 flex items-center gap-2 text-left"
+                      >
+                        <Building2 className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{t.name}</span>
+                      </button>
+                      {(tenants as any[]).length > 1 && (
+                        <button
+                          onClick={(e) => handleDelete(t.id, t.name, e)}
+                          disabled={deleteTenant.isPending}
+                          className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-40"
+                          title="Excluir workspace"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   ))}
                   <div className="border-t border-gray-100 mt-1 pt-1">
                     <button
