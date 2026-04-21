@@ -1,5 +1,6 @@
 /**
  * WhatsAppCrmPage — Kanban + Dashboard de leads do WhatsApp
+ * Stages vêm do backend (por nicho do workspace ativo).
  */
 
 import { useState } from 'react'
@@ -19,14 +20,25 @@ import { Button } from '@/components/ui/Button'
 import { api } from '@/services/api'
 import { cn } from '@/lib/utils'
 
-const STAGES = [
-  { key: 'contact_made', label: 'Contato Feito', color: 'bg-blue-500', bg: 'bg-blue-50', border: 'border-blue-200', textColor: 'text-blue-600' },
-  { key: 'in_conversation', label: 'Em Conversa', color: 'bg-purple-500', bg: 'bg-purple-50', border: 'border-purple-200', textColor: 'text-purple-600' },
-  { key: 'scheduled', label: 'Agendado', color: 'bg-amber-500', bg: 'bg-amber-50', border: 'border-amber-200', textColor: 'text-amber-600' },
-  { key: 'confirmed', label: 'Confirmado', color: 'bg-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-200', textColor: 'text-emerald-600' },
-  { key: 'attended', label: 'Compareceu', color: 'bg-green-700', bg: 'bg-green-50', border: 'border-green-200', textColor: 'text-green-700' },
-  { key: 'lost', label: 'Perdido', color: 'bg-red-500', bg: 'bg-red-50', border: 'border-red-200', textColor: 'text-red-500' },
-]
+interface CrmStage {
+  key: string
+  label: string
+  color: string
+  order: number
+  isLost?: boolean
+}
+
+const COLOR_CLASSES: Record<string, { dot: string; bg: string; border: string; text: string; funnel: string }> = {
+  blue:    { dot: 'bg-blue-500',    bg: 'bg-blue-50',    border: 'border-blue-200',    text: 'text-blue-600',    funnel: 'bg-[#0891B2]' },
+  teal:    { dot: 'bg-teal-500',    bg: 'bg-teal-50',    border: 'border-teal-200',    text: 'text-teal-600',    funnel: 'bg-[#0E7490]' },
+  amber:   { dot: 'bg-amber-500',   bg: 'bg-amber-50',   border: 'border-amber-200',   text: 'text-amber-600',   funnel: 'bg-[#155E75]' },
+  orange:  { dot: 'bg-orange-500',  bg: 'bg-orange-50',  border: 'border-orange-200',  text: 'text-orange-600',  funnel: 'bg-[#EA580C]' },
+  green:   { dot: 'bg-green-500',   bg: 'bg-green-50',   border: 'border-green-200',   text: 'text-green-600',   funnel: 'bg-[#16A34A]' },
+  emerald: { dot: 'bg-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-600', funnel: 'bg-[#15803D]' },
+  purple:  { dot: 'bg-purple-500',  bg: 'bg-purple-50',  border: 'border-purple-200',  text: 'text-purple-600',  funnel: 'bg-purple-600' },
+  red:     { dot: 'bg-red-500',     bg: 'bg-red-50',     border: 'border-red-200',     text: 'text-red-500',     funnel: 'bg-red-500' },
+}
+function palette(color: string) { return COLOR_CLASSES[color] ?? COLOR_CLASSES.blue }
 
 const PERIOD_FILTERS = [
   { key: '', label: 'Todos' },
@@ -71,8 +83,9 @@ function filterByPeriod(leads: WhatsAppLead[], period: string): WhatsAppLead[] {
 
 // ─── Draggable Lead Card ──────────────────────────────────────────────────
 
-function DraggableLeadCard({ lead, onMove, onSaveNotes }: {
+function DraggableLeadCard({ lead, stages, onMove, onSaveNotes }: {
   lead: WhatsAppLead
+  stages: CrmStage[]
   onMove: (stage: string) => void
   onSaveNotes: (id: string, notes: string) => void
 }) {
@@ -82,9 +95,12 @@ function DraggableLeadCard({ lead, onMove, onSaveNotes }: {
   const navigate = useNavigate()
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: lead.id })
 
-  const stageIdx = STAGES.findIndex((s) => s.key === lead.stage)
-  const prevStage = stageIdx > 0 ? STAGES[stageIdx - 1] : null
-  const nextStage = stageIdx < STAGES.length - 1 && lead.stage !== 'lost' ? STAGES[stageIdx + 1] : null
+  const nonLost = stages.filter((s) => !s.isLost).sort((a, b) => a.order - b.order)
+  const lostStage = stages.find((s) => s.isLost)
+
+  const stageIdx = nonLost.findIndex((s) => s.key === lead.stage)
+  const prevStage = stageIdx > 0 ? nonLost[stageIdx - 1] : null
+  const nextStage = stageIdx >= 0 && stageIdx < nonLost.length - 1 ? nonLost[stageIdx + 1] : null
 
   const appointmentStr = lead.appointmentDate
     ? new Date(lead.appointmentDate).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
@@ -174,8 +190,8 @@ function DraggableLeadCard({ lead, onMove, onSaveNotes }: {
                 Ver conversa
               </button>
             )}
-            {!['attended', 'lost'].includes(lead.stage) && (
-              <button onClick={() => onMove('lost')}
+            {lostStage && lead.stage !== lostStage.key && stageIdx >= 0 && stageIdx < nonLost.length - 1 && (
+              <button onClick={() => onMove(lostStage.key)}
                 className="text-[10px] px-2 py-1 rounded-md text-red-400 hover:bg-red-50">Perdido</button>
             )}
           </div>
@@ -187,19 +203,20 @@ function DraggableLeadCard({ lead, onMove, onSaveNotes }: {
 
 // ─── Droppable Column ─────────────────────────────────────────────────────
 
-function DroppableColumn({ stage, children, count }: { stage: typeof STAGES[0]; children: React.ReactNode; count: number }) {
+function DroppableColumn({ stage, children, count }: { stage: CrmStage; children: React.ReactNode; count: number }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.key })
+  const c = palette(stage.color)
   return (
     <div className="w-80 shrink-0 flex flex-col">
-      <div className={cn('flex items-center justify-between px-3 py-2 rounded-t-xl', stage.bg, stage.border, 'border')}>
+      <div className={cn('flex items-center justify-between px-3 py-2 rounded-t-xl border', c.bg, c.border)}>
         <div className="flex items-center gap-2">
-          <span className={cn('w-2 h-2 rounded-full', stage.color)} />
+          <span className={cn('w-2 h-2 rounded-full', c.dot)} />
           <span className="text-xs font-semibold text-gray-700">{stage.label}</span>
         </div>
         <span className="text-xs font-bold text-gray-400">{count}</span>
       </div>
       <div ref={setNodeRef}
-        className={cn('flex-1 space-y-2 p-2 rounded-b-xl min-h-[200px] transition-colors', stage.bg, stage.border, 'border border-t-0',
+        className={cn('flex-1 space-y-2 p-2 rounded-b-xl min-h-[200px] transition-colors border border-t-0', c.bg, c.border,
           isOver && 'ring-2 ring-[#0891B2] ring-inset bg-[#0891B2]/5')}>
         {children}
       </div>
@@ -209,42 +226,35 @@ function DroppableColumn({ stage, children, count }: { stage: typeof STAGES[0]; 
 
 // ─── Funnel Dashboard ─────────────────────────────────────────────────────
 
-const FUNNEL_STAGES = [
-  { key: 'contact_made', label: 'CONTATO FEITO', color: 'bg-[#0891B2]' },
-  { key: 'in_conversation', label: 'EM CONVERSA', color: 'bg-[#0E7490]' },
-  { key: 'scheduled', label: 'AGENDADO', color: 'bg-[#155E75]' },
-  { key: 'confirmed', label: 'CONFIRMADO', color: 'bg-[#16A34A]' },
-  { key: 'attended', label: 'COMPARECEU', color: 'bg-[#15803D]' },
-]
-
-function Dashboard({ stats }: { stats: Record<string, number> }) {
+function Dashboard({ stats, stages }: { stats: Record<string, number>; stages: CrmStage[] }) {
   const total = Object.values(stats).reduce((a, b) => a + b, 0)
-  const lost = stats['lost'] ?? 0
+  const funnelStages = stages.filter((s) => !s.isLost).sort((a, b) => a.order - b.order)
+  const lostStage = stages.find((s) => s.isLost)
+  const lost = lostStage ? (stats[lostStage.key] ?? 0) : 0
 
   return (
     <div className="bg-white border border-gray-100 rounded-xl p-6">
       <h3 className="text-sm font-semibold text-[#134E4A] mb-4">Funil de Conversão</h3>
 
-      {/* Visual funnel */}
       <div className="flex flex-col items-center gap-2">
-        {FUNNEL_STAGES.map((stage, idx) => {
+        {funnelStages.map((stage, idx) => {
           const count = stats[stage.key] ?? 0
           const maxWidth = 100
           const width = total > 0 ? Math.max(20, maxWidth - idx * 15) : maxWidth - idx * 15
-          const prevCount = idx > 0 ? (stats[FUNNEL_STAGES[idx - 1].key] ?? 0) : total
+          const prevCount = idx > 0 ? (stats[funnelStages[idx - 1].key] ?? 0) : total
           const convRate = prevCount > 0 ? ((count / prevCount) * 100).toFixed(1) : '0'
 
           return (
             <div key={stage.key} className="w-full flex flex-col items-center">
               <div
-                className={cn('rounded-lg py-4 text-center text-white transition-all', stage.color)}
+                className={cn('rounded-lg py-4 text-center text-white transition-all', palette(stage.color).funnel)}
                 style={{ width: `${width}%` }}
               >
-                <p className="text-xs font-semibold tracking-wider opacity-80">{stage.label}</p>
+                <p className="text-xs font-semibold tracking-wider opacity-80 uppercase">{stage.label}</p>
                 <p className="text-2xl font-bold">{count.toLocaleString('pt-BR')}</p>
                 <p className="text-[10px] opacity-60">{total > 0 ? ((count / total) * 100).toFixed(1) : '0'}% do total</p>
               </div>
-              {idx < FUNNEL_STAGES.length - 1 && (
+              {idx < funnelStages.length - 1 && (
                 <div className="py-1">
                   <span className="text-[10px] text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">
                     ↓ {convRate}% convertido
@@ -256,7 +266,6 @@ function Dashboard({ stats }: { stats: Record<string, number> }) {
         })}
       </div>
 
-      {/* Lost bar */}
       {lost > 0 && (
         <div className="mt-4 pt-4 border-t border-gray-100">
           <div className="bg-red-50 rounded-lg p-3 flex items-center justify-between">
@@ -349,6 +358,14 @@ export function WhatsAppCrmPage() {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
+  const { data: stages = [] } = useQuery<CrmStage[]>({
+    queryKey: ['whatsapp-crm-stages'],
+    queryFn: () => api.get('/crm/whatsapp-leads/stages').then((r) => r.data),
+    staleTime: 60_000,
+  })
+
+  const orderedStages = [...stages].sort((a, b) => a.order - b.order)
+
   const { data: leads = [], isLoading } = useQuery({
     queryKey: ['whatsapp-leads', agentFilter, search],
     queryFn: () => api.get('/crm/whatsapp-leads', { params: { agentId: agentFilter || undefined, search: search || undefined } }).then((r) => r.data),
@@ -376,10 +393,11 @@ export function WhatsAppCrmPage() {
   const filteredLeads = filterByPeriod(leads as WhatsAppLead[], periodFilter)
 
   const groupedLeads: Record<string, WhatsAppLead[]> = {}
-  for (const s of STAGES) groupedLeads[s.key] = []
+  const firstStageKey = orderedStages.find((s) => !s.isLost)?.key ?? ''
+  for (const s of orderedStages) groupedLeads[s.key] = []
   for (const lead of filteredLeads) {
     if (groupedLeads[lead.stage]) groupedLeads[lead.stage].push(lead)
-    else groupedLeads['contact_made'].push(lead)
+    else if (firstStageKey) groupedLeads[firstStageKey].push(lead)
   }
 
   const activeLead = activeId ? filteredLeads.find((l) => l.id === activeId) : null
@@ -393,6 +411,12 @@ export function WhatsAppCrmPage() {
     if (!lead || lead.stage === over.id) return
     moveLead.mutate({ id: lead.id, stage: over.id as string })
   }
+
+  const totalLeads = Object.values(stats as Record<string, number>).reduce((a, b) => a + b, 0)
+  const successStage = orderedStages.filter((s) => !s.isLost).slice(-1)[0]
+  const lostStage = orderedStages.find((s) => s.isLost)
+  const successCount = successStage ? ((stats as any)[successStage.key] ?? 0) : 0
+  const lostCount = lostStage ? ((stats as any)[lostStage.key] ?? 0) : 0
 
   return (
     <div className="space-y-4">
@@ -436,30 +460,30 @@ export function WhatsAppCrmPage() {
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-white border border-gray-100 rounded-xl p-4 text-center">
           <p className="text-xs text-gray-400 uppercase">Total de leads</p>
-          <p className="text-3xl font-bold text-[#0891B2]">{Object.values(stats as Record<string, number>).reduce((a, b) => a + b, 0).toLocaleString('pt-BR')}</p>
+          <p className="text-3xl font-bold text-[#0891B2]">{totalLeads.toLocaleString('pt-BR')}</p>
           <p className="text-xs text-gray-300">leads no funil</p>
         </div>
         <div className="bg-white border border-gray-100 rounded-xl p-4 text-center">
-          <p className="text-xs text-gray-400 uppercase">Compareceram</p>
-          <p className="text-3xl font-bold text-emerald-500">{(stats as any)['attended'] ?? 0}</p>
-          <p className="text-xs text-gray-300">{Object.values(stats as Record<string, number>).reduce((a, b) => a + b, 0) > 0 ? (((stats as any)['attended'] ?? 0) / Object.values(stats as Record<string, number>).reduce((a, b) => a + b, 0) * 100).toFixed(1) : '0'}% de conversão</p>
+          <p className="text-xs text-gray-400 uppercase">{successStage?.label ?? 'Conversão'}</p>
+          <p className="text-3xl font-bold text-emerald-500">{successCount}</p>
+          <p className="text-xs text-gray-300">{totalLeads > 0 ? ((successCount / totalLeads) * 100).toFixed(1) : '0'}% de conversão</p>
         </div>
         <div className="bg-white border border-gray-100 rounded-xl p-4 text-center">
           <p className="text-xs text-gray-400 uppercase">Perdidos</p>
-          <p className="text-3xl font-bold text-red-500">{(stats as any)['lost'] ?? 0}</p>
-          <p className="text-xs text-gray-300">{Object.values(stats as Record<string, number>).reduce((a, b) => a + b, 0) > 0 ? (((stats as any)['lost'] ?? 0) / Object.values(stats as Record<string, number>).reduce((a, b) => a + b, 0) * 100).toFixed(1) : '0'}% de perda</p>
+          <p className="text-3xl font-bold text-red-500">{lostCount}</p>
+          <p className="text-xs text-gray-300">{totalLeads > 0 ? ((lostCount / totalLeads) * 100).toFixed(1) : '0'}% de perda</p>
         </div>
       </div>
 
       {/* Funnel OR Kanban */}
       {showDashboard ? (
-        <Dashboard stats={stats as Record<string, number>} />
+        <Dashboard stats={stats as Record<string, number>} stages={orderedStages} />
       ) : isLoading ? (
         <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-[#0891B2]" /></div>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
           <div className="flex gap-3 overflow-x-auto pb-4">
-            {STAGES.map((stage) => {
+            {orderedStages.map((stage) => {
               const stageLeads = groupedLeads[stage.key] ?? []
               const count = (stats as any)[stage.key] ?? stageLeads.length
               return (
@@ -467,7 +491,7 @@ export function WhatsAppCrmPage() {
                   {stageLeads.length === 0 ? (
                     <p className="text-xs text-gray-300 text-center py-8">Nenhum lead</p>
                   ) : stageLeads.map((lead) => (
-                    <DraggableLeadCard key={lead.id} lead={lead}
+                    <DraggableLeadCard key={lead.id} lead={lead} stages={orderedStages}
                       onMove={(s) => moveLead.mutate({ id: lead.id, stage: s })}
                       onSaveNotes={(id, notes) => saveNotes.mutate({ id, notes })} />
                   ))}

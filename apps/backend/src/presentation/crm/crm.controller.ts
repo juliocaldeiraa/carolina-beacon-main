@@ -157,4 +157,9 @@ export class CrmController {
   getWhatsAppLeadStats(@Req() req: any, @Query('agentId') agentId?: string) {
     return this.whatsappCrm.getStats(agentId, tenantId(req))
   }
+
+  @Get('whatsapp-leads/stages')
+  getWhatsAppLeadStages(@Req() req: any) {
+    return this.whatsappCrm.getStages(tenantId(req))
+  }
 }

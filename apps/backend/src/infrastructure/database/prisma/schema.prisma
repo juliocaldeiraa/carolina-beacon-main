@@ -20,6 +20,8 @@ model Tenant {
   name      String
   slug      String   @unique
   plan      String   @default("free")
+  niche     String   @default("generic")
+  crmStages Json?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

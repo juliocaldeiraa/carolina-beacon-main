@@ -15,10 +15,13 @@ export interface User {
   tenantId: string
 }
 
+export type NicheKey = 'healthcare' | 'launch' | 'services' | 'generic'
+
 export interface Tenant {
   id: string
   name: string
   slug: string
+  niche?: NicheKey
 }
 
 interface AuthState {

@@ -59,7 +59,7 @@ export class AuthController {
 
   @Post('tenants')
   @UseGuards(JwtGuard)
-  createTenant(@Body() body: { name: string; slug: string }) {
-    return this.authService.createTenant(body.name, body.slug)
+  createTenant(@Body() body: { name: string; slug: string; niche?: string }) {
+    return this.authService.createTenant(body.name, body.slug, body.niche)
   }
 }

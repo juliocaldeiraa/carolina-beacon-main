@@ -6,10 +6,17 @@ import { useState } from 'react'
 import { LogOut, Settings, ChevronDown, Plus, Building2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useAuthStore } from '@/store/useAuthStore'
+import { useAuthStore, type NicheKey } from '@/store/useAuthStore'
 import { NotificationsPanel } from './NotificationsPanel'
 import { api } from '@/services/api'
 import { cn } from '@/lib/utils'
+
+const NICHE_OPTIONS: { key: NicheKey; label: string; description: string }[] = [
+  { key: 'healthcare', label: 'Saúde / Clínicas',       description: 'Funil com agendamento, confirmação e comparecimento' },
+  { key: 'launch',     label: 'Lançamento / Infoproduto', description: 'Interesse, aquecimento, check-in, compra' },
+  { key: 'services',   label: 'Serviços / Consultoria', description: 'Lead, qualificação, proposta, negociação, fechado' },
+  { key: 'generic',    label: 'Genérico',               description: 'Funil simples pra qualquer negócio' },
+]
 
 interface HeaderProps {
   title: string
@@ -24,6 +31,7 @@ export function Header({ title, subtitle }: HeaderProps) {
   const [showCreate, setShowCreate] = useState(false)
   const [newName, setNewName] = useState('')
   const [newSlug, setNewSlug] = useState('')
+  const [newNiche, setNewNiche] = useState<NicheKey>('healthcare')
 
   const { data: tenants = [] } = useQuery({
     queryKey: ['tenants'],
@@ -42,11 +50,16 @@ export function Header({ title, subtitle }: HeaderProps) {
   })
 
   const createTenant = useMutation({
-    mutationFn: () => api.post('/auth/tenants', { name: newName, slug: newSlug || newName.toLowerCase().replace(/\s+/g, '-') }).then((r) => r.data),
+    mutationFn: () => api.post('/auth/tenants', {
+      name: newName,
+      slug: newSlug || newName.toLowerCase().replace(/\s+/g, '-'),
+      niche: newNiche,
+    }).then((r) => r.data),
     onSuccess: (data: any) => {
       qc.invalidateQueries({ queryKey: ['tenants'] })
       setNewName('')
       setNewSlug('')
+      setNewNiche('healthcare')
       setShowCreate(false)
       switchTenant.mutate(data.id)
     },
@@ -135,12 +148,44 @@ export function Header({ title, subtitle }: HeaderProps) {
       {/* Create tenant modal */}
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowCreate(false)}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-base font-semibold text-[#134E4A]">Novo Workspace</h2>
             <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nome do workspace"
               className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#0891B2]" />
             <input value={newSlug} onChange={(e) => setNewSlug(e.target.value)} placeholder="Slug (ex: clinica-carolina)"
               className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#0891B2]" />
+
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Nicho</label>
+              <p className="text-xs text-gray-400">Define o funil do CRM e agentes recomendados. Não muda depois.</p>
+              <div className="space-y-2">
+                {NICHE_OPTIONS.map((option) => (
+                  <button
+                    key={option.key}
+                    type="button"
+                    onClick={() => setNewNiche(option.key)}
+                    className={cn(
+                      'w-full text-left border rounded-xl p-3 transition-all',
+                      newNiche === option.key
+                        ? 'border-[#0891B2] bg-[#0891B2]/5'
+                        : 'border-gray-200 hover:border-gray-300',
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className={cn(
+                        'w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0',
+                        newNiche === option.key ? 'border-[#0891B2]' : 'border-gray-300',
+                      )}>
+                        {newNiche === option.key && <div className="w-2 h-2 rounded-full bg-[#0891B2]" />}
+                      </div>
+                      <span className="text-sm font-medium text-[#134E4A]">{option.label}</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1 ml-6">{option.description}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="flex justify-end gap-2">
               <button onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">Cancelar</button>
               <button onClick={() => createTenant.mutate()} disabled={!newName.trim() || createTenant.isPending}

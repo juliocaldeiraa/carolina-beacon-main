@@ -1,11 +1,12 @@
 /**
  * WhatsAppCrmService — CRM de leads que chegam via WhatsApp (agentes de IA).
  *
- * Funil: Contato Feito → Em Conversa → Agendado → Confirmado → Compareceu | Perdido
+ * Estágios são definidos por preset do nicho do tenant (ou override em tenant.crmStages).
  */
 
 import { Injectable, Logger } from '@nestjs/common'
 import { PrismaService } from '@/infrastructure/database/prisma/prisma.service'
+import { CrmStage, resolveStagesFor } from '@/core/entities/niche-presets'
 
 @Injectable()
 export class WhatsAppCrmService {
@@ -14,6 +15,15 @@ export class WhatsAppCrmService {
   constructor(private readonly prisma: PrismaService) {}
 
   private get defaultTenantId() { return process.env.DEFAULT_TENANT_ID! }
+
+  async getStages(tenantId?: string): Promise<CrmStage[]> {
+    const id = tenantId ?? this.defaultTenantId
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id },
+      select: { niche: true, crmStages: true },
+    })
+    return resolveStagesFor(tenant?.niche, tenant?.crmStages)
+  }
 
   async findLeads(filters: { agentId?: string; stage?: string; search?: string } = {}, tenantId?: string) {
     const where: any = { tenantId: tenantId ?? this.defaultTenantId }
@@ -51,10 +61,12 @@ export class WhatsAppCrmService {
       })
 
       if (existing) {
-        // Só avança o stage, nunca retrocede (exceto pra lost)
-        const stageOrder = ['contact_made', 'in_conversation', 'scheduled', 'confirmed', 'attended', 'lost']
-        const currentIdx = stageOrder.indexOf(existing.stage)
-        const newIdx = data.stage ? stageOrder.indexOf(data.stage) : -1
+        const stages = await this.getStages(existing.tenantId)
+        const lostKey = stages.find((s) => s.isLost)?.key ?? 'lost'
+        const orderedKeys = [...stages].sort((a, b) => a.order - b.order).map((s) => s.key)
+
+        const currentIdx = orderedKeys.indexOf(existing.stage)
+        const newIdx = data.stage ? orderedKeys.indexOf(data.stage) : -1
 
         const update: any = { updatedAt: new Date() }
         if (data.name && !existing.contactName) update.contactName = data.name
@@ -62,20 +74,23 @@ export class WhatsAppCrmService {
         if (data.calendarEventId) update.calendarEventId = data.calendarEventId
         if (data.appointmentDate) update.appointmentDate = data.appointmentDate
         if (data.lastMessage) update.lastMessage = data.lastMessage
-        if (data.stage && (newIdx > currentIdx || data.stage === 'lost')) update.stage = data.stage
+        if (data.stage && (newIdx > currentIdx || data.stage === lostKey)) update.stage = data.stage
 
         await this.prisma.whatsAppLead.update({
           where: { id: existing.id },
           data: update,
         })
       } else {
+        const stages = await this.getStages(this.defaultTenantId)
+        const firstStageKey = stages.find((s) => !s.isLost)?.key ?? 'contact_made'
+
         await this.prisma.whatsAppLead.create({
           data: {
             tenantId: this.defaultTenantId,
             agentId: data.agentId,
             contactPhone: data.phone,
             contactName: data.name ?? null,
-            stage: data.stage ?? 'contact_made',
+            stage: data.stage ?? firstStageKey,
             conversationId: data.conversationId ?? null,
             calendarEventId: data.calendarEventId ?? null,
             appointmentDate: data.appointmentDate ?? null,

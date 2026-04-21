@@ -21,7 +21,22 @@ import { Textarea } from '@/components/ui/Textarea'
 import { useToast } from '@/components/ui/Toast'
 import { useCreateAgent, useUpdateAgent, useAgent } from './hooks/useAgents'
 import type { AgentType } from '@/types/agent'
+import { useAuthStore, type NicheKey } from '@/store/useAuthStore'
 import { cn } from '@/lib/utils'
+
+const NICHE_RECOMMENDED: Record<NicheKey, string[]> = {
+  healthcare: ['qualification_scheduling_reminder', 'reception', 'support'],
+  launch:     ['sales', 'reactivation', 'support'],
+  services:   ['qualification', 'sales', 'support'],
+  generic:    ['qualification', 'sales', 'support'],
+}
+
+const NICHE_LABELS: Record<NicheKey, string> = {
+  healthcare: 'Saúde / Clínicas',
+  launch:     'Lançamento',
+  services:   'Serviços',
+  generic:    'Genérico',
+}
 
 // ─── Schema ─────────────────────────────────────────────────────────────────
 
@@ -122,9 +137,12 @@ export function AgentBuilder({ mode = 'create' }: AgentBuilderProps) {
   const navigate  = useNavigate()
   const { id }    = useParams<{ id: string }>()
   const { toast } = useToast()
+  const { activeTenant } = useAuthStore()
+  const niche: NicheKey = (activeTenant?.niche as NicheKey) ?? 'generic'
+  const recommendedIds = NICHE_RECOMMENDED[niche] ?? NICHE_RECOMMENDED.generic
   const [step, setStep]           = useState(0)
   const [agentType, setAgentType] = useState<AgentType>('PASSIVO')
-  const [purpose, setPurpose]     = useState('support')
+  const [purpose, setPurpose]     = useState(recommendedIds[0] ?? 'support')
   const [tone, setTone]           = useState('normal')
   const [companyName, setCompanyName] = useState('')
   const [companyUrl, setCompanyUrl]   = useState('')
@@ -304,8 +322,10 @@ export function AgentBuilder({ mode = 'create' }: AgentBuilderProps) {
               <p className="text-sm text-white/50">Escolha o que melhor define o objetivo.</p>
             </div>
 
-            <div className="grid grid-cols-4 gap-2">
-              {PURPOSE_OPTIONS.map((opt) => {
+            {(() => {
+              const recommended = PURPOSE_OPTIONS.filter((o) => recommendedIds.includes(o.id))
+              const others = PURPOSE_OPTIONS.filter((o) => !recommendedIds.includes(o.id))
+              const renderCard = (opt: typeof PURPOSE_OPTIONS[number]) => {
                 const Icon = opt.icon
                 return (
                   <button
@@ -324,8 +344,30 @@ export function AgentBuilder({ mode = 'create' }: AgentBuilderProps) {
                     <p className="text-[10px] text-white/40 mt-0.5 leading-tight">{opt.desc}</p>
                   </button>
                 )
-              })}
-            </div>
+              }
+              return (
+                <div className="space-y-5">
+                  {recommended.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-[11px] uppercase tracking-wider text-beacon-primary/80 font-semibold">
+                        Recomendados para {NICHE_LABELS[niche]}
+                      </p>
+                      <div className="grid grid-cols-4 gap-2">
+                        {recommended.map(renderCard)}
+                      </div>
+                    </div>
+                  )}
+                  {others.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-[11px] uppercase tracking-wider text-white/40 font-semibold">Outros</p>
+                      <div className="grid grid-cols-4 gap-2">
+                        {others.map(renderCard)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
 
             <div className="space-y-4">
               <div className="space-y-1.5">

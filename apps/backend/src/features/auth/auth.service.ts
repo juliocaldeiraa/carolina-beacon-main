@@ -78,11 +78,13 @@ export class AuthService {
     const payload = { sub: user.id, role: user.role, tenantId: tenant.id }
     return {
       accessToken: this.jwt.sign(payload),
-      tenant: { id: tenant.id, name: tenant.name, slug: tenant.slug },
+      tenant: { id: tenant.id, name: tenant.name, slug: tenant.slug, niche: tenant.niche },
     }
   }
 
-  async createTenant(name: string, slug: string) {
-    return this.prisma.tenant.create({ data: { name, slug } })
+  async createTenant(name: string, slug: string, niche?: string) {
+    const allowed = ['healthcare', 'launch', 'services', 'generic']
+    const safeNiche = niche && allowed.includes(niche) ? niche : 'generic'
+    return this.prisma.tenant.create({ data: { name, slug, niche: safeNiche } })
   }
 }
