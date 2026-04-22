@@ -138,14 +138,14 @@ export class MediaProcessingService {
       formData.append('file', blob, `audio.${ext}`)
       formData.append('model', 'whisper-1')
       formData.append('language', 'pt')
-      // Prompt biasa o modelo pra termos do domínio — evita "às nove" virar "as novas", etc.
-      // Limite prático ~224 chars (Whisper corta tokens > 224).
+      formData.append('temperature', '0')
+      formData.append('response_format', 'json')
+      // Prompt funciona melhor como "segmento anterior" — fala conversacional, não lista de palavras.
+      // Dá contexto de agendamento em clínica e horários por extenso.
       formData.append(
         'prompt',
-        'Atendimento via WhatsApp: agendar, marcar, confirmar, compareceu, cancelar. ' +
-        'Horários: 8h, 9h, 10h, 11h, 14h, 15h, 16h, 17h, 18h. ' +
-        'Dias: segunda, terça, quarta, quinta, sexta. ' +
-        'Pode ser às oito, às nove, às dez.',
+        'Olá, gostaria de agendar uma consulta. Pode ser às nove horas na quinta-feira? ' +
+        'Prefiro as dez da manhã. Confirmo presença. Obrigado.',
       )
 
       const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
