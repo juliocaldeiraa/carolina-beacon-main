@@ -7,6 +7,12 @@
 
 import { Injectable, Logger } from '@nestjs/common'
 import { PrismaService } from '@/infrastructure/database/prisma/prisma.service'
+import type { Channel, ChannelConfig } from '@/core/entities/Channel'
+
+export interface EvolutionDecryptHint {
+  channel: Channel
+  messageId: string
+}
 
 @Injectable()
 export class MediaProcessingService {
@@ -15,10 +21,55 @@ export class MediaProcessingService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
+   * WhatsApp encripta mídia E2E — o URL retorna blob criptografado.
+   * Chama a Evolution pra devolver o base64 decriptado.
+   */
+  private async decryptFromEvolution(hint: EvolutionDecryptHint): Promise<{ base64: string; mimetype?: string } | null> {
+    if (hint.channel.type !== 'EVOLUTION_API') return null
+    const cfg = hint.channel.config as ChannelConfig
+    const instanceUrl  = cfg.instanceUrl
+    const instanceName = cfg.instanceName
+    const apiKey       = cfg.apiKey
+    if (!instanceUrl || !instanceName || !apiKey) {
+      this.logger.warn('Evolution decrypt skipped: instanceUrl/instanceName/apiKey ausentes no channel.config')
+      return null
+    }
+    try {
+      const url = `${instanceUrl.replace(/\/$/, '')}/chat/getBase64FromMediaMessage/${instanceName}`
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: apiKey },
+        body: JSON.stringify({ message: { key: { id: hint.messageId } }, convertToMp4: false }),
+        signal: AbortSignal.timeout(20000),
+      })
+      if (!res.ok) {
+        const err = await res.text()
+        this.logger.warn(`Evolution decrypt ${res.status}: ${err.slice(0, 200)}`)
+        return null
+      }
+      const body = await res.json() as { base64?: string; mimetype?: string }
+      if (!body.base64) {
+        this.logger.warn('Evolution decrypt: resposta sem base64')
+        return null
+      }
+      return { base64: body.base64, mimetype: body.mimetype }
+    } catch (err) {
+      this.logger.warn(`Evolution decrypt falhou: ${err}`)
+      return null
+    }
+  }
+
+  /**
    * Transcreve audio usando OpenAI Whisper API.
    * Aceita base64 ou URL. Retorna texto transcrito.
+   * Se `decryptHint` for fornecido, tenta primeiro decriptar via Evolution (WhatsApp E2E).
    */
-  async transcribeAudio(base64?: string, url?: string, mime = 'audio/ogg'): Promise<string | null> {
+  async transcribeAudio(
+    base64?: string,
+    url?: string,
+    mime = 'audio/ogg',
+    decryptHint?: EvolutionDecryptHint,
+  ): Promise<string | null> {
     const apiKey = await this.getOpenAiKey()
     if (!apiKey) {
       this.logger.warn('OpenAI API key not found — cannot transcribe audio')
@@ -27,9 +78,27 @@ export class MediaProcessingService {
 
     try {
       let audioBuffer: Buffer
-      let source: 'base64' | 'url' = 'base64'
+      let source: 'evolution' | 'base64' | 'url' = 'base64'
 
-      if (base64 && base64.length > 100) {
+      // 1ª tentativa: decriptar via Evolution (WhatsApp manda mídia E2E encrypted)
+      if (decryptHint) {
+        const decrypted = await this.decryptFromEvolution(decryptHint)
+        if (decrypted) {
+          audioBuffer = Buffer.from(decrypted.base64, 'base64')
+          if (decrypted.mimetype) mime = decrypted.mimetype
+          source = 'evolution'
+        } else if (base64 && base64.length > 100) {
+          audioBuffer = Buffer.from(base64, 'base64')
+        } else if (url) {
+          source = 'url'
+          const res = await fetch(url, { signal: AbortSignal.timeout(15000) })
+          if (!res.ok) throw new Error(`Failed to download audio: ${res.status}`)
+          audioBuffer = Buffer.from(await res.arrayBuffer())
+        } else {
+          this.logger.warn('Transcribe skipped: decrypt falhou e sem fallback')
+          return null
+        }
+      } else if (base64 && base64.length > 100) {
         audioBuffer = Buffer.from(base64, 'base64')
       } else if (url) {
         source = 'url'
@@ -96,7 +165,13 @@ export class MediaProcessingService {
    * Analisa imagem usando OpenAI GPT-4o Vision.
    * Aceita base64 ou URL. Retorna descricao textual.
    */
-  async analyzeImage(base64?: string, url?: string, mime = 'image/jpeg', caption?: string): Promise<string | null> {
+  async analyzeImage(
+    base64?: string,
+    url?: string,
+    mime = 'image/jpeg',
+    caption?: string,
+    decryptHint?: EvolutionDecryptHint,
+  ): Promise<string | null> {
     const apiKey = await this.getOpenAiKey()
     if (!apiKey) {
       this.logger.warn('OpenAI API key not found — cannot analyze image')
@@ -106,7 +181,21 @@ export class MediaProcessingService {
     try {
       let imageContent: { type: 'image_url'; image_url: { url: string } }
 
-      if (base64) {
+      // 1ª tentativa: decriptar via Evolution (imagem E2E do WhatsApp)
+      if (decryptHint) {
+        const decrypted = await this.decryptFromEvolution(decryptHint)
+        if (decrypted) {
+          const imgMime = decrypted.mimetype?.split(';')[0].trim() || mime
+          imageContent = { type: 'image_url', image_url: { url: `data:${imgMime};base64,${decrypted.base64}` } }
+          this.logger.log(`Image decrypted via Evolution: ${decrypted.base64.length} base64 chars`)
+        } else if (base64) {
+          imageContent = { type: 'image_url', image_url: { url: `data:${mime};base64,${base64}` } }
+        } else if (url) {
+          imageContent = { type: 'image_url', image_url: { url } }
+        } else {
+          return null
+        }
+      } else if (base64) {
         imageContent = {
           type: 'image_url',
           image_url: { url: `data:${mime};base64,${base64}` },

@@ -208,9 +208,12 @@ export class WebhookIngestionService {
     let { text } = parsed
 
     // ── Media processing: transcreve audio e analisa imagem ─────────────────────
-    if (parsed.type === 'audio' && (parsed.mediaBase64 || parsed.mediaUrl)) {
+    // Evolution precisa decriptar a mídia E2E do WhatsApp — passa channel + messageId pro decryptHint
+    const decryptHint = parsed.messageId ? { channel, messageId: parsed.messageId } : undefined
+
+    if (parsed.type === 'audio' && (parsed.mediaBase64 || parsed.mediaUrl || decryptHint)) {
       try {
-        const transcription = await this.mediaProcessing.transcribeAudio(parsed.mediaBase64, parsed.mediaUrl, parsed.mediaMime)
+        const transcription = await this.mediaProcessing.transcribeAudio(parsed.mediaBase64, parsed.mediaUrl, parsed.mediaMime, decryptHint)
         if (transcription) {
           text = transcription
           this.logger.log(`[media] Audio transcrito para ${phone}: "${transcription.slice(0, 60)}..."`)
@@ -220,10 +223,10 @@ export class WebhookIngestionService {
       }
     }
 
-    if (parsed.type === 'image' && (parsed.mediaBase64 || parsed.mediaUrl)) {
+    if (parsed.type === 'image' && (parsed.mediaBase64 || parsed.mediaUrl || decryptHint)) {
       try {
         const caption = parsed.text.replace('[Imagem recebida]', '').trim() || undefined
-        const description = await this.mediaProcessing.analyzeImage(parsed.mediaBase64, parsed.mediaUrl, parsed.mediaMime, caption)
+        const description = await this.mediaProcessing.analyzeImage(parsed.mediaBase64, parsed.mediaUrl, parsed.mediaMime, caption, decryptHint)
         if (description) {
           text = caption
             ? `[Cliente enviou imagem: ${description}] Legenda: ${caption}`
