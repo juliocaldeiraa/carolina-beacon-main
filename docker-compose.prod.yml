@@ -1,4 +1,18 @@
 services:
+  traefik:
+    image: traefik:v3.1
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./infra/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./infra/traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - traefik-letsencrypt:/letsencrypt
+    networks:
+      - traefik
+
   redis:
     image: redis:7-alpine
     volumes:
@@ -32,11 +46,25 @@ services:
     build:
       context: ./apps/frontend
       dockerfile: Dockerfile
-    ports:
-      - '8080:80'
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     restart: unless-stopped
+    networks:
+      - traefik
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.docker.network=beacon_traefik'
+      - 'traefik.http.routers.beacon.rule=Host(`beacon.escolatocha.com.br`)'
+      - 'traefik.http.routers.beacon.entrypoints=websecure'
+      - 'traefik.http.routers.beacon.tls=true'
+      - 'traefik.http.routers.beacon.tls.certresolver=letsencrypt'
+      - 'traefik.http.routers.beacon.middlewares=security-headers@file'
+      - 'traefik.http.services.beacon.loadbalancer.server.port=80'
+
+networks:
+  traefik:
+    name: beacon_traefik
 
 volumes:
   redis-data:
+  traefik-letsencrypt:

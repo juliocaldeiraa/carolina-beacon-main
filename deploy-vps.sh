@@ -55,16 +55,16 @@ echo "=== 6. Verificando ==="
 sleep 5
 docker compose -f docker-compose.prod.yml ps
 
-VPS_IP=$(hostname -I | awk '{print $1}')
 echo ""
 echo "╔══════════════════════════════════════════════════════════╗"
 echo "║  Deploy concluído!                                      ║"
 echo "║                                                         ║"
-echo "║  Acesse: http://$VPS_IP                                 ║"
+echo "║  Acesse: https://beacon.escolatocha.com.br              ║"
 echo "║                                                         ║"
-echo "║  Logs: cd /opt/beacon &&                                ║"
-echo "║    docker compose -f docker-compose.prod.yml logs -f    ║"
+echo "║  Logs:   docker compose -f docker-compose.prod.yml logs ║"
+echo "║  Certs:  docker compose -f docker-compose.prod.yml \\    ║"
+echo "║          logs traefik | grep -i acme                    ║"
 echo "║                                                         ║"
-echo "║  Quando tiver domínio, atualize o docker-compose.prod   ║"
-echo "║  para usar Traefik com HTTPS.                           ║"
+echo "║  Firewall: portas 80 e 443 abertas (Let's Encrypt       ║"
+echo "║  exige 80 pra HTTP-01 challenge).                       ║"
 echo "╚══════════════════════════════════════════════════════════╝"
