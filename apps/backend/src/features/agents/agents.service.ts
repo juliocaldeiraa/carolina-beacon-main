@@ -30,23 +30,23 @@ export class AgentsService {
     return this.repo.create(dto, tenantId)
   }
 
-  async update(id: string, dto: UpdateAgentDto): Promise<Agent> {
-    await this.findById(id)
+  async update(id: string, dto: UpdateAgentDto, tenantId?: string): Promise<Agent> {
+    await this.findById(id, tenantId)
     return this.repo.update(id, dto)
   }
 
-  async updateStatus(id: string, status: Agent['status']): Promise<Agent> {
-    await this.findById(id)
+  async updateStatus(id: string, status: Agent['status'], tenantId?: string): Promise<Agent> {
+    await this.findById(id, tenantId)
     return this.repo.updateStatus(id, status)
   }
 
-  async remove(id: string): Promise<void> {
-    await this.findById(id)
+  async remove(id: string, tenantId?: string): Promise<void> {
+    await this.findById(id, tenantId)
     return this.repo.softDelete(id)
   }
 
-  async test(id: string, message: string): Promise<{ reply: string; inputTokens: number; outputTokens: number; latencyMs: number }> {
-    const agent = await this.findById(id)
+  async test(id: string, message: string, tenantId?: string): Promise<{ reply: string; inputTokens: number; outputTokens: number; latencyMs: number }> {
+    const agent = await this.findById(id, tenantId)
     const result = await this.aiEngine.complete({
       messages:    [{ role: 'user', content: message }],
       systemPrompt: buildSystemPrompt(agent),

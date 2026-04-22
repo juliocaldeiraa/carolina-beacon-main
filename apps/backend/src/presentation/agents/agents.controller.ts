@@ -242,28 +242,28 @@ export class AgentsController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateAgentDto) {
-    return this.svc.update(id, dto)
+  update(@Req() req: any, @Param('id') id: string, @Body() dto: UpdateAgentDto) {
+    return this.svc.update(id, dto, req.user?.tenantId)
   }
 
   @Patch(':id/status')
-  updateStatus(@Param('id') id: string, @Body() dto: UpdateStatusDto) {
-    return this.svc.updateStatus(id, dto.status)
+  updateStatus(@Req() req: any, @Param('id') id: string, @Body() dto: UpdateStatusDto) {
+    return this.svc.updateStatus(id, dto.status, req.user?.tenantId)
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.svc.remove(id)
+  remove(@Req() req: any, @Param('id') id: string) {
+    return this.svc.remove(id, req.user?.tenantId)
   }
 
   @Post(':id/test')
-  test(@Param('id') id: string, @Body() dto: TestAgentDto) {
-    return this.svc.test(id, dto.message)
+  test(@Req() req: any, @Param('id') id: string, @Body() dto: TestAgentDto) {
+    return this.svc.test(id, dto.message, req.user?.tenantId)
   }
 
   @Post(':id/generate-dna')
-  async generateDna(@Param('id') id: string) {
-    const agent = await this.svc.findById(id)
+  async generateDna(@Req() req: any, @Param('id') id: string) {
+    const agent = await this.svc.findById(id, req.user?.tenantId)
     return this.refine.generateDna({
       name: agent.name,
       companyName: agent.companyName,
@@ -275,8 +275,8 @@ export class AgentsController {
   }
 
   @Post(':id/refine-personality')
-  async refinePersonality(@Param('id') id: string) {
-    const agent = await this.svc.findById(id)
+  async refinePersonality(@Req() req: any, @Param('id') id: string) {
+    const agent = await this.svc.findById(id, req.user?.tenantId)
     const refined = await this.refine.refinePersonality({
       name: agent.name,
       companyName: agent.companyName,
@@ -288,8 +288,8 @@ export class AgentsController {
   }
 
   @Post(':id/refine-action')
-  async refineAction(@Param('id') id: string) {
-    const agent = await this.svc.findById(id)
+  async refineAction(@Req() req: any, @Param('id') id: string) {
+    const agent = await this.svc.findById(id, req.user?.tenantId)
     const refined = await this.refine.refineActionPrompt({
       name: agent.name,
       companyName: agent.companyName,
