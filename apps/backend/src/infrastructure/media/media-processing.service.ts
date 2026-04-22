@@ -58,7 +58,10 @@ export class MediaProcessingService {
         : cleanMime.includes('wav') ? 'wav'
         : 'oga'
 
-      this.logger.log(`Transcribe: ${audioBuffer.length} bytes, mime=${mime}, source=${source}, ext=${ext}`)
+      const magic = audioBuffer.slice(0, 8)
+      const magicHex = magic.toString('hex')
+      const magicAscii = magic.toString('ascii').replace(/[^\x20-\x7E]/g, '.')
+      this.logger.log(`Transcribe: ${audioBuffer.length} bytes, mime=${mime}, source=${source}, ext=${ext}, magic=${magicHex} "${magicAscii}"`)
 
       // Build multipart form data
       const blob = new Blob([new Uint8Array(audioBuffer)], { type: cleanMime })
