@@ -27,26 +27,41 @@ export class MediaProcessingService {
 
     try {
       let audioBuffer: Buffer
+      let source: 'base64' | 'url' = 'base64'
 
-      if (base64) {
+      if (base64 && base64.length > 100) {
         audioBuffer = Buffer.from(base64, 'base64')
       } else if (url) {
+        source = 'url'
         const res = await fetch(url, { signal: AbortSignal.timeout(15000) })
         if (!res.ok) throw new Error(`Failed to download audio: ${res.status}`)
         audioBuffer = Buffer.from(await res.arrayBuffer())
       } else {
+        this.logger.warn(`Transcribe skipped: sem base64 válido nem URL (base64.length=${base64?.length ?? 0})`)
         return null
       }
 
-      // Determine file extension from mime
-      const ext = mime.includes('ogg') ? 'ogg'
-        : mime.includes('mp4') ? 'm4a'
-        : mime.includes('mpeg') ? 'mp3'
-        : mime.includes('webm') ? 'webm'
-        : 'ogg'
+      if (audioBuffer.length < 200) {
+        this.logger.warn(`Transcribe skipped: buffer muito pequeno (${audioBuffer.length} bytes, source=${source})`)
+        return null
+      }
+
+      // Normaliza mime — remove parâmetros extras tipo ";codecs=opus"
+      const cleanMime = mime.split(';')[0].trim().toLowerCase()
+
+      // Escolhe extensão baseada no mime limpo (Whisper aceita: flac, m4a, mp3, mp4, mpeg, mpga, oga, ogg, wav, webm)
+      // WhatsApp voice note é audio/ogg;codecs=opus → usa .oga (mais fiel que .ogg pro Whisper)
+      const ext = cleanMime.includes('ogg') ? 'oga'
+        : cleanMime.includes('mp4') || cleanMime.includes('m4a') ? 'm4a'
+        : cleanMime.includes('mpeg') || cleanMime.includes('mp3') ? 'mp3'
+        : cleanMime.includes('webm') ? 'webm'
+        : cleanMime.includes('wav') ? 'wav'
+        : 'oga'
+
+      this.logger.log(`Transcribe: ${audioBuffer.length} bytes, mime=${mime}, source=${source}, ext=${ext}`)
 
       // Build multipart form data
-      const blob = new Blob([new Uint8Array(audioBuffer)], { type: mime })
+      const blob = new Blob([new Uint8Array(audioBuffer)], { type: cleanMime })
       const formData = new FormData()
       formData.append('file', blob, `audio.${ext}`)
       formData.append('model', 'whisper-1')
