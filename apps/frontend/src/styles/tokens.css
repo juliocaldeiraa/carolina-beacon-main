@@ -300,3 +300,25 @@ html.dark .text-gray-700 { color: #D1FAE5 !important; }
 /* Cards gray-50/100 viram surface dark */
 html.dark .bg-gray-50  { background-color: var(--color-surface-2) !important; }
 html.dark .bg-gray-100 { background-color: #1F2E29 !important; }
+
+/* Hex hardcoded de texto/fundo usados em muitos componentes — remap pra dark */
+html.dark .text-\[\#064E3B\] { color: #D1FAE5 !important; }    /* verde escuro (títulos) */
+html.dark .text-\[\#334155\] { color: #CBD5E1 !important; }    /* slate-700 */
+html.dark .text-\[\#64748B\] { color: #94A3B8 !important; }    /* slate-500 */
+html.dark .bg-\[\#F0FDFA\]   { background-color: var(--color-surface-2) !important; }
+html.dark .bg-\[\#F5FAFA\]   { background-color: var(--color-app) !important; }
+
+/* Placeholder em inputs */
+html.dark input::placeholder,
+html.dark textarea::placeholder { color: rgba(167,243,208,.35) !important; }
+
+/* Hover em itens de lista/menu — evita "gray-50" ficar branco quase imperceptível */
+html.dark .hover\:bg-gray-50:hover,
+html.dark .hover\:bg-gray-100:hover { background-color: #1F2E29 !important; }
+
+/* Login: gradiente de fundo (capturar o padrão completo) */
+html.dark .from-\[\#F0FDFA\]        { --tw-gradient-from: transparent !important; }
+html.dark .to-\[\#D1FAE5\]          { --tw-gradient-to: transparent !important; }
+html.dark [class*="from-\[\#F0FDFA\]"][class*="to-\[\#D1FAE5\]"] {
+  background: var(--color-app) !important;
+}
