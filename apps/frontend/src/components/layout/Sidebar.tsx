@@ -17,7 +17,7 @@ import {
   Users,
   TrendingUp,
   Kanban,
-  Heart,
+  Leaf,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/useAuthStore'
@@ -60,22 +60,22 @@ export function Sidebar() {
     >
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-100">
-        <div className="w-9 h-9 bg-gradient-to-br from-[#0891B2] to-[#0E7490] rounded-xl flex items-center justify-center shadow-sm">
-          <Heart className="w-5 h-5 text-white" />
+        <div className="w-9 h-9 bg-gradient-to-br from-[#10B981] to-[#059669] rounded-xl flex items-center justify-center shadow-sm">
+          <Leaf className="w-5 h-5 text-white" />
         </div>
         <div>
-          <span className="text-[#134E4A] font-heading font-bold text-lg tracking-tight">Beacon</span>
-          <span className="text-[#0891B2] font-heading font-bold text-lg ml-0.5">.</span>
+          <span className="text-[#064E3B] font-heading font-bold text-lg tracking-tight">VoxAI</span>
+          <span className="text-[#10B981] font-heading font-bold text-lg ml-0.5">.</span>
         </div>
       </div>
 
       {/* Workspace */}
       <div className="px-5 py-3 border-b border-gray-100">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-[#0891B2]/10 flex items-center justify-center text-[#0891B2] text-xs font-bold">
+          <div className="w-7 h-7 rounded-lg bg-[#10B981]/10 flex items-center justify-center text-[#10B981] text-xs font-bold">
             {activeTenant?.name?.[0]?.toUpperCase() ?? 'B'}
           </div>
-          <span className="text-sm text-gray-500 truncate font-medium">{activeTenant?.name ?? 'Beacon'}</span>
+          <span className="text-sm text-gray-500 truncate font-medium">{activeTenant?.name ?? 'VoxAI'}</span>
         </div>
       </div>
 
@@ -90,8 +90,8 @@ export function Sidebar() {
               cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
                 isActive
-                  ? 'bg-[#0891B2] text-white shadow-sm'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-[#134E4A]',
+                  ? 'bg-[#10B981] text-white shadow-sm'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-[#064E3B]',
               )
             }
           >
@@ -116,10 +116,10 @@ export function Sidebar() {
         </a>
 
         <div className="flex items-center gap-3 px-3 py-2 text-xs">
-          <div className="w-7 h-7 rounded-full bg-[#0891B2]/10 flex items-center justify-center text-[#0891B2] text-xs font-semibold">
+          <div className="w-7 h-7 rounded-full bg-[#10B981]/10 flex items-center justify-center text-[#10B981] text-xs font-semibold">
             {user?.email?.[0]?.toUpperCase() ?? 'U'}
           </div>
-          <span className="text-gray-400 truncate">{user?.email ?? 'user@beacon.ai'}</span>
+          <span className="text-gray-400 truncate">{user?.email ?? 'user@voxai.app'}</span>
         </div>
       </div>
     </aside>

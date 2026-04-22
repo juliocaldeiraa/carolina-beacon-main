@@ -50,7 +50,7 @@ export function Modal({ open, onClose, title, description, children, size = 'md'
       )}>
         <div className="flex items-start justify-between p-6 pb-4">
           <div>
-            <h2 id="modal-title" className="text-base font-heading font-semibold text-[#134E4A]">
+            <h2 id="modal-title" className="text-base font-heading font-semibold text-[#064E3B]">
               {title}
             </h2>
             {description && (

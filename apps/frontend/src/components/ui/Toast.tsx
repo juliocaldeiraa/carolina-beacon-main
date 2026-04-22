@@ -37,8 +37,8 @@ const typeConfig = {
   },
   info: {
     icon: Info,
-    border: 'border-l-[#0891B2]',
-    iconColor: 'text-[#0891B2]',
+    border: 'border-l-[#10B981]',
+    iconColor: 'text-[#10B981]',
     bg: 'bg-sky-50',
   },
 }
@@ -63,7 +63,7 @@ function ToastItem({ toast, onDismiss }: { toast: ToastMessage; onDismiss: (id: 
     >
       <Icon className={cn('w-5 h-5 mt-0.5 shrink-0', config.iconColor)} />
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-[#134E4A]">{toast.title}</p>
+        <p className="text-sm font-semibold text-[#064E3B]">{toast.title}</p>
         {toast.message && (
           <p className="text-xs text-gray-500 mt-0.5">{toast.message}</p>
         )}

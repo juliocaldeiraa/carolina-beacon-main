@@ -64,7 +64,7 @@ function usePageMeta(pathname: string) {
   if (pathname.startsWith('/vendedor'))          return { title: 'Vendedor',                subtitle: 'Agente ativo de vendas: disparos, leads e CRM em um só lugar' }
   if (pathname.match(/\/automations\/.+/))       return { title: 'Detalhe da Campanha',    subtitle: 'Configurações, métricas e logs de execução' }
   if (pathname.startsWith('/settings'))          return { title: 'Configurações',           subtitle: 'Perfil, equipe, provedores de IA, webhooks e integrações' }
-  return { title: 'Beacon', subtitle: '' }
+  return { title: 'VoxAI', subtitle: '' }
 }
 
 export function MainLayout() {

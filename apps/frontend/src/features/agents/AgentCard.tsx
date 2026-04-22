@@ -60,12 +60,12 @@ export function AgentCard({ agent }: { agent: Agent }) {
         onClick={() => navigate(`/agents/${agent.id}`)}
       >
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#0891B2]/10 flex items-center justify-center shrink-0">
-            <Bot className="w-5 h-5 text-[#0891B2]" />
+          <div className="w-10 h-10 rounded-xl bg-[#10B981]/10 flex items-center justify-center shrink-0">
+            <Bot className="w-5 h-5 text-[#10B981]" />
           </div>
 
           <div className="flex-1 min-w-0">
-            <h3 className="font-heading font-semibold text-[#134E4A] truncate text-sm">{agent.name}</h3>
+            <h3 className="font-heading font-semibold text-[#064E3B] truncate text-sm">{agent.name}</h3>
             <p className="text-xs text-gray-500 line-clamp-2 mt-0.5">
               {agent.description ?? 'Sem descrição'}
             </p>

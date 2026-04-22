@@ -29,8 +29,8 @@ interface CrmStage {
 }
 
 const COLOR_CLASSES: Record<string, { dot: string; bg: string; border: string; text: string; funnel: string }> = {
-  blue:    { dot: 'bg-blue-500',    bg: 'bg-blue-50',    border: 'border-blue-200',    text: 'text-blue-600',    funnel: 'bg-[#0891B2]' },
-  teal:    { dot: 'bg-teal-500',    bg: 'bg-teal-50',    border: 'border-teal-200',    text: 'text-teal-600',    funnel: 'bg-[#0E7490]' },
+  blue:    { dot: 'bg-blue-500',    bg: 'bg-blue-50',    border: 'border-blue-200',    text: 'text-blue-600',    funnel: 'bg-[#10B981]' },
+  teal:    { dot: 'bg-teal-500',    bg: 'bg-teal-50',    border: 'border-teal-200',    text: 'text-teal-600',    funnel: 'bg-[#059669]' },
   amber:   { dot: 'bg-amber-500',   bg: 'bg-amber-50',   border: 'border-amber-200',   text: 'text-amber-600',   funnel: 'bg-[#155E75]' },
   orange:  { dot: 'bg-orange-500',  bg: 'bg-orange-50',  border: 'border-orange-200',  text: 'text-orange-600',  funnel: 'bg-[#EA580C]' },
   green:   { dot: 'bg-green-500',   bg: 'bg-green-50',   border: 'border-green-200',   text: 'text-green-600',   funnel: 'bg-[#16A34A]' },
@@ -116,7 +116,7 @@ function DraggableLeadCard({ lead, stages, onMove, onSaveNotes }: {
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-[#134E4A] truncate">{lead.contactName ?? lead.contactPhone}</p>
+          <p className="text-sm font-semibold text-[#064E3B] truncate">{lead.contactName ?? lead.contactPhone}</p>
           <p className="text-xs text-gray-400 font-mono">{lead.contactPhone}</p>
         </div>
         <span className="text-[10px] text-gray-400 shrink-0">{timeAgo(lead.updatedAt)}</span>
@@ -153,17 +153,17 @@ function DraggableLeadCard({ lead, stages, onMove, onSaveNotes }: {
             {editingNotes ? (
               <div className="space-y-1">
                 <textarea value={notesValue} onChange={(e) => setNotesValue(e.target.value)} rows={2}
-                  className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 resize-none focus:outline-none focus:border-[#0891B2]"
+                  className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 resize-none focus:outline-none focus:border-[#10B981]"
                   placeholder="Adicione notas..." autoFocus />
                 <div className="flex gap-1">
                   <button onClick={() => { onSaveNotes(lead.id, notesValue); setEditingNotes(false) }}
-                    className="text-[10px] px-2 py-0.5 rounded bg-[#0891B2] text-white"><Save className="w-2.5 h-2.5 inline mr-0.5" />Salvar</button>
+                    className="text-[10px] px-2 py-0.5 rounded bg-[#10B981] text-white"><Save className="w-2.5 h-2.5 inline mr-0.5" />Salvar</button>
                   <button onClick={() => setEditingNotes(false)} className="text-[10px] px-2 py-0.5 rounded text-gray-400">Cancelar</button>
                 </div>
               </div>
             ) : (
               <button onClick={() => setEditingNotes(true)}
-                className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-[#0891B2]">
+                className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-[#10B981]">
                 <StickyNote className="w-3 h-3" />
                 {lead.notes ? lead.notes.slice(0, 50) + (lead.notes.length > 50 ? '...' : '') : 'Adicionar nota'}
               </button>
@@ -180,13 +180,13 @@ function DraggableLeadCard({ lead, stages, onMove, onSaveNotes }: {
             )}
             {nextStage && (
               <button onClick={() => onMove(nextStage.key)}
-                className="flex items-center gap-0.5 text-[11px] px-2 py-1 rounded-md bg-[#0891B2] text-white hover:bg-[#0E7490]">
+                className="flex items-center gap-0.5 text-[11px] px-2 py-1 rounded-md bg-[#10B981] text-white hover:bg-[#059669]">
                 {nextStage.label} <ChevronRight className="w-3 h-3" />
               </button>
             )}
             {lead.conversationId && (
               <button onClick={() => navigate('/conversations')}
-                className="text-[11px] px-2 py-1 rounded-md bg-[#0891B2]/10 text-[#0891B2] font-medium hover:bg-[#0891B2]/20">
+                className="text-[11px] px-2 py-1 rounded-md bg-[#10B981]/10 text-[#10B981] font-medium hover:bg-[#10B981]/20">
                 Ver conversa
               </button>
             )}
@@ -217,7 +217,7 @@ function DroppableColumn({ stage, children, count }: { stage: CrmStage; children
       </div>
       <div ref={setNodeRef}
         className={cn('flex-1 space-y-2 p-2 rounded-b-xl min-h-[200px] transition-colors border border-t-0', c.bg, c.border,
-          isOver && 'ring-2 ring-[#0891B2] ring-inset bg-[#0891B2]/5')}>
+          isOver && 'ring-2 ring-[#10B981] ring-inset bg-[#10B981]/5')}>
         {children}
       </div>
     </div>
@@ -234,7 +234,7 @@ function Dashboard({ stats, stages }: { stats: Record<string, number>; stages: C
 
   return (
     <div className="bg-white border border-gray-100 rounded-xl p-6">
-      <h3 className="text-sm font-semibold text-[#134E4A] mb-4">Funil de Conversão</h3>
+      <h3 className="text-sm font-semibold text-[#064E3B] mb-4">Funil de Conversão</h3>
 
       <div className="flex flex-col items-center gap-2">
         {funnelStages.map((stage, idx) => {
@@ -304,13 +304,13 @@ function ShareModal({ onClose }: { onClose: () => void }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-[#134E4A] flex items-center gap-2"><Share2 className="w-4 h-4" /> Compartilhar</h2>
+          <h2 className="text-base font-semibold text-[#064E3B] flex items-center gap-2"><Share2 className="w-4 h-4" /> Compartilhar</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100"><X className="w-4 h-4" /></button>
         </div>
         <div className="px-6 py-5 space-y-4">
           <div className="flex gap-2">
             <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Nome do acesso"
-              className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#0891B2]" />
+              className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#10B981]" />
             <Button onClick={() => createShare.mutate()} disabled={createShare.isPending}>
               {createShare.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />} Gerar
             </Button>
@@ -423,17 +423,17 @@ export function WhatsAppCrmPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-[#134E4A]">CRM WhatsApp</h1>
+          <h1 className="text-xl font-bold text-[#064E3B]">CRM WhatsApp</h1>
           <p className="text-sm text-gray-400">Acompanhe leads do atendimento via WhatsApp</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar..."
-              className="pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#0891B2] w-40" />
+              className="pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-[#10B981] w-40" />
           </div>
           <select value={agentFilter} onChange={(e) => setAgentFilter(e.target.value)}
-            className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#0891B2]">
+            className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#10B981]">
             <option value="">Todos agentes</option>
             {(agents as any[]).map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
@@ -441,13 +441,13 @@ export function WhatsAppCrmPage() {
             {PERIOD_FILTERS.map((p) => (
               <button key={p.key} onClick={() => setPeriodFilter(p.key)}
                 className={cn('px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors',
-                  periodFilter === p.key ? 'bg-white text-[#134E4A] shadow-sm' : 'text-gray-400 hover:text-gray-600')}>
+                  periodFilter === p.key ? 'bg-white text-[#064E3B] shadow-sm' : 'text-gray-400 hover:text-gray-600')}>
                 {p.label}
               </button>
             ))}
           </div>
           <button onClick={() => setShowDashboard(!showDashboard)}
-            className={cn('p-2 rounded-lg transition-colors', showDashboard ? 'bg-[#0891B2]/10 text-[#0891B2]' : 'text-gray-400 hover:bg-gray-100')}>
+            className={cn('p-2 rounded-lg transition-colors', showDashboard ? 'bg-[#10B981]/10 text-[#10B981]' : 'text-gray-400 hover:bg-gray-100')}>
             <BarChart3 className="w-4 h-4" />
           </button>
           <Button variant="secondary" onClick={() => setShowShare(true)}>
@@ -460,7 +460,7 @@ export function WhatsAppCrmPage() {
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-white border border-gray-100 rounded-xl p-4 text-center">
           <p className="text-xs text-gray-400 uppercase">Total de leads</p>
-          <p className="text-3xl font-bold text-[#0891B2]">{totalLeads.toLocaleString('pt-BR')}</p>
+          <p className="text-3xl font-bold text-[#10B981]">{totalLeads.toLocaleString('pt-BR')}</p>
           <p className="text-xs text-gray-300">leads no funil</p>
         </div>
         <div className="bg-white border border-gray-100 rounded-xl p-4 text-center">
@@ -479,7 +479,7 @@ export function WhatsAppCrmPage() {
       {showDashboard ? (
         <Dashboard stats={stats as Record<string, number>} stages={orderedStages} />
       ) : isLoading ? (
-        <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-[#0891B2]" /></div>
+        <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-[#10B981]" /></div>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
           <div className="flex gap-3 overflow-x-auto pb-4">
@@ -501,8 +501,8 @@ export function WhatsAppCrmPage() {
           </div>
           <DragOverlay>
             {activeLead && (
-              <div className="bg-white rounded-xl border border-[#0891B2] p-3 shadow-xl w-60 opacity-90">
-                <p className="text-sm font-semibold text-[#134E4A] truncate">{activeLead.contactName ?? activeLead.contactPhone}</p>
+              <div className="bg-white rounded-xl border border-[#10B981] p-3 shadow-xl w-60 opacity-90">
+                <p className="text-sm font-semibold text-[#064E3B] truncate">{activeLead.contactName ?? activeLead.contactPhone}</p>
                 <p className="text-xs text-gray-400 font-mono">{activeLead.contactPhone}</p>
               </div>
             )}

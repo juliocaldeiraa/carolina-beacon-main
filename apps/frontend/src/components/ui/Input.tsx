@@ -26,11 +26,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           id={inputId}
           className={cn(
-            'w-full px-3.5 py-2.5 text-sm text-[#134E4A] bg-white rounded-xl',
+            'w-full px-3.5 py-2.5 text-sm text-[#064E3B] bg-white rounded-xl',
             'border border-gray-200',
             'transition-all duration-200',
             'placeholder:text-gray-300',
-            'focus:outline-none focus:border-[#0891B2] focus:ring-2 focus:ring-[#0891B2]/10',
+            'focus:outline-none focus:border-[#10B981] focus:ring-2 focus:ring-[#10B981]/10',
             error && 'border-red-300 focus:border-red-400 focus:ring-red-100',
             props.disabled && 'opacity-40 cursor-not-allowed bg-gray-50',
             className,

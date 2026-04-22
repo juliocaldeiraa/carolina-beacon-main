@@ -154,7 +154,7 @@ export function WebhooksPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-xs text-white/50">
-          Receba notificações em sistemas externos quando eventos ocorrerem no Beacon.
+          Receba notificações em sistemas externos quando eventos ocorrerem no VoxAI.
         </p>
         <Button size="sm" onClick={() => setShowCreate(true)}>
           <Plus className="w-4 h-4" />
@@ -169,7 +169,7 @@ export function WebhooksPage() {
           </div>
           <div className="text-center">
             <p className="text-sm font-medium text-white">Nenhum webhook configurado</p>
-            <p className="text-xs text-white/40 mt-1">Envie eventos do Beacon para sistemas externos</p>
+            <p className="text-xs text-white/40 mt-1">Envie eventos do VoxAI para sistemas externos</p>
           </div>
           <Button size="sm" variant="secondary" onClick={() => setShowCreate(true)}>
             <Plus className="w-4 h-4" /> Criar webhook

@@ -195,7 +195,7 @@ export function AgentDetail() {
   }, [agent?.leadDispatchPhone])
 
   if (isLoading) {
-    return <div className="flex items-center justify-center py-32"><Loader2 className="w-6 h-6 animate-spin text-[#0891B2]" /></div>
+    return <div className="flex items-center justify-center py-32"><Loader2 className="w-6 h-6 animate-spin text-[#10B981]" /></div>
   }
   if (!agent) {
     return (
@@ -222,10 +222,10 @@ export function AgentDetail() {
 
         {/* Agent info */}
         <div className="px-5 pb-4 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-[#0891B2]/10 flex items-center justify-center mx-auto mb-3">
-            <Bot className="w-8 h-8 text-[#0891B2]" />
+          <div className="w-16 h-16 rounded-2xl bg-[#10B981]/10 flex items-center justify-center mx-auto mb-3">
+            <Bot className="w-8 h-8 text-[#10B981]" />
           </div>
-          <h2 className="text-sm font-bold text-[#134E4A]">{agent.name}</h2>
+          <h2 className="text-sm font-bold text-[#064E3B]">{agent.name}</h2>
           <p className="text-xs text-gray-400 mt-0.5">{PURPOSE_LABELS[agent.purpose] ?? agent.purpose} em {agent.companyName ?? '—'}</p>
           <div className="flex items-center justify-center gap-1.5 mt-2">
             <span className={cn('w-2 h-2 rounded-full', agent.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-gray-300')} />
@@ -244,7 +244,7 @@ export function AgentDetail() {
                 onClick={() => setSection(item.id)}
                 className={cn(
                   'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                  active ? 'bg-[#0891B2]/10 text-[#0891B2]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700',
+                  active ? 'bg-[#10B981]/10 text-[#10B981]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700',
                 )}
               >
                 <Icon className="w-4 h-4" />
@@ -256,7 +256,7 @@ export function AgentDetail() {
 
         {/* Test button */}
         <div className="p-4">
-          <Button className="w-full bg-[#0891B2] hover:bg-[#0E7490]" onClick={() => setShowTest(true)}>
+          <Button className="w-full bg-[#10B981] hover:bg-[#059669]" onClick={() => setShowTest(true)}>
             <Play className="w-4 h-4" /> Teste sua IA
           </Button>
         </div>
@@ -267,7 +267,7 @@ export function AgentDetail() {
         {/* ─── Perfil ─── */}
         {section === 'profile' && (
           <div className="max-w-2xl space-y-6">
-            <h2 className="text-lg font-bold text-[#134E4A]">Informações pessoais</h2>
+            <h2 className="text-lg font-bold text-[#064E3B]">Informações pessoais</h2>
 
             <div className="grid grid-cols-[1fr_auto] gap-6">
               <div className="space-y-1.5">
@@ -280,7 +280,7 @@ export function AgentDetail() {
                   {TONE_OPTIONS.map((t) => (
                     <button key={t.id} onClick={() => save({ communicationTone: t.id })}
                       className={cn('px-4 py-2 rounded-lg text-sm font-semibold transition-colors',
-                        agent.communicationTone === t.id ? 'bg-[#0891B2] text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                        agent.communicationTone === t.id ? 'bg-[#10B981] text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                       )}>
                       {t.label}
                     </button>
@@ -296,7 +296,7 @@ export function AgentDetail() {
                 <button
                   onClick={() => { setRefining('personality'); refinePersonality.mutate() }}
                   disabled={refinePersonality.isPending || !agent.personality}
-                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-[#0891B2] bg-[#0891B2]/10 rounded-lg hover:bg-[#0891B2]/20 disabled:opacity-40 transition-colors"
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-[#10B981] bg-[#10B981]/10 rounded-lg hover:bg-[#10B981]/20 disabled:opacity-40 transition-colors"
                 >
                   {refinePersonality.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
                   Refinar com IA
@@ -315,7 +315,7 @@ export function AgentDetail() {
                 defaultValue={agent.personality ?? ''}
                 onBlur={(e) => save({ personality: e.target.value })}
                 rows={10}
-                className="w-full px-4 py-3 text-sm text-[#134E4A] bg-white rounded-xl border border-gray-200 resize-y focus:outline-none focus:border-[#0891B2] focus:ring-2 focus:ring-[#0891B2]/10"
+                className="w-full px-4 py-3 text-sm text-[#064E3B] bg-white rounded-xl border border-gray-200 resize-y focus:outline-none focus:border-[#10B981] focus:ring-2 focus:ring-[#10B981]/10"
               />
             </div>
           </div>
@@ -324,7 +324,7 @@ export function AgentDetail() {
         {/* ─── Trabalho ─── */}
         {section === 'work' && (
           <div className="max-w-2xl space-y-6">
-            <h2 className="text-lg font-bold text-[#134E4A]">Informações sobre trabalho</h2>
+            <h2 className="text-lg font-bold text-[#064E3B]">Informações sobre trabalho</h2>
 
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-gray-600">Finalidade</label>
@@ -332,7 +332,7 @@ export function AgentDetail() {
                 {PURPOSE_OPTIONS.map((opt) => (
                   <button key={opt.id} onClick={() => save({ purpose: opt.id })}
                     className={cn('px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors border-2',
-                      agent.purpose === opt.id ? 'border-[#0891B2] bg-[#0891B2]/10 text-[#0891B2]' : 'border-gray-100 text-gray-500 hover:border-gray-200'
+                      agent.purpose === opt.id ? 'border-[#10B981] bg-[#10B981]/10 text-[#10B981]' : 'border-gray-100 text-gray-500 hover:border-gray-200'
                     )}>
                     {opt.label}
                   </button>
@@ -358,7 +358,7 @@ export function AgentDetail() {
                 onBlur={(e) => save({ description: e.target.value })}
                 rows={4}
                 placeholder="Descreva brevemente o que a empresa faz..."
-                className="w-full px-4 py-3 text-sm text-[#134E4A] bg-white rounded-xl border border-gray-200 resize-y focus:outline-none focus:border-[#0891B2] focus:ring-2 focus:ring-[#0891B2]/10"
+                className="w-full px-4 py-3 text-sm text-[#064E3B] bg-white rounded-xl border border-gray-200 resize-y focus:outline-none focus:border-[#10B981] focus:ring-2 focus:ring-[#10B981]/10"
               />
             </div>
 
@@ -369,7 +369,7 @@ export function AgentDetail() {
                 <button
                   onClick={() => { setRefining('action'); refineAction.mutate() }}
                   disabled={refineAction.isPending || !agent.actionPrompt}
-                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-[#0891B2] bg-[#0891B2]/10 rounded-lg hover:bg-[#0891B2]/20 disabled:opacity-40 transition-colors"
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-[#10B981] bg-[#10B981]/10 rounded-lg hover:bg-[#10B981]/20 disabled:opacity-40 transition-colors"
                 >
                   {refineAction.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
                   Refinar com IA
@@ -380,7 +380,7 @@ export function AgentDetail() {
                 defaultValue={agent.actionPrompt ?? ''}
                 onBlur={(e) => save({ actionPrompt: e.target.value })}
                 rows={8}
-                className="w-full px-4 py-3 text-sm text-[#134E4A] bg-white rounded-xl border border-gray-200 resize-y font-mono focus:outline-none focus:border-[#0891B2] focus:ring-2 focus:ring-[#0891B2]/10"
+                className="w-full px-4 py-3 text-sm text-[#064E3B] bg-white rounded-xl border border-gray-200 resize-y font-mono focus:outline-none focus:border-[#10B981] focus:ring-2 focus:ring-[#10B981]/10"
               />
             </div>
 
@@ -392,7 +392,7 @@ export function AgentDetail() {
                 onBlur={(e) => save({ conversationFlow: e.target.value })}
                 rows={5}
                 placeholder="1. Cumprimentar&#10;2. Entender necessidade&#10;3. Qualificar&#10;4. Agendar"
-                className="w-full px-4 py-3 text-sm text-[#134E4A] bg-white rounded-xl border border-gray-200 resize-y font-mono focus:outline-none focus:border-[#0891B2] focus:ring-2 focus:ring-[#0891B2]/10"
+                className="w-full px-4 py-3 text-sm text-[#064E3B] bg-white rounded-xl border border-gray-200 resize-y font-mono focus:outline-none focus:border-[#10B981] focus:ring-2 focus:ring-[#10B981]/10"
               />
             </div>
           </div>
@@ -401,7 +401,7 @@ export function AgentDetail() {
         {/* ─── Treinamentos ─── */}
         {section === 'trainings' && (
           <div className="max-w-3xl space-y-4">
-            <h2 className="text-lg font-bold text-[#134E4A]">Treinamentos</h2>
+            <h2 className="text-lg font-bold text-[#064E3B]">Treinamentos</h2>
 
             <div className="flex gap-2">
               {[
@@ -411,7 +411,7 @@ export function AgentDetail() {
               ].map((t) => (
                 <button key={t.id} onClick={() => setTrainingType(t.id)}
                   className={cn('flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-                    trainingType === t.id ? 'bg-[#0891B2] text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                    trainingType === t.id ? 'bg-[#10B981] text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                   )}>
                   <t.icon className="w-4 h-4" /> {t.label}
                 </button>
@@ -421,12 +421,12 @@ export function AgentDetail() {
             {trainingType === 'text' && (
               <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-3">
                 <input value={trainingTitle} onChange={(e) => setTrainingTitle(e.target.value)} placeholder="Título (opcional)"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#0891B2]" />
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#10B981]" />
                 <textarea value={trainingContent} onChange={(e) => setTrainingContent(e.target.value)} placeholder="Cole ou escreva o conteúdo..."
-                  rows={5} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:border-[#0891B2]" />
+                  rows={5} className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:border-[#10B981]" />
                 <div className="flex justify-between items-center">
                   <label className="flex items-center gap-1.5 cursor-pointer">
-                    <input type="checkbox" checked={useAiProcessing} onChange={(e) => setUseAiProcessing(e.target.checked)} className="accent-[#0891B2]" />
+                    <input type="checkbox" checked={useAiProcessing} onChange={(e) => setUseAiProcessing(e.target.checked)} className="accent-[#10B981]" />
                     <span className="text-xs text-gray-500 flex items-center gap-1"><Sparkles className="w-3 h-3" /> Processar com IA</span>
                   </label>
                   <Button onClick={() => useAiProcessing ? processText.mutate() : createTraining.mutate()}
@@ -441,10 +441,10 @@ export function AgentDetail() {
             {trainingType === 'url' && (
               <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-3">
                 <input value={trainingContent} onChange={(e) => setTrainingContent(e.target.value)} placeholder="https://exemplo.com.br"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#0891B2]" />
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#10B981]" />
                 <div className="flex justify-between items-center">
                   <label className="flex items-center gap-1.5 cursor-pointer">
-                    <input type="checkbox" checked={crawlEnabled} onChange={(e) => setCrawlEnabled(e.target.checked)} className="accent-[#0891B2]" />
+                    <input type="checkbox" checked={crawlEnabled} onChange={(e) => setCrawlEnabled(e.target.checked)} className="accent-[#10B981]" />
                     <span className="text-xs text-gray-500">Navegar links internos (até 5 páginas)</span>
                   </label>
                   <Button onClick={() => processUrl.mutate()} disabled={!trainingContent.trim() || processUrl.isPending}>
@@ -456,7 +456,7 @@ export function AgentDetail() {
 
             {trainingType === 'upload' && (
               <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-3">
-                <label className="flex items-center justify-center gap-2 py-8 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-[#0891B2]/40 transition-colors">
+                <label className="flex items-center justify-center gap-2 py-8 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-[#10B981]/40 transition-colors">
                   <Upload className="w-5 h-5 text-gray-300" />
                   <span className="text-sm text-gray-400">Clique para selecionar (.md, .pdf, .docx)</span>
                   <input type="file" accept=".md,.pdf,.docx" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile.mutate(f) }} />
@@ -474,7 +474,7 @@ export function AgentDetail() {
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className="text-xs font-semibold text-gray-400 uppercase">{t.type}</span>
                       {t.category && t.category !== 'general' && (
-                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#0891B2]/10 text-[#0891B2]">{t.category}</span>
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#10B981]/10 text-[#10B981]">{t.category}</span>
                       )}
                       {t.title && <span className="text-xs text-gray-400">· {t.title}</span>}
                       {t.status === 'processing' && <Loader2 className="w-3 h-3 animate-spin text-amber-500" />}
@@ -494,25 +494,25 @@ export function AgentDetail() {
         {/* ─── Integrações ─── */}
         {section === 'integrations' && (
           <div className="max-w-3xl space-y-4">
-            <h2 className="text-lg font-bold text-[#134E4A]">Integrações</h2>
+            <h2 className="text-lg font-bold text-[#064E3B]">Integrações</h2>
             <p className="text-sm text-gray-400">Conecte seu agente a outros aplicativos para obter informações mais precisas ou acionar ações.</p>
 
             <div className="grid grid-cols-3 gap-4">
               {/* Google Calendar */}
               <div className="bg-white border border-gray-100 rounded-xl p-6 flex flex-col items-center text-center space-y-3">
-                <Calendar className="w-10 h-10 text-[#0891B2]" />
+                <Calendar className="w-10 h-10 text-[#10B981]" />
                 <div>
-                  <h3 className="text-sm font-bold text-[#134E4A]">Google Calendar</h3>
+                  <h3 className="text-sm font-bold text-[#064E3B]">Google Calendar</h3>
                   <p className="text-xs text-gray-400 mt-1">Agende consultas e reuniões automaticamente durante a conversa.</p>
                 </div>
                 {calendarConfig ? (
                   <button onClick={() => setIntegrationModal('calendar')}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#0891B2] text-white rounded-lg text-sm font-medium hover:bg-[#0E7490]">
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#10B981] text-white rounded-lg text-sm font-medium hover:bg-[#059669]">
                     Configurar
                   </button>
                 ) : (
                   <a href={`/api/integrations/google/auth/${id}?tenantId=t1`}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#0891B2] text-white rounded-lg text-sm font-medium hover:bg-[#0E7490]">
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#10B981] text-white rounded-lg text-sm font-medium hover:bg-[#059669]">
                     Conectar
                   </a>
                 )}
@@ -522,20 +522,20 @@ export function AgentDetail() {
               <div className="bg-white border border-gray-100 rounded-xl p-6 flex flex-col items-center text-center space-y-3">
                 <Zap className="w-10 h-10 text-amber-500" />
                 <div>
-                  <h3 className="text-sm font-bold text-[#134E4A]">Disparo de Lead</h3>
+                  <h3 className="text-sm font-bold text-[#064E3B]">Disparo de Lead</h3>
                   <p className="text-xs text-gray-400 mt-1">Envie resumo do lead qualificado para a equipe de agendamento.</p>
                 </div>
                 <div className="w-full space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-gray-500">Ativar</span>
                     <button onClick={() => updateLeadDispatch.mutate({ leadDispatchEnabled: !agent.leadDispatchEnabled })}
-                      className={cn('relative w-9 h-5 rounded-full transition-colors', agent.leadDispatchEnabled ? 'bg-[#0891B2]' : 'bg-gray-200')}>
+                      className={cn('relative w-9 h-5 rounded-full transition-colors', agent.leadDispatchEnabled ? 'bg-[#10B981]' : 'bg-gray-200')}>
                       <span className={cn('absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all', agent.leadDispatchEnabled ? 'left-[18px]' : 'left-0.5')} />
                     </button>
                   </div>
                   <div className="flex gap-1">
                     <input value={dispatchPhone} onChange={(e) => setDispatchPhone(e.target.value)} placeholder="5567..."
-                      className="flex-1 border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-[#0891B2]" />
+                      className="flex-1 border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-[#10B981]" />
                     <Button size="sm" onClick={() => updateLeadDispatch.mutate({ leadDispatchPhone: dispatchPhone })} disabled={!dispatchPhone.trim()}>
                       Salvar
                     </Button>
@@ -547,7 +547,7 @@ export function AgentDetail() {
               <div className="bg-white border border-gray-100 rounded-xl p-6 flex flex-col items-center text-center space-y-3">
                 <Globe className="w-10 h-10 text-violet-500" />
                 <div>
-                  <h3 className="text-sm font-bold text-[#134E4A]">Webhook</h3>
+                  <h3 className="text-sm font-bold text-[#064E3B]">Webhook</h3>
                   <p className="text-xs text-gray-400 mt-1">Dispare eventos para sistemas externos quando o agente qualificar ou transferir.</p>
                 </div>
                 <button onClick={() => setIntegrationModal('webhook')}
@@ -562,7 +562,7 @@ export function AgentDetail() {
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setIntegrationModal(null)}>
                 <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-                    <h2 className="text-base font-semibold text-[#134E4A] flex items-center gap-2"><Calendar className="w-5 h-5 text-[#0891B2]" /> Google Calendar</h2>
+                    <h2 className="text-base font-semibold text-[#064E3B] flex items-center gap-2"><Calendar className="w-5 h-5 text-[#10B981]" /> Google Calendar</h2>
                     <button onClick={() => setIntegrationModal(null)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100"><X className="w-4 h-4" /></button>
                   </div>
                   <div className="px-6 py-5 space-y-5">
@@ -581,7 +581,7 @@ export function AgentDetail() {
                           const cal = calendars.find((c: any) => c.id === e.target.value)
                           updateCalendarConfig.mutate({ calendarId: e.target.value, calendarName: cal?.summary ?? e.target.value })
                         }}
-                        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-[#0891B2]">
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-[#10B981]">
                         {calendars.map((c: any) => (
                           <option key={c.id} value={c.id}>{c.summary} {c.primary ? '(principal)' : ''}</option>
                         ))}
@@ -594,7 +594,7 @@ export function AgentDetail() {
                         {[15, 30, 45, 60].map((min) => (
                           <button key={min} onClick={() => updateCalendarConfig.mutate({ slotDuration: min })}
                             className={cn('flex-1 py-2 rounded-lg text-sm font-medium transition-colors',
-                              calendarConfig.slotDuration === min ? 'bg-[#0891B2] text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
+                              calendarConfig.slotDuration === min ? 'bg-[#10B981] text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
                             )}>
                             {min}min
                           </button>
@@ -606,7 +606,7 @@ export function AgentDetail() {
                       <label className="text-sm font-medium text-gray-700">Título do evento</label>
                       <input defaultValue={calendarConfig.eventTitle}
                         onBlur={(e) => updateCalendarConfig.mutate({ eventTitle: e.target.value })}
-                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#0891B2]"
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#10B981]"
                         placeholder="Consulta - {userName}" />
                     </div>
 
@@ -626,7 +626,7 @@ export function AgentDetail() {
                           </div>
                           <button onClick={() => updateCalendarConfig.mutate({ [item.key]: !(calendarConfig as any)[item.key] })}
                             className={cn('relative w-9 h-5 rounded-full transition-colors',
-                              (calendarConfig as any)[item.key] ? 'bg-[#0891B2]' : 'bg-gray-200'
+                              (calendarConfig as any)[item.key] ? 'bg-[#10B981]' : 'bg-gray-200'
                             )}>
                             <span className={cn('absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all',
                               (calendarConfig as any)[item.key] ? 'left-[18px]' : 'left-0.5'
@@ -645,7 +645,7 @@ export function AgentDetail() {
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setIntegrationModal(null)}>
                 <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-                    <h2 className="text-base font-semibold text-[#134E4A] flex items-center gap-2"><Globe className="w-5 h-5 text-violet-500" /> Webhook de Eventos</h2>
+                    <h2 className="text-base font-semibold text-[#064E3B] flex items-center gap-2"><Globe className="w-5 h-5 text-violet-500" /> Webhook de Eventos</h2>
                     <button onClick={() => setIntegrationModal(null)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100"><X className="w-4 h-4" /></button>
                   </div>
                   <div className="px-6 py-5 space-y-5">
@@ -682,7 +682,7 @@ export function AgentDetail() {
         {/* ─── Canais ─── */}
         {section === 'channels' && (
           <div className="max-w-3xl space-y-4">
-            <h2 className="text-lg font-bold text-[#134E4A]">Canais vinculados</h2>
+            <h2 className="text-lg font-bold text-[#064E3B]">Canais vinculados</h2>
             <p className="text-sm text-gray-400">Canais de WhatsApp conectados a este agente.</p>
 
             {channelAgents.length === 0 ? (
@@ -700,7 +700,7 @@ export function AgentDetail() {
                         <MessageSquare className="w-5 h-5 text-emerald-500" />
                       </div>
                       <div>
-                        <h3 className="text-sm font-semibold text-[#134E4A]">{ca.name}</h3>
+                        <h3 className="text-sm font-semibold text-[#064E3B]">{ca.name}</h3>
                         <p className="text-xs text-gray-400">Modelo: {ca.llmModel} · {ca.isActive ? 'Ativo' : 'Inativo'}</p>
                       </div>
                     </div>
@@ -715,7 +715,7 @@ export function AgentDetail() {
         {/* ─── Configurações ─── */}
         {section === 'settings' && (
           <div className="max-w-2xl space-y-4">
-            <h2 className="text-lg font-bold text-[#134E4A]">Preferências da conversa</h2>
+            <h2 className="text-lg font-bold text-[#064E3B]">Preferências da conversa</h2>
 
             <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
               {[
@@ -725,7 +725,7 @@ export function AgentDetail() {
               ].map((t) => (
                 <button key={t.id} onClick={() => setConfigSubTab(t.id)}
                   className={cn('flex-1 py-2 rounded-md text-sm font-medium transition-colors',
-                    configSubTab === t.id ? 'bg-white text-[#134E4A] shadow-sm' : 'text-gray-400 hover:text-gray-600'
+                    configSubTab === t.id ? 'bg-white text-[#064E3B] shadow-sm' : 'text-gray-400 hover:text-gray-600'
                   )}>
                   {t.label}
                 </button>
@@ -743,11 +743,11 @@ export function AgentDetail() {
                 ].map((item) => (
                   <div key={item.key} className="flex items-center justify-between py-3">
                     <div>
-                      <p className="text-sm font-medium text-[#134E4A]">{item.label}</p>
+                      <p className="text-sm font-medium text-[#064E3B]">{item.label}</p>
                       <p className="text-xs text-gray-400">{item.desc}</p>
                     </div>
                     <button onClick={() => save({ [item.key]: !item.value })}
-                      className={cn('relative w-9 h-5 rounded-full transition-colors', item.value ? 'bg-[#0891B2]' : 'bg-gray-200')}>
+                      className={cn('relative w-9 h-5 rounded-full transition-colors', item.value ? 'bg-[#10B981]' : 'bg-gray-200')}>
                       <span className={cn('absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all', item.value ? 'left-[18px]' : 'left-0.5')} />
                     </button>
                   </div>
@@ -771,7 +771,7 @@ export function AgentDetail() {
                           <p className="text-sm text-gray-500">{item.label}</p>
                           <p className="text-xs text-gray-300">{item.desc}</p>
                         </div>
-                        <span className="text-sm font-medium text-[#134E4A]">{item.value}</span>
+                        <span className="text-sm font-medium text-[#064E3B]">{item.value}</span>
                       </div>
                     ))}
                   </div>
@@ -784,11 +784,11 @@ export function AgentDetail() {
                 <p className="text-xs text-gray-400">Configure ações quando o cliente parar de responder.</p>
                 <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
                   <span className="text-sm text-gray-500">Se não responder em</span>
-                  <span className="text-sm font-semibold text-[#134E4A] bg-white border border-gray-200 rounded-lg px-3 py-1.5">
+                  <span className="text-sm font-semibold text-[#064E3B] bg-white border border-gray-200 rounded-lg px-3 py-1.5">
                     {agent.inactivityMinutes ?? 10} min
                   </span>
                   <span className="text-sm text-gray-500">o agente deve</span>
-                  <span className="text-sm font-semibold text-[#134E4A] bg-white border border-gray-200 rounded-lg px-3 py-1.5">
+                  <span className="text-sm font-semibold text-[#064E3B] bg-white border border-gray-200 rounded-lg px-3 py-1.5">
                     {(agent.inactivityAction ?? 'close') === 'close' ? 'Finalizar' : agent.inactivityAction === 'transfer' ? 'Transferir' : 'Enviar mensagem'}
                   </span>
                 </div>
@@ -804,11 +804,11 @@ export function AgentDetail() {
 
                 <div className="flex items-center justify-between py-2">
                   <div>
-                    <p className="text-sm font-medium text-[#134E4A]">Ativar lembretes</p>
+                    <p className="text-sm font-medium text-[#064E3B]">Ativar lembretes</p>
                     <p className="text-xs text-gray-400">Envia mensagem antes do agendamento</p>
                   </div>
                   <button onClick={() => save({ reminderEnabled: !agent.reminderEnabled })}
-                    className={cn('relative w-9 h-5 rounded-full transition-colors', agent.reminderEnabled ? 'bg-[#0891B2]' : 'bg-gray-200')}>
+                    className={cn('relative w-9 h-5 rounded-full transition-colors', agent.reminderEnabled ? 'bg-[#10B981]' : 'bg-gray-200')}>
                     <span className={cn('absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all', agent.reminderEnabled ? 'left-[18px]' : 'left-0.5')} />
                   </button>
                 </div>
@@ -828,7 +828,7 @@ export function AgentDetail() {
                           const currentMin = (agent.reminderMinutes ?? 120) % 60
                           save({ reminderMinutes: hours * 60 + currentMin })
                         }}
-                        className="w-16 border border-gray-200 rounded-lg px-3 py-2 text-sm text-center text-[#134E4A] focus:outline-none focus:border-[#0891B2]"
+                        className="w-16 border border-gray-200 rounded-lg px-3 py-2 text-sm text-center text-[#064E3B] focus:outline-none focus:border-[#10B981]"
                       />
                       <span className="text-sm text-gray-500">horas e</span>
                       <input
@@ -841,7 +841,7 @@ export function AgentDetail() {
                           const currentHours = Math.floor((agent.reminderMinutes ?? 120) / 60)
                           save({ reminderMinutes: currentHours * 60 + minutes })
                         }}
-                        className="w-16 border border-gray-200 rounded-lg px-3 py-2 text-sm text-center text-[#134E4A] focus:outline-none focus:border-[#0891B2]"
+                        className="w-16 border border-gray-200 rounded-lg px-3 py-2 text-sm text-center text-[#064E3B] focus:outline-none focus:border-[#10B981]"
                       />
                       <span className="text-sm text-gray-500">minutos antes</span>
                     </div>
@@ -854,7 +854,7 @@ export function AgentDetail() {
                       defaultValue={agent.reminderMessage ?? 'Oi {nome}! Lembrando do seu agendamento dia {data} as {horario}. Pode confirmar sua presenca?'}
                       onBlur={(e) => save({ reminderMessage: e.target.value })}
                       rows={3}
-                      className="w-full px-4 py-3 text-sm text-[#134E4A] bg-white rounded-xl border border-gray-200 resize-y focus:outline-none focus:border-[#0891B2] focus:ring-2 focus:ring-[#0891B2]/10"
+                      className="w-full px-4 py-3 text-sm text-[#064E3B] bg-white rounded-xl border border-gray-200 resize-y focus:outline-none focus:border-[#10B981] focus:ring-2 focus:ring-[#10B981]/10"
                     />
                   </div>
                 </>)}
@@ -869,20 +869,20 @@ export function AgentDetail() {
         <div className="fixed inset-0 z-50 flex justify-end bg-black/30" onClick={() => setShowTest(false)}>
           <div className="w-96 bg-white h-full flex flex-col shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <h3 className="text-sm font-bold text-[#134E4A] flex items-center gap-2"><Play className="w-4 h-4 text-[#0891B2]" /> Teste sua IA</h3>
+              <h3 className="text-sm font-bold text-[#064E3B] flex items-center gap-2"><Play className="w-4 h-4 text-[#10B981]" /> Teste sua IA</h3>
               <button onClick={() => setShowTest(false)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100"><X className="w-4 h-4" /></button>
             </div>
             <div className="flex-1 overflow-y-auto p-5">
               {testReply && (
-                <div className="bg-[#0891B2]/10 border border-[#0891B2]/20 rounded-xl p-4 mb-4">
+                <div className="bg-[#10B981]/10 border border-[#10B981]/20 rounded-xl p-4 mb-4">
                   <p className="text-xs text-gray-400 mb-1">Resposta:</p>
-                  <p className="text-sm text-[#134E4A] whitespace-pre-wrap">{testReply}</p>
+                  <p className="text-sm text-[#064E3B] whitespace-pre-wrap">{testReply}</p>
                 </div>
               )}
             </div>
             <div className="p-4 border-t border-gray-100 flex gap-2">
               <input value={testMsg} onChange={(e) => setTestMsg(e.target.value)} placeholder="Envie uma mensagem..."
-                className="flex-1 border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-[#0891B2]"
+                className="flex-1 border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-[#10B981]"
                 onKeyDown={(e) => { if (e.key === 'Enter' && testMsg.trim()) testMutation.mutate() }} />
               <Button onClick={() => testMutation.mutate()} disabled={!testMsg.trim() || testMutation.isPending}>
                 {testMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}

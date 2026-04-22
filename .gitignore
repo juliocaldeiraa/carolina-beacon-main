@@ -16,3 +16,4 @@ prompt_claude_code_refactor_campos_agente.md
 Brand/
 .env.production
 .mcp.json
+node_modules

@@ -1,7 +1,6 @@
 /*
- * Carolina Beacon — Design Tokens
- * Healthcare-focused design system
- * Colors: Medical Teal + Health Green
+ * VoxAI — Design Tokens
+ * Verde menta com suporte a light/dark
  * Typography: Figtree + Noto Sans
  */
 
@@ -9,10 +8,10 @@
 
 :root {
   /* ─── Brand Colors ─── */
-  --color-primary:       #0891B2;
-  --color-primary-hover: #0E7490;
-  --color-primary-light: #CFFAFE;
-  --color-secondary:     #22D3EE;
+  --color-primary:       #10B981;
+  --color-primary-hover: #059669;
+  --color-primary-light: #D1FAE5;
+  --color-secondary:     #34D399;
   --color-accent:        #16A34A;
   --color-destructive:   #DC2626;
 
@@ -34,7 +33,7 @@
   --bg-sidebar:   #FFFFFF;
 
   /* ─── Semantic: Text ─── */
-  --text-primary:    #134E4A;
+  --text-primary:    #064E3B;
   --text-secondary:  #475569;
   --text-muted:      #94A3B8;
   --text-subtle:     #CBD5E1;
@@ -150,7 +149,7 @@ h1, h2, h3, h4, h5, h6 {
 .text-white\/10            { color: #E2E8F0 !important; }
 
 /* Hover text */
-.hover\:text-white:hover   { color: #134E4A !important; }
+.hover\:text-white:hover   { color: #064E3B !important; }
 .hover\:text-white\/80:hover { color: rgba(19,78,74,.80) !important; }
 
 /* Backgrounds → light neutral tints */
@@ -185,25 +184,25 @@ h1, h2, h3, h4, h5, h6 {
 .border-white\/10 { border-color: #E2E8F0 !important; }
 .border-white\/5  { border-color: #F1F5F9 !important; }
 
-/* Beacon primary → teal */
-.bg-beacon-primary     { background-color: #0891B2 !important; }
-.hover\:bg-beacon-hover:hover { background-color: #0E7490 !important; }
-.text-beacon-primary   { color: #0891B2 !important; }
-.border-beacon-primary { border-color: #0891B2 !important; }
+/* Primary → verde menta */
+.bg-beacon-primary     { background-color: #10B981 !important; }
+.hover\:bg-beacon-hover:hover { background-color: #059669 !important; }
+.text-beacon-primary   { color: #10B981 !important; }
+.border-beacon-primary { border-color: #10B981 !important; }
 
 /* Preserve white text on colored backgrounds */
 .bg-beacon-primary .text-white,
 .bg-green-600 .text-white,
 .bg-red-500 .text-white,
 .bg-yellow-500 .text-white,
-.bg-\[\#0891B2\] .text-white,
+.bg-\[\#10B981\] .text-white,
 [class*="bg-gradient-to"] .text-white,
 button[class*="bg-beacon-primary"] { color: white !important; }
 
 /* Active sidebar item */
-.bg-\[\#0891B2\] { color: white; }
-.bg-\[\#0891B2\] span,
-.bg-\[\#0891B2\] svg { color: white !important; }
+.bg-\[\#10B981\] { color: white; }
+.bg-\[\#10B981\] span,
+.bg-\[\#10B981\] svg { color: white !important; }
 
 /* Shadows */
 .shadow-\[0_16px_64px_rgba\(0\,0\,0\,0\.7\)\] {
@@ -218,7 +217,7 @@ button[class*="bg-beacon-primary"] { color: white !important; }
 
 /* Fix inputs/selects in light mode */
 select, input[type="text"], input[type="number"], input[type="email"], input[type="password"], textarea {
-  color: #134E4A;
+  color: #064E3B;
   background-color: white;
 }
 

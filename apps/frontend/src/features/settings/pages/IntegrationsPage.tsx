@@ -98,7 +98,7 @@ export function IntegrationsPage() {
   return (
     <div className="space-y-6">
       <p className="text-xs text-white/50">
-        Conecte o Beacon com suas ferramentas favoritas. Canais de mensagem são configurados em{' '}
+        Conecte o VoxAI com suas ferramentas favoritas. Canais de mensagem são configurados em{' '}
         <button onClick={() => navigate('/channels')} className="text-beacon-primary hover:underline font-medium">
           Canais
         </button>.
