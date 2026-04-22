@@ -1,6 +1,7 @@
 /**
  * useThemeStore — Gerenciamento de tema dark/light
- * Persiste em localStorage e sincroniza com data-theme no <html>
+ * Persiste em localStorage (voxai-theme) e aplica class .dark no <html>.
+ * Default = light.
  */
 
 import { create } from 'zustand'
@@ -13,22 +14,21 @@ interface ThemeState {
   setTheme: (t: Theme) => void
 }
 
+const STORAGE_KEY = 'voxai-theme'
+
 function applyTheme(theme: Theme) {
   const html = document.documentElement
-  if (theme === 'light') {
-    html.setAttribute('data-theme', 'light')
-  } else {
-    html.removeAttribute('data-theme')
-  }
-  try { localStorage.setItem('beacon-theme', theme) } catch {}
+  if (theme === 'dark') html.classList.add('dark')
+  else                  html.classList.remove('dark')
+  try { localStorage.setItem(STORAGE_KEY, theme) } catch {}
 }
 
 function getInitialTheme(): Theme {
   try {
-    const saved = localStorage.getItem('beacon-theme') as Theme | null
-    if (saved === 'light' || saved === 'dark') return saved
+    const saved = localStorage.getItem(STORAGE_KEY) as Theme | null
+    if (saved === 'dark' || saved === 'light') return saved
   } catch {}
-  return 'dark'
+  return 'light'
 }
 
 export const useThemeStore = create<ThemeState>((set) => ({

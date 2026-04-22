@@ -1,6 +1,5 @@
 /**
- * ThemeToggle — Alterna entre dark e light mode
- * Ícone: Lua (dark) / Sol (light)
+ * ThemeToggle — alterna entre dark e light mode
  */
 
 import { Sun, Moon } from 'lucide-react'
@@ -13,33 +12,16 @@ export function ThemeToggle({ className }: { className?: string }) {
 
   return (
     <button
+      type="button"
       onClick={toggle}
       className={cn(
-        'relative p-2 rounded-lg transition-all duration-300',
-        isDark
-          ? 'text-white/50 hover:bg-white/8 hover:text-white'
-          : 'text-white/50 hover:bg-white/8 hover:text-white',
+        'p-2 rounded-xl text-gray-400 hover:bg-gray-50 hover:text-[#10B981] transition-colors',
         className,
       )}
       aria-label={isDark ? 'Mudar para tema claro' : 'Mudar para tema escuro'}
       title={isDark ? 'Tema claro' : 'Tema escuro'}
     >
-      <span
-        className={cn(
-          'absolute inset-0 flex items-center justify-center transition-all duration-300',
-          isDark ? 'opacity-100 rotate-0' : 'opacity-0 rotate-90',
-        )}
-      >
-        <Moon className="w-5 h-5" />
-      </span>
-      <span
-        className={cn(
-          'flex items-center justify-center transition-all duration-300',
-          isDark ? 'opacity-0 -rotate-90' : 'opacity-100 rotate-0',
-        )}
-      >
-        <Sun className="w-5 h-5" />
-      </span>
+      {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
     </button>
   )
 }

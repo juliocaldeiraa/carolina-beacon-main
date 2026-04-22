@@ -19,7 +19,8 @@
       (function() {
         try {
           var t = localStorage.getItem('voxai-theme');
-          if (t === 'light') document.documentElement.setAttribute('data-theme', 'light');
+          // Default = light. Só aplica .dark se o usuário escolheu explicitamente.
+          if (t === 'dark') document.documentElement.classList.add('dark');
         } catch(e) {}
       })();
     </script>

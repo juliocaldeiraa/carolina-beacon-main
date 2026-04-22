@@ -86,7 +86,7 @@ export function MainLayout() {
         Ir para o conteúdo principal
       </a>
 
-      <div className="min-h-screen bg-[#F5FAFA]">
+      <div className="min-h-screen bg-beacon-app">
         <Sidebar />
         <Header title={meta.title} subtitle={meta.subtitle} />
 

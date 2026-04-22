@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore, type NicheKey } from '@/store/useAuthStore'
 import { NotificationsPanel } from './NotificationsPanel'
+import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { api } from '@/services/api'
 import { cn } from '@/lib/utils'
 
@@ -160,6 +161,8 @@ export function Header({ title, subtitle }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-2">
+        <ThemeToggle />
+
         <NotificationsPanel />
 
         <button onClick={() => navigate('/settings')}

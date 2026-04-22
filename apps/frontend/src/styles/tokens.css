@@ -67,10 +67,41 @@
   /* ─── Shadows ─── */
   --shadow-card:      0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
   --shadow-card-hover:0 4px 12px rgba(0,0,0,0.08);
-  --shadow-fab:       0 4px 12px rgba(8,145,178,0.25);
+  --shadow-fab:       0 4px 12px rgba(16,185,129,0.25);
   --shadow-modal:     0 16px 64px rgba(0,0,0,0.12);
   --shadow-sm:        0 1px 2px rgba(0,0,0,0.05);
 }
+
+/* ─── Dark Mode ─── */
+html.dark {
+  --color-primary:       #34D399;
+  --color-primary-hover: #10B981;
+  --color-primary-light: #064E3B;
+
+  --c-app:       15 22 20;       /* #0F1614 */
+  --c-surface:   26 36 33;       /* #1A2421 */
+  --c-surface-2: 20 29 27;       /* #141D1B */
+
+  --color-app:       #0F1614;
+  --color-surface:   #1A2421;
+  --color-surface-2: #141D1B;
+  --color-border:    rgba(52,211,153,0.12);
+  --color-border-2:  rgba(52,211,153,0.20);
+
+  --bg-sidebar:      #141D1B;
+
+  --text-primary:    #D1FAE5;
+  --text-secondary:  #A7F3D0;
+  --text-muted:      #6EE7B7;
+  --text-subtle:     #4B5563;
+  --text-on-primary: #064E3B;
+
+  --border-subtle:   rgba(52,211,153,0.10);
+}
+
+html.dark body { background-color: var(--bg-app); color: var(--text-primary); }
+html.dark ::-webkit-scrollbar-track { background: #1F2E29; }
+html.dark ::-webkit-scrollbar-thumb { background: #064E3B; }
 
 /* ─── Global Reset ─── */
 *, *::before, *::after {
@@ -127,103 +158,145 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--color-primary);
 }
 
-/* ─── Global Dark→Light Overrides ───
- * Converts dark-mode-first Tailwind classes to light theme.
- * This avoids rewriting every component file.
- * ─── */
+/* ─── Primary (ambos os temas) ─── */
+.bg-beacon-primary     { background-color: var(--color-primary) !important; }
+.hover\:bg-beacon-hover:hover { background-color: var(--color-primary-hover) !important; }
+.text-beacon-primary   { color: var(--color-primary) !important; }
+.border-beacon-primary { border-color: var(--color-primary) !important; }
 
-/* Text white → dark (high contrast for light backgrounds) */
-.text-white                { color: #0F172A !important; }
-.text-white\/85            { color: #1E293B !important; }
-.text-white\/80            { color: #1E293B !important; }
-.text-white\/70            { color: #334155 !important; }
-.text-white\/60            { color: #475569 !important; }
-.text-white\/50            { color: #64748B !important; }
-.text-white\/45            { color: #64748B !important; }
-.text-white\/40            { color: #94A3B8 !important; }
-.text-white\/35            { color: #94A3B8 !important; }
-.text-white\/30            { color: #94A3B8 !important; }
-.text-white\/25            { color: #CBD5E1 !important; }
-.text-white\/20            { color: #CBD5E1 !important; }
-.text-white\/15            { color: #E2E8F0 !important; }
-.text-white\/10            { color: #E2E8F0 !important; }
-
-/* Hover text */
-.hover\:text-white:hover   { color: #064E3B !important; }
-.hover\:text-white\/80:hover { color: rgba(19,78,74,.80) !important; }
-
-/* Backgrounds → light neutral tints */
-.bg-white\/3  { background-color: #F8FAFC !important; }
-.bg-white\/4  { background-color: #F8FAFC !important; }
-.bg-white\/5  { background-color: #F1F5F9 !important; }
-.bg-white\/6  { background-color: #F1F5F9 !important; }
-.bg-white\/8  { background-color: #E2E8F0 !important; }
-.bg-white\/10 { background-color: #E2E8F0 !important; }
-.bg-white\/12 { background-color: #CBD5E1 !important; }
-.bg-white\/15 { background-color: #CBD5E1 !important; }
-.bg-white\/20 { background-color: #94A3B8 !important; }
-
-.hover\:bg-white\/6:hover  { background-color: #F1F5F9 !important; }
-.hover\:bg-white\/8:hover  { background-color: #E2E8F0 !important; }
-.hover\:bg-white\/12:hover { background-color: #CBD5E1 !important; }
-
-/* Surface tokens */
-.bg-beacon-app       { background-color: #F5FAFA !important; }
-.bg-beacon-surface   { background-color: #FFFFFF !important; }
-.bg-beacon-surface-2 { background-color: #F0FDFA !important; }
-
-/* Borders */
-.border-\[rgba\(255\,255\,255\,0\.06\)\],
-.border-\[rgba\(255\,255\,255\,0\.07\)\],
-.border-\[rgba\(255\,255\,255\,0\.08\)\],
-.border-\[rgba\(255\,255\,255\,0\.10\)\],
-.border-\[rgba\(255\,255\,255\,0\.12\)\] {
-  border-color: rgba(8,145,178,.08) !important;
-}
-
-.border-white\/10 { border-color: #E2E8F0 !important; }
-.border-white\/5  { border-color: #F1F5F9 !important; }
-
-/* Primary → verde menta */
-.bg-beacon-primary     { background-color: #10B981 !important; }
-.hover\:bg-beacon-hover:hover { background-color: #059669 !important; }
-.text-beacon-primary   { color: #10B981 !important; }
-.border-beacon-primary { border-color: #10B981 !important; }
-
-/* Preserve white text on colored backgrounds */
+/* Preserve white text on colored backgrounds (ambos) */
 .bg-beacon-primary .text-white,
 .bg-green-600 .text-white,
 .bg-red-500 .text-white,
 .bg-yellow-500 .text-white,
-.bg-\[\#10B981\] .text-white,
 [class*="bg-gradient-to"] .text-white,
 button[class*="bg-beacon-primary"] { color: white !important; }
 
-/* Active sidebar item */
-.bg-\[\#10B981\] { color: white; }
-.bg-\[\#10B981\] span,
-.bg-\[\#10B981\] svg { color: white !important; }
+/* ─── LIGHT MODE (default) — converte classes dark-first em light ─── */
+
+/* Text white → dark (high contrast for light backgrounds) */
+html:not(.dark) .text-white                { color: #0F172A !important; }
+html:not(.dark) .text-white\/85            { color: #1E293B !important; }
+html:not(.dark) .text-white\/80            { color: #1E293B !important; }
+html:not(.dark) .text-white\/70            { color: #334155 !important; }
+html:not(.dark) .text-white\/60            { color: #475569 !important; }
+html:not(.dark) .text-white\/50            { color: #64748B !important; }
+html:not(.dark) .text-white\/45            { color: #64748B !important; }
+html:not(.dark) .text-white\/40            { color: #94A3B8 !important; }
+html:not(.dark) .text-white\/35            { color: #94A3B8 !important; }
+html:not(.dark) .text-white\/30            { color: #94A3B8 !important; }
+html:not(.dark) .text-white\/25            { color: #CBD5E1 !important; }
+html:not(.dark) .text-white\/20            { color: #CBD5E1 !important; }
+html:not(.dark) .text-white\/15            { color: #E2E8F0 !important; }
+html:not(.dark) .text-white\/10            { color: #E2E8F0 !important; }
+
+html:not(.dark) .hover\:text-white:hover   { color: #064E3B !important; }
+html:not(.dark) .hover\:text-white\/80:hover { color: rgba(6,78,59,.80) !important; }
+
+/* Backgrounds → light neutral tints */
+html:not(.dark) .bg-white\/3  { background-color: #F8FAFC !important; }
+html:not(.dark) .bg-white\/4  { background-color: #F8FAFC !important; }
+html:not(.dark) .bg-white\/5  { background-color: #F1F5F9 !important; }
+html:not(.dark) .bg-white\/6  { background-color: #F1F5F9 !important; }
+html:not(.dark) .bg-white\/8  { background-color: #E2E8F0 !important; }
+html:not(.dark) .bg-white\/10 { background-color: #E2E8F0 !important; }
+html:not(.dark) .bg-white\/12 { background-color: #CBD5E1 !important; }
+html:not(.dark) .bg-white\/15 { background-color: #CBD5E1 !important; }
+html:not(.dark) .bg-white\/20 { background-color: #94A3B8 !important; }
+
+html:not(.dark) .hover\:bg-white\/6:hover  { background-color: #F1F5F9 !important; }
+html:not(.dark) .hover\:bg-white\/8:hover  { background-color: #E2E8F0 !important; }
+html:not(.dark) .hover\:bg-white\/12:hover { background-color: #CBD5E1 !important; }
+
+/* Surface tokens */
+html:not(.dark) .bg-beacon-app       { background-color: #F5FAFA !important; }
+html:not(.dark) .bg-beacon-surface   { background-color: #FFFFFF !important; }
+html:not(.dark) .bg-beacon-surface-2 { background-color: #F0FDFA !important; }
+
+/* Borders */
+html:not(.dark) .border-\[rgba\(255\,255\,255\,0\.06\)\],
+html:not(.dark) .border-\[rgba\(255\,255\,255\,0\.07\)\],
+html:not(.dark) .border-\[rgba\(255\,255\,255\,0\.08\)\],
+html:not(.dark) .border-\[rgba\(255\,255\,255\,0\.10\)\],
+html:not(.dark) .border-\[rgba\(255\,255\,255\,0\.12\)\] {
+  border-color: rgba(16,185,129,.10) !important;
+}
+
+html:not(.dark) .border-white\/10 { border-color: #E2E8F0 !important; }
+html:not(.dark) .border-white\/5  { border-color: #F1F5F9 !important; }
+
+/* Active sidebar item em light */
+html:not(.dark) .bg-\[\#10B981\] { color: white; }
+html:not(.dark) .bg-\[\#10B981\] span,
+html:not(.dark) .bg-\[\#10B981\] svg { color: white !important; }
 
 /* Shadows */
-.shadow-\[0_16px_64px_rgba\(0\,0\,0\,0\.7\)\] {
+html:not(.dark) .shadow-\[0_16px_64px_rgba\(0\,0\,0\,0\.7\)\] {
   box-shadow: 0 16px 64px rgba(0,0,0,.12) !important;
 }
-.shadow-\[0_0_16px_rgba\(240\,101\,41\,0\.25\)\] {
-  box-shadow: 0 0 16px rgba(8,145,178,.15) !important;
+html:not(.dark) .shadow-\[0_0_16px_rgba\(240\,101\,41\,0\.25\)\] {
+  box-shadow: 0 0 16px rgba(16,185,129,.15) !important;
 }
 
 /* Modal overlay */
-.bg-black\/70 { background-color: rgba(0,0,0,.40) !important; }
+html:not(.dark) .bg-black\/70 { background-color: rgba(0,0,0,.40) !important; }
 
-/* Fix inputs/selects in light mode */
-select, input[type="text"], input[type="number"], input[type="email"], input[type="password"], textarea {
+/* Fix inputs/selects em light mode */
+html:not(.dark) select,
+html:not(.dark) input[type="text"],
+html:not(.dark) input[type="number"],
+html:not(.dark) input[type="email"],
+html:not(.dark) input[type="password"],
+html:not(.dark) textarea {
   color: #064E3B;
   background-color: white;
 }
 
-/* Gradient backgrounds for cards */
-.from-\[\#1a0a00\], .from-\[\#001a1a\], .from-\[\#0d0500\], .from-\[\#000d0d\] {
+/* Gradient backgrounds para cards em light */
+html:not(.dark) .from-\[\#1a0a00\],
+html:not(.dark) .from-\[\#001a1a\],
+html:not(.dark) .from-\[\#0d0500\],
+html:not(.dark) .from-\[\#000d0d\] {
   background: white !important;
 }
-.bg-gradient-to-br.from-\[\#0f0f0f\] { background: white !important; }
-.bg-gradient-to-b.from-\[\#0f0f0f\]  { background: white !important; }
+html:not(.dark) .bg-gradient-to-br.from-\[\#0f0f0f\] { background: white !important; }
+html:not(.dark) .bg-gradient-to-b.from-\[\#0f0f0f\]  { background: white !important; }
+
+/* ─── DARK MODE — ajustes complementares ─── */
+
+/* Inputs/selects no dark: superfície escura, texto claro */
+html.dark select,
+html.dark input[type="text"],
+html.dark input[type="number"],
+html.dark input[type="email"],
+html.dark input[type="password"],
+html.dark textarea {
+  color: var(--text-primary);
+  background-color: var(--color-surface);
+  border-color: var(--border-subtle);
+}
+
+/* bg-white explícito vira surface dark */
+html.dark .bg-white { background-color: var(--color-surface) !important; }
+
+/* Gradiente do login + outras superfícies claras */
+html.dark .bg-gradient-to-br.from-\[\#F0FDFA\],
+html.dark .via-white,
+html.dark .to-\[\#D1FAE5\] { background: var(--color-app) !important; }
+
+/* Borders gray/neutral viram borda dark */
+html.dark .border-gray-100,
+html.dark .border-gray-200 { border-color: var(--border-subtle) !important; }
+
+/* Modal overlay mais denso no dark */
+html.dark .bg-black\/70 { background-color: rgba(0,0,0,.70) !important; }
+
+/* Gray text em dark mode — aproxima de gray-300/400 pra ter legibilidade */
+html.dark .text-gray-400 { color: #6EE7B7 !important; opacity: .65; }
+html.dark .text-gray-500 { color: #A7F3D0 !important; opacity: .75; }
+html.dark .text-gray-600 { color: #D1FAE5 !important; opacity: .85; }
+html.dark .text-gray-700 { color: #D1FAE5 !important; }
+
+/* Cards gray-50/100 viram surface dark */
+html.dark .bg-gray-50  { background-color: var(--color-surface-2) !important; }
+html.dark .bg-gray-100 { background-color: #1F2E29 !important; }
