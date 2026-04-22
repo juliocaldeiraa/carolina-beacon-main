@@ -48,7 +48,16 @@ export class GoogleCalendarService {
   }
 
   async handleCallback(code: string, state: string): Promise<{ agentId: string }> {
-    const { agentId, tenantId } = JSON.parse(state)
+    if (!state || state === 'undefined') {
+      throw new NotFoundException('State OAuth ausente — retome o fluxo de integração na tela do agente.')
+    }
+    let parsed: { agentId: string; tenantId: string }
+    try {
+      parsed = JSON.parse(state)
+    } catch {
+      throw new NotFoundException('State OAuth inválido — retome o fluxo de integração na tela do agente.')
+    }
+    const { agentId, tenantId } = parsed
     const oauth2 = this.getOAuth2Client()
 
     const { tokens } = await oauth2.getToken(code)
