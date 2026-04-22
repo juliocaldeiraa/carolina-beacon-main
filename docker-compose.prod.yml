@@ -54,7 +54,7 @@ services:
     labels:
       - 'traefik.enable=true'
       - 'traefik.docker.network=beacon_traefik'
-      - 'traefik.http.routers.beacon.rule=Host(`beacon.escolatocha.com.br`)'
+      - 'traefik.http.routers.beacon.rule=Host(`beacon.carolinapedrollo.com.br`)'
       - 'traefik.http.routers.beacon.entrypoints=websecure'
       - 'traefik.http.routers.beacon.tls=true'
       - 'traefik.http.routers.beacon.tls.certresolver=letsencrypt'

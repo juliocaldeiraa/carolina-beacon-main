@@ -28,7 +28,8 @@ Plataforma SaaS de IA Conversacional e Gestão de Agentes. Permite criar, testar
 - Repository Pattern: Interfaces no `core/`, implementações em `infrastructure/`
 
 ### Deploy
-- Domínio: `beacon.escolatocha.com.br`
+- Domínio: `beacon.carolinapedrollo.com.br` (HTTPS via Traefik + Let's Encrypt)
+- VPS: 62.171.171.144
 - Docker multi-stage (node:20-alpine → nginx:alpine)
 - CI: GitHub Actions (lint + test em push/PR)
 - Registry: `ghcr.io/higrow-auto`
