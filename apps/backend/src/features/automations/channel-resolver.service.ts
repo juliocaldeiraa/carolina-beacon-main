@@ -78,6 +78,7 @@ export class ChannelResolverService {
     if (!row) return null
     return {
       id:           row.id,
+      tenantId:     row.tenantId,
       name:         row.name,
       type:         row.type     as ChannelType,
       status:       row.status   as Channel['status'],

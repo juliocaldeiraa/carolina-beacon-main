@@ -201,6 +201,7 @@ Responda de forma direta em exatamente 3 tópicos:
 
       const channel: Channel = {
         id:        channelRow.id,
+        tenantId:  channelRow.tenantId,
         name:      channelRow.name,
         type:      channelRow.type as ChannelType,
         status:    channelRow.status as Channel['status'],

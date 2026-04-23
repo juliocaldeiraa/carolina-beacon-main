@@ -34,60 +34,75 @@ export class ChannelsService {
     private readonly prisma:  PrismaService,
   ) {}
 
-  findAll() {
-    return this.repo.findAll()
+  findAll(tenantId?: string) {
+    return this.repo.findAll(tenantId)
   }
 
-  async findById(id: string) {
-    const channel = await this.repo.findById(id)
+  async findById(id: string, tenantId?: string) {
+    const channel = await this.repo.findById(id, tenantId)
     if (!channel) throw new NotFoundException('Canal não encontrado')
     return channel
   }
 
-  create(dto: CreateChannelDto) {
-    return this.repo.create(dto)
+  create(dto: CreateChannelDto, tenantId: string) {
+    return this.repo.create(dto, tenantId)
   }
 
-  async update(id: string, dto: UpdateChannelDto) {
-    await this.findById(id)
-    return this.repo.update(id, dto)
+  async update(id: string, dto: UpdateChannelDto, tenantId?: string) {
+    await this.findById(id, tenantId)
+    return this.repo.update(id, dto, tenantId)
   }
 
-  async remove(id: string) {
-    await this.findById(id)
-    return this.repo.remove(id)
+  async remove(id: string, tenantId?: string) {
+    await this.findById(id, tenantId)
+    return this.repo.remove(id, tenantId)
   }
 
   /** Verifica status de um canal imediatamente (manual) */
-  async checkStatus(id: string) {
-    const channel = await this.findById(id)
+  async checkStatus(id: string, tenantId?: string) {
+    const channel = await this.findById(id, tenantId)
     return this.poller.checkChannel(channel)
   }
 
   /**
    * Verifica conflitos de uso para uma lista de channelIds.
    * Retorna por canal: quais Chat IA configs estão ativas + quais automações ativas usam o canal.
+   * Escopada por tenantId — só considera canais/agents/automations desse tenant.
    */
-  async checkConflicts(channelIds: string[]): Promise<{ conflicts: ChannelConflictItem[] }> {
+  async checkConflicts(channelIds: string[], tenantId?: string): Promise<{ conflicts: ChannelConflictItem[] }> {
     if (!channelIds.length) return { conflicts: [] }
 
-    const [channels, channelAgents, automations] = await Promise.all([
-      this.prisma.channel.findMany({
-        where:  { id: { in: channelIds } },
-        select: { id: true, name: true },
-      }),
-      this.prisma.channelAgent.findMany({
-        where:  { channelId: { in: channelIds }, isActive: true },
-        select: { id: true, name: true, channelId: true, agentId: true },
-      }),
-      this.prisma.automation.findMany({
-        where: {
-          status: 'ACTIVE',
+    const channelWhere = tenantId
+      ? { id: { in: channelIds }, tenantId }
+      : { id: { in: channelIds } }
+    const channelAgentWhere = tenantId
+      ? { channelId: { in: channelIds }, isActive: true, tenantId }
+      : { channelId: { in: channelIds }, isActive: true }
+    const automationWhere = tenantId
+      ? {
+          status: 'ACTIVE' as const,
+          tenantId,
           OR: [
             { channelId:        { in: channelIds } },
             { primaryChannelId: { in: channelIds } },
           ],
-        },
+        }
+      : {
+          status: 'ACTIVE' as const,
+          OR: [
+            { channelId:        { in: channelIds } },
+            { primaryChannelId: { in: channelIds } },
+          ],
+        }
+
+    const [channels, channelAgents, automations] = await Promise.all([
+      this.prisma.channel.findMany({ where: channelWhere, select: { id: true, name: true } }),
+      this.prisma.channelAgent.findMany({
+        where:  channelAgentWhere,
+        select: { id: true, name: true, channelId: true, agentId: true },
+      }),
+      this.prisma.automation.findMany({
+        where:  automationWhere,
         select: { id: true, name: true, channelId: true, primaryChannelId: true },
       }),
     ])

@@ -16,10 +16,10 @@ export interface UpdateChannelDto {
 }
 
 export interface IChannelRepository {
-  findAll(): Promise<Channel[]>
-  findById(id: string): Promise<Channel | null>
-  create(dto: CreateChannelDto): Promise<Channel>
-  update(id: string, dto: UpdateChannelDto): Promise<Channel>
+  findAll(tenantId?: string): Promise<Channel[]>
+  findById(id: string, tenantId?: string): Promise<Channel | null>
+  create(dto: CreateChannelDto, tenantId: string): Promise<Channel>
+  update(id: string, dto: UpdateChannelDto, tenantId?: string): Promise<Channel>
   updateStatus(id: string, status: ChannelStatus, blockedAt?: Date): Promise<Channel>
-  remove(id: string): Promise<void>
+  remove(id: string, tenantId?: string): Promise<void>
 }

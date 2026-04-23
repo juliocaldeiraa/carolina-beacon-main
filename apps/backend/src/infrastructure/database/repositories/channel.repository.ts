@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '@/infrastructure/database/prisma/prisma.service'
 import type { IChannelRepository, CreateChannelDto, UpdateChannelDto } from '@/core/repositories/IChannelRepository'
 import type { Channel, ChannelType, ChannelStatus, ChannelConfig } from '@/core/entities/Channel'
@@ -7,19 +7,25 @@ import type { Channel, ChannelType, ChannelStatus, ChannelConfig } from '@/core/
 export class ChannelRepository implements IChannelRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(): Promise<Channel[]> {
-    const rows = await this.prisma.channel.findMany({ orderBy: { createdAt: 'desc' } })
+  async findAll(tenantId?: string): Promise<Channel[]> {
+    const rows = await this.prisma.channel.findMany({
+      where:   tenantId ? { tenantId } : {},
+      orderBy: { createdAt: 'desc' },
+    })
     return rows.map(this.toEntity)
   }
 
-  async findById(id: string): Promise<Channel | null> {
-    const row = await this.prisma.channel.findUnique({ where: { id } })
+  async findById(id: string, tenantId?: string): Promise<Channel | null> {
+    const row = await this.prisma.channel.findFirst({
+      where: tenantId ? { id, tenantId } : { id },
+    })
     return row ? this.toEntity(row) : null
   }
 
-  async create(dto: CreateChannelDto): Promise<Channel> {
+  async create(dto: CreateChannelDto, tenantId: string): Promise<Channel> {
     const row = await this.prisma.channel.create({
       data: {
+        tenantId,
         name:        dto.name,
         type:        dto.type,
         phoneNumber: dto.phoneNumber,
@@ -30,7 +36,14 @@ export class ChannelRepository implements IChannelRepository {
     return this.toEntity(row)
   }
 
-  async update(id: string, dto: UpdateChannelDto): Promise<Channel> {
+  async update(id: string, dto: UpdateChannelDto, tenantId?: string): Promise<Channel> {
+    // Valida ownership via findFirst antes do update (update por PK não tem where por tenant)
+    const owned = await this.prisma.channel.findFirst({
+      where:  tenantId ? { id, tenantId } : { id },
+      select: { id: true },
+    })
+    if (!owned) throw new NotFoundException('Canal não encontrado')
+
     const row = await this.prisma.channel.update({
       where: { id },
       data: {
@@ -54,17 +67,23 @@ export class ChannelRepository implements IChannelRepository {
     return this.toEntity(row)
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string, tenantId?: string): Promise<void> {
+    const owned = await this.prisma.channel.findFirst({
+      where:  tenantId ? { id, tenantId } : { id },
+      select: { id: true },
+    })
+    if (!owned) throw new NotFoundException('Canal não encontrado')
     await this.prisma.channel.delete({ where: { id } })
   }
 
   private toEntity(row: {
-    id: string; name: string; type: string; phoneNumber: string | null
+    id: string; tenantId: string; name: string; type: string; phoneNumber: string | null
     status: string; config: unknown; lastCheckedAt: Date | null
     blockedAt: Date | null; createdAt: Date; updatedAt: Date
   }): Channel {
     return {
       id:            row.id,
+      tenantId:      row.tenantId,
       name:          row.name,
       type:          row.type as ChannelType,
       phoneNumber:   row.phoneNumber ?? undefined,

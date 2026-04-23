@@ -444,6 +444,7 @@ model Webhook {
 // =============================================
 model Channel {
   id            String    @id @default(uuid())
+  tenantId      String    @map("tenant_id")
   name          String
   type          String    // ChannelType: EVOLUTION_API | ZAPI | WHATSAPP_OFFICIAL | TELEGRAM | INSTAGRAM
   phoneNumber   String?   @map("phone_number")
@@ -454,6 +455,7 @@ model Channel {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
+  @@index([tenantId])
   @@map("channels")
 }
 

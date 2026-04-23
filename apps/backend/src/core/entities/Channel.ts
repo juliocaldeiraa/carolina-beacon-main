@@ -19,6 +19,7 @@ export interface ChannelConfig {
 
 export interface Channel {
   id:            string
+  tenantId:      string
   name:          string
   type:          ChannelType
   phoneNumber?:  string

@@ -263,6 +263,7 @@ export class AutomationReplyHandlerService {
 
     const channel: Channel = {
       id:        channelRow.id,
+      tenantId:  channelRow.tenantId,
       name:      channelRow.name,
       type:      channelRow.type as ChannelType,
       status:    channelRow.status as Channel['status'],

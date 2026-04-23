@@ -153,17 +153,8 @@ export class WebhookIngestionService {
       return
     }
 
-    // tenantId é derivado do ChannelAgent (ou Agent vinculado, como fallback).
-    // Canais são globais no schema — o vínculo canal↔tenant vem via ChannelAgent/Agent.
-    const channelAgentBootstrap = await this.prisma.channelAgent.findFirst({
-      where: { channelId, isActive: true },
-      select: { tenantId: true },
-    })
-    const agentBootstrap = channelAgentBootstrap ? null : await this.prisma.agent.findFirst({
-      where: { channelId, deletedAt: null, status: 'ACTIVE' },
-      select: { tenantId: true },
-    })
-    const tenantId = channelAgentBootstrap?.tenantId ?? agentBootstrap?.tenantId ?? this.defaultTenantId
+    // tenantId vem direto do canal (schema garante NOT NULL).
+    const tenantId = channelRow.tenantId
 
     // Cria log inicial com rawPayload (fire & forget) no tenant correto.
     // Sobrescrevemos o initialLogId se não foi passado pelo caller.
@@ -175,6 +166,7 @@ export class WebhookIngestionService {
 
     const channel: Channel = {
       id:        channelRow.id,
+      tenantId:  channelRow.tenantId,
       name:      channelRow.name,
       type:      channelRow.type as ChannelType,
       status:    channelRow.status as Channel['status'],

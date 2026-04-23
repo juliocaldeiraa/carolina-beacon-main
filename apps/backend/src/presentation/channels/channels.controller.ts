@@ -10,8 +10,8 @@
  * POST   /channels/:id/check       → verifica status imediatamente
  */
 
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common'
-import { IsArray, IsEnum, IsNotEmpty, IsObject, IsOptional, IsString } from 'class-validator'
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common'
+import { IsEnum, IsNotEmpty, IsObject, IsOptional, IsString } from 'class-validator'
 import { JwtGuard } from '@/shared/guards/jwt.guard'
 import { ChannelsService } from '@/features/channels/channels.service'
 import type { ChannelType } from '@/core/entities/Channel'
@@ -53,37 +53,37 @@ export class ChannelsController {
   constructor(private readonly svc: ChannelsService) {}
 
   @Get()
-  findAll() {
-    return this.svc.findAll()
+  findAll(@Req() req: any) {
+    return this.svc.findAll(req.user?.tenantId)
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.svc.findById(id)
+  findOne(@Req() req: any, @Param('id') id: string) {
+    return this.svc.findById(id, req.user?.tenantId)
   }
 
   @Post()
-  create(@Body() dto: CreateChannelDto) {
-    return this.svc.create(dto)
+  create(@Req() req: any, @Body() dto: CreateChannelDto) {
+    return this.svc.create(dto, req.user?.tenantId)
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateChannelDto) {
-    return this.svc.update(id, dto)
+  update(@Req() req: any, @Param('id') id: string, @Body() dto: UpdateChannelDto) {
+    return this.svc.update(id, dto, req.user?.tenantId)
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.svc.remove(id)
+  remove(@Req() req: any, @Param('id') id: string) {
+    return this.svc.remove(id, req.user?.tenantId)
   }
 
   @Post(':id/check')
-  check(@Param('id') id: string) {
-    return this.svc.checkStatus(id)
+  check(@Req() req: any, @Param('id') id: string) {
+    return this.svc.checkStatus(id, req.user?.tenantId)
   }
 
   @Post('check-conflicts')
-  checkConflicts(@Body() body: { channelIds: string[] }) {
-    return this.svc.checkConflicts(body.channelIds ?? [])
+  checkConflicts(@Req() req: any, @Body() body: { channelIds: string[] }) {
+    return this.svc.checkConflicts(body.channelIds ?? [], req.user?.tenantId)
   }
 }

@@ -243,6 +243,6 @@ export class ReminderService {
     const row = await this.prisma.channel.findUnique({ where: { id: channelAgent.channelId } })
     if (!row) return null
 
-    return { id: row.id, name: row.name, type: row.type as any, config: row.config as any, status: row.status as any, createdAt: row.createdAt, updatedAt: row.updatedAt }
+    return { id: row.id, tenantId: row.tenantId, name: row.name, type: row.type as any, config: row.config as any, status: row.status as any, createdAt: row.createdAt, updatedAt: row.updatedAt }
   }
 }
