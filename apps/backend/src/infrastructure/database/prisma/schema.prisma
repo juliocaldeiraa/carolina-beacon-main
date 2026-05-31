@@ -768,6 +768,16 @@ model Campaign {
   scheduleEndHour    Int       @default(18)         @map("schedule_end_hour")
   scheduleDays       Json      @default("[1,2,3,4,5]") @map("schedule_days")     // 0=Dom 1=Seg … 6=Sáb
   scheduleTimezone   String    @default("America/Sao_Paulo") @map("schedule_timezone")
+  // ── Anti-ban ───────────────────────────────────────────────────────────────
+  dailyLimit         Int       @default(0)   @map("daily_limit")         // 0 = sem limite
+  longPauseEvery     Int       @default(0)   @map("long_pause_every")    // 0 = off. Ex: 50 → pausa a cada 50 envios
+  longPauseMinMinutes Int      @default(15)  @map("long_pause_min_minutes")
+  longPauseMaxMinutes Int      @default(30)  @map("long_pause_max_minutes")
+  messagesSinceBreak Int       @default(0)   @map("messages_since_break")
+  typingSimulation   Boolean   @default(true) @map("typing_simulation")
+  autoPauseOnError   Boolean   @default(true) @map("auto_pause_on_error")
+  errorThresholdPct  Int       @default(30)  @map("error_threshold_pct") // % de erros nos últimos 20 envios
+  lastResumedAt      DateTime? @map("last_resumed_at")                   // âncora p/ janela do auto-pause: só conta dispatch_logs após este momento
   totalLeads    Int            @default(0)          @map("total_leads")
   sentCount     Int            @default(0)          @map("sent_count")
   errorCount    Int            @default(0)          @map("error_count")

@@ -80,6 +80,34 @@ export class DispatchQueueService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /**
+   * Remove jobs pendentes de um conjunto de leads — usado ANTES de re-enfileirar
+   * (resume/launch/follow-up). Sem isso, jobs antigos do mesmo lead continuam na
+   * fila e disparam em paralelo com os novos → contato recebe a mesma mensagem
+   * múltiplas vezes (risco real de ban do WhatsApp).
+   */
+  async removeLeadsJobs(leadIds: string[]): Promise<number> {
+    if (leadIds.length === 0) return 0
+    const set = new Set(leadIds)
+    const jobs = await this.queue.getJobs(['delayed', 'waiting'])
+    const toRemove = jobs.filter((j) => set.has((j.data as LeadJobData)?.leadId))
+    await Promise.all(toRemove.map((j) => j.remove()))
+    if (toRemove.length) {
+      this.logger.log(`Removidos ${toRemove.length} jobs pendentes (${leadIds.length} lead(s) afetados)`)
+    }
+    return toRemove.length
+  }
+
+  /** Drena toda a fila (usado em pause/emergência) */
+  async drainPendingJobs(): Promise<number> {
+    const jobs = await this.queue.getJobs(['delayed', 'waiting'])
+    await Promise.all(jobs.map((j) => j.remove()))
+    if (jobs.length) {
+      this.logger.warn(`Fila drenada: ${jobs.length} jobs pendentes removidos`)
+    }
+    return jobs.length
+  }
+
   async getQueue() { return this.queue }
 
   async onModuleDestroy() {

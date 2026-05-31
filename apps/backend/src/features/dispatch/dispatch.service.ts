@@ -63,6 +63,15 @@ export class DispatchService {
       return
     }
 
+    // CRÍTICO: remove jobs antigos desses leads ANTES de re-enfileirar.
+    // Sem isso, pause→resume duplica jobs (os antigos ficam no Redis e disparam
+    // junto com os novos), fazendo o mesmo contato receber a mensagem várias
+    // vezes — risco real de ban da instância WhatsApp.
+    const removed = await this.queue.removeLeadsJobs(leads.map((l) => l.id))
+    if (removed > 0) {
+      this.logger.warn(`Campanha ${campaign.id}: ${removed} jobs antigos removidos antes de re-enfileirar`)
+    }
+
     this.logger.log(`Campanha ${campaign.id}: enfileirando ${leads.length} leads`)
 
     let accumulatedDelay = 0
@@ -106,6 +115,10 @@ export class DispatchService {
     delayMinSec: number
     delayMaxSec: number
   }): Promise<void> {
+    // Mesma defesa do enqueueCampaign: limpa jobs antigos antes de re-enfileirar
+    // para que cron de follow-up rodando + resume não produzam jobs em paralelo.
+    await this.queue.removeLeadsJobs(params.leads.map((l) => l.id))
+
     let accumulatedDelay = 0
 
     for (const lead of params.leads) {
@@ -128,5 +141,21 @@ export class DispatchService {
     }
 
     this.logger.log(`Follow-up: ${params.leads.length} leads enfileirados`)
+  }
+
+  /**
+   * Cancela jobs pendentes de TODOS os leads QUEUED de uma campanha. Usado pelo
+   * pause() para drenar a fila — sem isso, jobs antigos ficam no Redis e podem
+   * ser processados em race condition. Defesa em profundidade contra duplicação.
+   */
+  async cancelCampaignJobs(campaignId: string): Promise<number> {
+    const queuedLeads = await this.prisma.campaignLead.findMany({
+      where:  { campaignId, status: 'QUEUED' },
+      select: { id: true },
+    })
+    if (queuedLeads.length === 0) return 0
+    const removed = await this.queue.removeLeadsJobs(queuedLeads.map((l) => l.id))
+    this.logger.log(`Campanha ${campaignId}: ${removed} job(s) cancelado(s) (de ${queuedLeads.length} lead(s) QUEUED)`)
+    return removed
   }
 }

@@ -148,6 +148,28 @@ export class DispatchProcessor implements OnModuleInit, OnModuleDestroy {
       return
     }
 
+    // IDEMPOTÊNCIA (defesa de fundo de poço): se já existe um SUCCESS desse
+    // lead+template, não re-envia. Protege contra qualquer cenário de jobs
+    // duplicados na fila (pause/resume em sequência, race conditions, retries
+    // do BullMQ após exceção tardia). O dedup na fila é a 1ª linha; isto é a 2ª.
+    const alreadySent = await this.prisma.campaignDispatchLog.findFirst({
+      where:  { leadId, templateId, status: 'SUCCESS' },
+      select: { id: true, sentAt: true },
+    })
+    if (alreadySent) {
+      this.logger.warn(
+        `Lead ${leadId}: template ${templateId} JÁ ENVIADO em ${alreadySent.sentAt.toISOString()} ` +
+        `(dispatch ${alreadySent.id}) — DUPLICATA EVITADA`,
+      )
+      if (lead.status !== 'SENT') {
+        await this.prisma.campaignLead.update({
+          where: { id: leadId },
+          data:  { status: 'SENT' },
+        })
+      }
+      return
+    }
+
     const actualCampaignId = lead.campaignId || campaignIdFromJob
     const campaign = await this.prisma.campaign.findUnique({
       where:  { id: actualCampaignId },
@@ -155,6 +177,11 @@ export class DispatchProcessor implements OnModuleInit, OnModuleDestroy {
         id: true, status: true, rotationMode: true, channelId: true,
         scheduleEnabled: true, scheduleStartHour: true, scheduleEndHour: true,
         scheduleDays: true, scheduleTimezone: true,
+        dailyLimit: true, longPauseEvery: true,
+        longPauseMinMinutes: true, longPauseMaxMinutes: true,
+        messagesSinceBreak: true, typingSimulation: true,
+        autoPauseOnError: true, errorThresholdPct: true,
+        lastResumedAt: true,
       },
     })
 
@@ -183,6 +210,74 @@ export class DispatchProcessor implements OnModuleInit, OnModuleDestroy {
         )
         await this.dispatchQueue.enqueue(job.data, delayMs)
         return
+      }
+    }
+
+    // 2c. Limite diário (últimas 24h)
+    if (campaign.dailyLimit > 0) {
+      const last24h = new Date(Date.now() - 24 * 60 * 60_000)
+      const sentLast24h = await this.prisma.campaignLead.count({
+        where: {
+          campaignId: actualCampaignId,
+          status: { in: ['SENT', 'REPLIED'] },
+          lastMessageAt: { gte: last24h },
+        },
+      })
+      if (sentLast24h >= campaign.dailyLimit) {
+        this.logger.log(
+          `Lead ${leadId}: limite diário atingido (${sentLast24h}/${campaign.dailyLimit}) — re-agendando em 1h`,
+        )
+        await this.dispatchQueue.enqueue(job.data, 60 * 60_000)
+        return
+      }
+    }
+
+    // 2d. Pausa longa periódica (a cada N envios)
+    if (campaign.longPauseEvery > 0 && campaign.messagesSinceBreak >= campaign.longPauseEvery) {
+      const minMs = campaign.longPauseMinMinutes * 60_000
+      const maxMs = campaign.longPauseMaxMinutes * 60_000
+      const delayMs = minMs + Math.floor(Math.random() * (maxMs - minMs + 1))
+      this.logger.log(
+        `Lead ${leadId}: pausa longa após ${campaign.messagesSinceBreak} envios — re-agendando em ${Math.round(delayMs/60_000)}min`,
+      )
+      await this.prisma.campaign.update({
+        where: { id: actualCampaignId },
+        data:  { messagesSinceBreak: 0 },
+      })
+      await this.dispatchQueue.enqueue(job.data, delayMs)
+      return
+    }
+
+    // 2e. Auto-pause se taxa de erro disparar nos últimos 20 envios.
+    // Janela: só conta dispatch_logs após o último resume da campanha — sem isso,
+    // erros antigos paralisam toda nova retomada (feedback loop).
+    if (campaign.autoPauseOnError) {
+      const recent = await this.prisma.campaignDispatchLog.findMany({
+        where: {
+          lead: { campaignId: actualCampaignId },
+          ...(campaign.lastResumedAt ? { sentAt: { gt: campaign.lastResumedAt } } : {}),
+        },
+        orderBy: { sentAt: 'desc' },
+        take:    20,
+        select:  { status: true },
+      })
+      if (recent.length >= 10) {
+        const failed = recent.filter(r => r.status === 'FAILED').length
+        const pct    = (failed / recent.length) * 100
+        if (pct >= campaign.errorThresholdPct) {
+          this.logger.warn(
+            `Campanha ${actualCampaignId}: ${pct.toFixed(0)}% de erros nos últimos ${recent.length} envios — pausando automaticamente`,
+          )
+          await this.prisma.campaign.update({
+            where: { id: actualCampaignId },
+            data:  { status: 'PAUSED' },
+          })
+          await this.prisma.campaignLead.update({
+            where: { id: leadId },
+            data:  { status: 'PENDING' },
+          })
+          return
+        }
       }
     }
 
@@ -221,6 +316,12 @@ export class DispatchProcessor implements OnModuleInit, OnModuleDestroy {
         const rendered = renderTemplate(parts[partIdx], lead)
         renderedParts.push(rendered)
 
+        // Simulação de "digitando…" antes de enviar (humaniza o envio)
+        if (campaign.typingSimulation) {
+          await this.channelSend.sendTyping(channel as any, lead.phone)
+          await sleep(1_500 + Math.floor(Math.random() * 2_500)) // 1.5–4s "digitando"
+        }
+
         await this.channelSend.send(channel as any, lead.phone, rendered)
         this.logger.debug(`Lead ${leadId}: parte ${partIdx + 1}/${parts.length} enviada → ${lead.phone}`)
 
@@ -247,10 +348,13 @@ export class DispatchProcessor implements OnModuleInit, OnModuleDestroy {
         },
       })
 
-      // 9. Incrementa sentCount
+      // 9. Incrementa sentCount + messagesSinceBreak (anti-ban)
       await this.prisma.campaign.update({
         where: { id: actualCampaignId },
-        data:  { sentCount: { increment: 1 } },
+        data:  {
+          sentCount:          { increment: 1 },
+          messagesSinceBreak: { increment: 1 },
+        },
       })
 
       this.logger.log(`Lead ${leadId} enviado (variação ${idx}, ${parts.length} partes) → ${lead.phone}`)

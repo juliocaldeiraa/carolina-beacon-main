@@ -128,6 +128,23 @@ export class FollowUpService {
 
       if (campaign.status !== 'RUNNING' || !campaign.channelId) continue
 
+      // Gate: não dispara follow-up enquanto houver leads aguardando o disparo
+      // INICIAL (followUpCount=0 e ainda não enviado). Sem isso, os primeiros
+      // leads recebem follow-up enquanto os últimos ainda esperam a 1ª mensagem.
+      const initialPending = await this.prisma.campaignLead.count({
+        where: {
+          campaignId:    campaign.id,
+          status:        { in: ['PENDING', 'QUEUED'] },
+          followUpCount: 0,
+        },
+      })
+      if (initialPending > 0) {
+        this.logger.debug(
+          `Campanha ${campaign.id}: ${initialPending} lead(s) ainda aguardam disparo inicial — follow-up adiado`,
+        )
+        continue
+      }
+
       const cutoff = new Date(Date.now() - rule.triggerAfterMinutes * 60_000)
       const templateOrder = rule.template.order
 

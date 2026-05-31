@@ -190,7 +190,7 @@ export class CampaignsService {
 
     await this.prisma.campaign.update({
       where: { id },
-      data:  { status: 'RUNNING' },
+      data:  { status: 'RUNNING', lastResumedAt: new Date() },
     })
 
     await this.dispatch.enqueueCampaign(campaign as any)
@@ -200,28 +200,56 @@ export class CampaignsService {
 
   async pause(id: string, tenantId: string) {
     const campaign = await this.findById(id, tenantId)
+    if (campaign.status === 'PAUSED') {
+      return campaign // idempotente: já está pausada
+    }
     if (campaign.status !== 'RUNNING') {
       throw new BadRequestException('Apenas campanhas RUNNING podem ser pausadas')
     }
-    return this.prisma.campaign.update({
-      where: { id },
+
+    // Update atômico condicional: só transiciona se ainda está RUNNING.
+    const result = await this.prisma.campaign.updateMany({
+      where: { id, status: 'RUNNING' },
       data:  { status: 'PAUSED' },
     })
+    if (result.count === 0) {
+      return this.findById(id, tenantId)
+    }
+
+    // Drena os jobs pendentes da fila para que pause realmente interrompa os
+    // disparos — sem isso os jobs antigos continuam no Redis e voltariam a
+    // duplicar ao retomar. O processor ainda faz no-op por status como reforço.
+    await this.dispatch.cancelCampaignJobs(id)
+
+    return this.findById(id, tenantId)
   }
 
   async resume(id: string, tenantId: string) {
     const campaign = await this.findById(id, tenantId)
+    if (campaign.status === 'COMPLETED') {
+      throw new BadRequestException('Campanha já concluída')
+    }
+    if (campaign.status === 'RUNNING') {
+      // Idempotente: já está rodando. Sem isso, double-click no resume pode
+      // disparar duas chamadas paralelas a enqueueCampaign → jobs duplicados.
+      return campaign
+    }
     if (campaign.status !== 'PAUSED') {
       throw new BadRequestException('Apenas campanhas PAUSED podem ser retomadas')
     }
 
-    await this.prisma.campaign.update({
-      where: { id },
-      data:  { status: 'RUNNING' },
+    // Update atômico condicional: só transiciona se ainda está PAUSED — garante
+    // que apenas UMA chamada de resume vence em caso de concorrência.
+    const result = await this.prisma.campaign.updateMany({
+      where: { id, status: 'PAUSED' },
+      data:  { status: 'RUNNING', lastResumedAt: new Date() },
     })
+    if (result.count === 0) {
+      return this.findById(id, tenantId)
+    }
 
+    // enqueueCampaign já remove jobs antigos antes de adicionar novos
     await this.dispatch.enqueueCampaign(campaign as any)
-
     return this.findById(id, tenantId)
   }
 
@@ -278,7 +306,7 @@ export class CampaignsService {
 
     await this.prisma.campaign.update({
       where: { id },
-      data:  { status: 'RUNNING', errorCount: { decrement: errorLeads } },
+      data:  { status: 'RUNNING', errorCount: { decrement: errorLeads }, lastResumedAt: new Date() },
     })
 
     await this.dispatch.enqueueCampaign(campaign as any)
