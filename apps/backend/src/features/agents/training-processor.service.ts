@@ -204,7 +204,7 @@ export class TrainingProcessorService {
 
     const result = await this.aiEngine.complete({
       messages:     [{ role: 'user', content: prompt }],
-      model:        'claude-sonnet-4-20250514',
+      model:        'claude-sonnet-4-6',
       temperature:  0.3,
       maxTokens:    300,
     })
@@ -245,7 +245,7 @@ export class TrainingProcessorService {
 
     const result = await this.aiEngine.complete({
       messages:     [{ role: 'user', content: prompt }],
-      model:        'claude-sonnet-4-20250514',
+      model:        'claude-sonnet-4-6',
       temperature:  0.2,
       maxTokens:    4000,
     })

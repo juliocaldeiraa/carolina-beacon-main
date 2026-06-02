@@ -11,7 +11,7 @@
  */
 
 import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common'
-import { IsEnum, IsNotEmpty, IsObject, IsOptional, IsString } from 'class-validator'
+import { IsBoolean, IsEnum, IsInt, IsNotEmpty, IsObject, IsOptional, IsString, Max, Min } from 'class-validator'
 import { JwtGuard } from '@/shared/guards/jwt.guard'
 import { ChannelsService } from '@/features/channels/channels.service'
 import type { ChannelType } from '@/core/entities/Channel'
@@ -45,6 +45,23 @@ class UpdateChannelDto {
   @IsOptional()
   @IsObject()
   config?: Record<string, string>
+
+  // Anti-ban: liga/desliga a curva de aquecimento deste número
+  @IsOptional()
+  @IsBoolean()
+  warmupEnabled?: boolean
+
+  // Marca o chip como já aquecido (pula a curva, vai direto ao platô/teto manual)
+  @IsOptional()
+  @IsBoolean()
+  isWarmedUp?: boolean
+
+  // Teto manual de mensagens/dia por número (0 = automático: curva ou platô)
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(1000)
+  dailyMessageCap?: number
 }
 
 @UseGuards(JwtGuard)

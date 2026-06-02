@@ -111,7 +111,7 @@ export class CampaignsService {
         rotationMode:     dto.rotationMode ?? 'RANDOM',
         varLabels:        dto.varLabels ?? [],
         scheduledAt:      dto.scheduledAt ? new Date(dto.scheduledAt) : undefined,
-        scheduleEnabled:  dto.scheduleEnabled ?? false,
+        scheduleEnabled:  dto.scheduleEnabled ?? true,
         scheduleStartHour: dto.scheduleStartHour ?? 8,
         scheduleEndHour:  dto.scheduleEndHour ?? 18,
         scheduleDays:     dto.scheduleDays ?? [1,2,3,4,5],

@@ -22,6 +22,11 @@ export interface Channel {
   config:        ChannelConfig
   lastCheckedAt?: string
   blockedAt?:    string
+  // Anti-ban: aquecimento (warmup) e teto diário por número
+  warmupEnabled?:   boolean
+  warmupStartedAt?: string
+  isWarmedUp?:      boolean
+  dailyMessageCap?: number
   createdAt:     string
   updatedAt:     string
 }
@@ -37,6 +42,10 @@ export interface UpdateChannelPayload {
   name?:        string
   phoneNumber?: string
   config?:      ChannelConfig
+  // Anti-ban
+  warmupEnabled?:   boolean
+  isWarmedUp?:      boolean
+  dailyMessageCap?: number
 }
 
 export interface ChannelConflictChatIa {

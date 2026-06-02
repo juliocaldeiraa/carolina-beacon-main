@@ -13,6 +13,10 @@ export interface UpdateChannelDto {
   name?:        string
   phoneNumber?: string
   config?:      ChannelConfig
+  // Anti-ban: controles de warmup/teto por número
+  warmupEnabled?:   boolean
+  isWarmedUp?:      boolean
+  dailyMessageCap?: number
 }
 
 export interface IChannelRepository {

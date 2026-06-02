@@ -47,9 +47,12 @@ export class ChannelRepository implements IChannelRepository {
     const row = await this.prisma.channel.update({
       where: { id },
       data: {
-        ...(dto.name        !== undefined && { name: dto.name }),
-        ...(dto.phoneNumber !== undefined && { phoneNumber: dto.phoneNumber }),
-        ...(dto.config      !== undefined && { config: dto.config as object }),
+        ...(dto.name            !== undefined && { name: dto.name }),
+        ...(dto.phoneNumber     !== undefined && { phoneNumber: dto.phoneNumber }),
+        ...(dto.config          !== undefined && { config: dto.config as object }),
+        ...(dto.warmupEnabled   !== undefined && { warmupEnabled: dto.warmupEnabled }),
+        ...(dto.isWarmedUp      !== undefined && { isWarmedUp: dto.isWarmedUp }),
+        ...(dto.dailyMessageCap !== undefined && { dailyMessageCap: dto.dailyMessageCap }),
       },
     })
     return this.toEntity(row)
@@ -80,6 +83,8 @@ export class ChannelRepository implements IChannelRepository {
     id: string; tenantId: string; name: string; type: string; phoneNumber: string | null
     status: string; config: unknown; lastCheckedAt: Date | null
     blockedAt: Date | null; createdAt: Date; updatedAt: Date
+    warmupEnabled?: boolean; warmupStartedAt?: Date | null
+    isWarmedUp?: boolean; dailyMessageCap?: number
   }): Channel {
     return {
       id:            row.id,
@@ -91,6 +96,10 @@ export class ChannelRepository implements IChannelRepository {
       config:        (row.config ?? {}) as ChannelConfig,
       lastCheckedAt: row.lastCheckedAt ?? undefined,
       blockedAt:     row.blockedAt ?? undefined,
+      warmupEnabled:   row.warmupEnabled ?? true,
+      warmupStartedAt: row.warmupStartedAt ?? undefined,
+      isWarmedUp:      row.isWarmedUp ?? false,
+      dailyMessageCap: row.dailyMessageCap ?? 0,
       createdAt:     row.createdAt,
       updatedAt:     row.updatedAt,
     }

@@ -6,7 +6,7 @@
  * Modal de criação com form dinâmico por tipo de provedor
  */
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -18,9 +18,9 @@ import {
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Modal } from '@/components/ui/Modal'
-import { useChannels, useCreateChannel, useDeleteChannel, useCheckChannel } from './hooks/useChannels'
+import { useChannels, useCreateChannel, useDeleteChannel, useCheckChannel, useUpdateChannel } from './hooks/useChannels'
 import { cn } from '@/lib/utils'
-import type { Channel, ChannelType, ChannelStatus } from '@/types/channel'
+import type { Channel, ChannelType, ChannelStatus, UpdateChannelPayload } from '@/types/channel'
 
 // ─── Status config ─────────────────────────────────────────────────────────────
 
@@ -42,6 +42,110 @@ const TYPE_CONFIG: Record<ChannelType, { label: string; icon: React.ElementType;
   WHATSAPP_OFFICIAL: { label: 'WhatsApp Oficial',   icon: Phone,         color: 'text-green-600' },
   TELEGRAM:          { label: 'Telegram',            icon: Bot,           color: 'text-blue-500' },
   INSTAGRAM:         { label: 'Instagram',           icon: Instagram,     color: 'text-pink-500' },
+}
+
+// ─── Anti-ban controls ───────────────────────────────────────────────────────
+
+function Toggle({ checked, onChange, disabled, label, hint }: {
+  checked:  boolean
+  onChange: (v: boolean) => void
+  disabled?: boolean
+  label:    string
+  hint?:    string
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <p className="text-xs font-medium text-white/80">{label}</p>
+        {hint && <p className="text-[11px] text-white/40 leading-tight">{hint}</p>}
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        disabled={disabled}
+        onClick={() => onChange(!checked)}
+        className={cn(
+          'relative w-9 h-5 rounded-full transition-colors shrink-0',
+          checked ? 'bg-[#00b4d8]' : 'bg-white/15',
+          disabled && 'opacity-40 cursor-not-allowed',
+        )}
+      >
+        <span
+          className={cn(
+            'absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform',
+            checked && 'translate-x-4',
+          )}
+        />
+      </button>
+    </div>
+  )
+}
+
+/** Painel de anti-ban por canal: aquecimento, chip já aquecido e teto diário. */
+function ChannelAntiBan({ channel }: { channel: Channel }) {
+  const { mutate: update, isPending } = useUpdateChannel()
+
+  const warmupEnabled = channel.warmupEnabled ?? true
+  const isWarmedUp    = channel.isWarmedUp ?? false
+  const cap           = channel.dailyMessageCap ?? 0
+
+  const [capInput, setCapInput] = useState(String(cap))
+  useEffect(() => { setCapInput(String(cap)) }, [cap])
+
+  const patch = (payload: UpdateChannelPayload) => update({ id: channel.id, payload })
+
+  const commitCap = () => {
+    const n = Math.max(0, Math.min(1000, Math.trunc(Number(capInput) || 0)))
+    setCapInput(String(n))
+    if (n !== cap) patch({ dailyMessageCap: n })
+  }
+
+  return (
+    <div className="mb-4 rounded-lg border border-white/8 bg-white/[0.02] p-3 space-y-2.5">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-white/40">Anti-ban</p>
+
+      <Toggle
+        label="Aquecimento"
+        hint="Curva crescente de envios/dia"
+        checked={warmupEnabled}
+        disabled={isPending}
+        onChange={(v) => patch({ warmupEnabled: v })}
+      />
+
+      <Toggle
+        label="Chip já aquecido"
+        hint="Pula a curva, vai direto ao teto"
+        checked={isWarmedUp}
+        disabled={isPending}
+        onChange={(v) => patch({ isWarmedUp: v })}
+      />
+
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-white/80">Teto diário</p>
+          <p className="text-[11px] text-white/40 leading-tight">msgs/dia · 0 = automático</p>
+        </div>
+        <input
+          type="number"
+          min={0}
+          max={1000}
+          value={capInput}
+          disabled={isPending}
+          onChange={(e) => setCapInput(e.target.value)}
+          onBlur={commitCap}
+          onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+          aria-label="Teto diário de mensagens"
+          className={cn(
+            'w-16 text-sm text-white/85 bg-beacon-surface border border-[rgba(255,255,255,0.08)] rounded-lg px-2 py-1 text-right',
+            'focus:outline-none focus:border-[#00b4d8]/60 focus:shadow-[0_0_0_3px_rgba(0,180,216,0.10)]',
+            'disabled:opacity-40 disabled:cursor-not-allowed',
+          )}
+        />
+      </div>
+    </div>
+  )
 }
 
 // ─── Channel Card ──────────────────────────────────────────────────────────────
@@ -96,6 +200,9 @@ function ChannelCard({ channel }: { channel: Channel }) {
           </p>
         )}
       </div>
+
+      {/* Anti-ban: aquecimento + teto por número */}
+      <ChannelAntiBan channel={channel} />
 
       {/* Actions */}
       {confirmDelete ? (

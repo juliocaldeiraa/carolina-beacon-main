@@ -452,6 +452,11 @@ model Channel {
   config        Json      @default("{}") // { instanceUrl, apiKey, token, instanceName, etc. }
   lastCheckedAt DateTime? @map("last_checked_at")
   blockedAt     DateTime? @map("blocked_at")
+  // ── Anti-ban: aquecimento (warmup) e teto por número ─────────────────────────
+  warmupEnabled   Boolean   @default(true)  @map("warmup_enabled")     // aplica curva de aquecimento crescente
+  warmupStartedAt DateTime? @map("warmup_started_at")                  // marcado no 1º envio do número
+  isWarmedUp      Boolean   @default(false) @map("is_warmed_up")       // chip antigo já aquecido → pula a curva
+  dailyMessageCap Int       @default(0)     @map("daily_message_cap")  // teto manual/dia (0 = automático: curva ou platô)
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
@@ -762,15 +767,15 @@ model Campaign {
   varLabels     Json           @default("[]")       @map("var_labels")     // rótulos das variáveis: ["Nome","Empresa","..."]
   scheduledAt        DateTime? @map("scheduled_at")
   completedAt        DateTime? @map("completed_at")
-  // Janela de disparo — evita envios fora do horário comercial
-  scheduleEnabled    Boolean   @default(false)      @map("schedule_enabled")
+  // Janela de disparo — evita envios fora do horário comercial (ON por padrão = anti-ban)
+  scheduleEnabled    Boolean   @default(true)       @map("schedule_enabled")
   scheduleStartHour  Int       @default(8)          @map("schedule_start_hour")  // 0-23 no timezone abaixo
   scheduleEndHour    Int       @default(18)         @map("schedule_end_hour")
   scheduleDays       Json      @default("[1,2,3,4,5]") @map("schedule_days")     // 0=Dom 1=Seg … 6=Sáb
   scheduleTimezone   String    @default("America/Sao_Paulo") @map("schedule_timezone")
   // ── Anti-ban ───────────────────────────────────────────────────────────────
-  dailyLimit         Int       @default(0)   @map("daily_limit")         // 0 = sem limite
-  longPauseEvery     Int       @default(0)   @map("long_pause_every")    // 0 = off. Ex: 50 → pausa a cada 50 envios
+  dailyLimit         Int       @default(0)   @map("daily_limit")         // 0 = sem limite (teto por NÚMERO fica no Channel)
+  longPauseEvery     Int       @default(25)  @map("long_pause_every")    // 0 = off. Ex: 25 → pausa longa a cada 25 envios
   longPauseMinMinutes Int      @default(15)  @map("long_pause_min_minutes")
   longPauseMaxMinutes Int      @default(30)  @map("long_pause_max_minutes")
   messagesSinceBreak Int       @default(0)   @map("messages_since_break")

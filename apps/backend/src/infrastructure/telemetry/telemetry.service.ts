@@ -31,11 +31,19 @@ export interface LLMCallEvent {
 }
 
 const TOKEN_COST_PER_1K: Record<string, { input: number; output: number }> = {
-  'claude-sonnet-4-6': { input: 0.003,  output: 0.015 },
-  'claude-opus-4-6':   { input: 0.015,  output: 0.075 },
-  'claude-haiku-4-5':  { input: 0.00025,output: 0.00125 },
-  'gpt-4o':            { input: 0.0025, output: 0.01 },
-  'gpt-4o-mini':       { input: 0.00015,output: 0.0006 },
+  // Anthropic — USD por 1K tokens (preços oficiais)
+  'claude-opus-4-8':           { input: 0.005,   output: 0.025   },
+  'claude-opus-4-7':           { input: 0.005,   output: 0.025   },
+  'claude-sonnet-4-6':         { input: 0.003,   output: 0.015   },
+  'claude-haiku-4-5-20251001': { input: 0.001,   output: 0.005   },
+  'claude-haiku-4-5':          { input: 0.001,   output: 0.005   },
+  // OpenAI — USD por 1K tokens
+  'gpt-5.5':                   { input: 0.005,   output: 0.03    },
+  'gpt-5.4':                   { input: 0.0025,  output: 0.015   },
+  'gpt-5.4-mini':              { input: 0.00075, output: 0.0045  },
+  'gpt-5.4-nano':              { input: 0.0002,  output: 0.00125 },
+  'gpt-4o':                    { input: 0.0025,  output: 0.01    },
+  'gpt-4o-mini':               { input: 0.00015, output: 0.0006  },
 }
 
 @Injectable()

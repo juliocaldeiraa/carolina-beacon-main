@@ -70,13 +70,15 @@ const MODELS = {
   OpenAI: [
     { id: 'gpt-5.4-nano', label: 'GPT-5.4 Nano', tier: 'econômico — ultra-rápido, menor custo' },
     { id: 'gpt-5.4-mini', label: 'GPT-5.4 Mini', tier: 'balanceado — rápido com ótimo custo-benefício' },
-    { id: 'gpt-5.4',      label: 'GPT-5.4',      tier: 'avançado — modelo frontier mais capaz' },
+    { id: 'gpt-5.4',      label: 'GPT-5.4',      tier: 'avançado — frontier de menor custo' },
+    { id: 'gpt-5.5',      label: 'GPT-5.5',      tier: 'frontier — máxima capacidade da OpenAI' },
     { id: 'o3-mini',      label: 'o3-Mini',       tier: 'raciocínio — otimizado para lógica e análise' },
   ],
   Anthropic: [
     { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5', tier: 'econômico — mais rápido e barato' },
     { id: 'claude-sonnet-4-6',         label: 'Claude Sonnet 4.6', tier: 'balanceado — inteligência + velocidade' },
-    { id: 'claude-opus-4-6',           label: 'Claude Opus 4.6',  tier: 'avançado — máxima capacidade, 1M contexto' },
+    { id: 'claude-opus-4-8',           label: 'Claude Opus 4.8',  tier: 'avançado — máxima capacidade, 1M contexto' },
+    { id: 'claude-opus-4-7',           label: 'Claude Opus 4.7',  tier: 'geração anterior — alta capacidade, 1M contexto' },
   ],
 }
 
@@ -165,7 +167,7 @@ export function AgentBuilder({ mode = 'create' }: AgentBuilderProps) {
     resolver: zodResolver(schema),
     defaultValues: {
       name: '', description: '', personality: '', actionPrompt: '',
-      model: 'gpt-5.4-nano', temperature: 0.6, maxTokens: 300,
+      model: 'gpt-5.4-mini', temperature: 0.6, maxTokens: 300,
       historyLimit: 20, limitTurns: false, maxTurns: 8,
       fallbackEnabled: true, fallbackMessage: '', tools: [],
     },
@@ -179,7 +181,7 @@ export function AgentBuilder({ mode = 'create' }: AgentBuilderProps) {
         description:     existingAgent.description ?? '',
         personality:     existingAgent.personality ?? '',
         actionPrompt:    existingAgent.actionPrompt ?? '',
-        model:           existingAgent.model ?? 'gpt-5.4-nano',
+        model:           existingAgent.model ?? 'gpt-5.4-mini',
         temperature:     existingAgent.temperature,
         maxTokens:       existingAgent.maxTokens,
         historyLimit:    existingAgent.historyLimit,

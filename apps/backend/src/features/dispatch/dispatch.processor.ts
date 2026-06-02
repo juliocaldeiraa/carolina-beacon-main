@@ -96,6 +96,37 @@ function renderTemplate(text: string, lead: {
     .replace(/\{\{5\}\}/g, lead.var5 ?? '')
 }
 
+const WARMUP_PLATEAU = 200
+
+/**
+ * Teto diário de mensagens por NÚMERO (canal), considerando a curva de aquecimento.
+ * Curva (dias desde o 1º envio): 1–2→20, 3–4→30, 5–7→50, 8–14→80, 15–21→120, 22+→200.
+ * `dailyMessageCap` (>0) é um teto manual que, se menor que a curva, prevalece.
+ */
+function channelDailyCap(channel: {
+  warmupEnabled:   boolean
+  isWarmedUp:      boolean
+  warmupStartedAt: Date | null
+  dailyMessageCap: number
+}): number {
+  // Chip já aquecido ou warmup desligado → teto manual (se houver) ou platô.
+  if (channel.isWarmedUp || !channel.warmupEnabled) {
+    return channel.dailyMessageCap > 0 ? channel.dailyMessageCap : WARMUP_PLATEAU
+  }
+  // Em aquecimento → curva crescente por dias corridos desde o 1º envio (dia 1 = hoje).
+  const start = channel.warmupStartedAt ?? new Date()
+  const days  = Math.floor((Date.now() - start.getTime()) / (24 * 60 * 60_000)) + 1
+  let curve: number
+  if      (days <= 2)  curve = 20
+  else if (days <= 4)  curve = 30
+  else if (days <= 7)  curve = 50
+  else if (days <= 14) curve = 80
+  else if (days <= 21) curve = 120
+  else                 curve = WARMUP_PLATEAU
+  // Respeita o menor entre a curva e um teto manual configurado.
+  return channel.dailyMessageCap > 0 ? Math.min(curve, channel.dailyMessageCap) : curve
+}
+
 @Injectable()
 export class DispatchProcessor implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(DispatchProcessor.name)
@@ -307,6 +338,58 @@ export class DispatchProcessor implements OnModuleInit, OnModuleDestroy {
     if (!channel) {
       await this.markLeadError(leadId, actualCampaignId, templateId, `Canal ${effectiveChannelId} não encontrado`)
       return
+    }
+
+    // 5b. Canal caído/bloqueado → NÃO envia. Pausa a campanha e devolve o lead p/ fila.
+    // O poller (a cada 30s) mantém channel.status; enviar por um número caído/banido
+    // só piora a situação. Status UNKNOWN/CONNECTED segue normalmente.
+    if (channel.status === 'DISCONNECTED' || channel.status === 'BLOCKED') {
+      this.logger.warn(
+        `Canal ${channel.id} (${channel.name}) está ${channel.status} — pausando campanha ` +
+        `${actualCampaignId} e devolvendo lead ${leadId} para a fila`,
+      )
+      await this.prisma.campaign.update({
+        where: { id: actualCampaignId },
+        data:  { status: 'PAUSED' },
+      })
+      await this.prisma.campaignLead.update({
+        where: { id: leadId },
+        data:  { status: 'PENDING' },
+      })
+      return
+    }
+
+    // 5c. Aquecimento: marca o início no 1º envio do número (lazy init).
+    if (channel.warmupEnabled && !channel.isWarmedUp && !channel.warmupStartedAt) {
+      const now = new Date()
+      await this.prisma.channel.update({
+        where: { id: channel.id },
+        data:  { warmupStartedAt: now },
+      })
+      channel.warmupStartedAt = now
+    }
+
+    // 5d. Teto diário POR NÚMERO (curva de warmup ou teto manual). Conta envios reais
+    // (dispatch_logs SUCCESS) deste canal nas últimas 24h, somando TODAS as campanhas e
+    // follow-ups — tudo que sai do número conta p/ risco de ban. Atingido → re-agenda +1h.
+    const numberCap = channelDailyCap(channel)
+    if (numberCap > 0) {
+      const last24h = new Date(Date.now() - 24 * 60 * 60_000)
+      const sentByNumber = await this.prisma.campaignDispatchLog.count({
+        where: {
+          status: 'SUCCESS',
+          sentAt: { gte: last24h },
+          lead:   { campaign: { channelId: effectiveChannelId } },
+        },
+      })
+      if (sentByNumber >= numberCap) {
+        this.logger.log(
+          `Canal ${channel.id}: teto diário por número atingido (${sentByNumber}/${numberCap}) — ` +
+          `re-agendando lead ${leadId} em 1h`,
+        )
+        await this.dispatchQueue.enqueue(job.data, 60 * 60_000)
+        return
+      }
     }
 
     // 6. Envia cada parte com delay humanizado (3–8s entre partes)

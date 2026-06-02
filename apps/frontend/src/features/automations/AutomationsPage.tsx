@@ -437,9 +437,11 @@ function AutomationForm({ onClose }: { onClose: () => void }) {
   const AVAILABLE_MODELS = [
     { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 (Rápido)' },
     { value: 'claude-sonnet-4-6',         label: 'Claude Sonnet 4.6 (Equilibrado)' },
-    { value: 'claude-opus-4-6',           label: 'Claude Opus 4.6 (Máximo)' },
-    { value: 'gpt-4o-mini',               label: 'GPT-4o Mini' },
-    { value: 'gpt-4o',                    label: 'GPT-4o' },
+    { value: 'claude-opus-4-8',           label: 'Claude Opus 4.8 (Máximo)' },
+    { value: 'claude-opus-4-7',           label: 'Claude Opus 4.7' },
+    { value: 'gpt-5.5',                   label: 'GPT-5.5' },
+    { value: 'gpt-5.4-mini',              label: 'GPT-5.4 Mini' },
+    { value: 'gpt-5.4-nano',              label: 'GPT-5.4 Nano' },
   ]
 
   const labelClass = 'block text-xs font-medium text-white/70 mb-1'
