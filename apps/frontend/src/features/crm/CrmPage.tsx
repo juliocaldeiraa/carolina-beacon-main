@@ -468,7 +468,7 @@ function ShareModal({
     setTimeout(() => setCopied(null), 2000)
   }
 
-  const sharedUrl = 'https://disparador.juliocaldeira.com.br/shared'
+  const sharedUrl = `${window.location.origin}/shared`
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">

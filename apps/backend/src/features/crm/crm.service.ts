@@ -214,6 +214,28 @@ export class CrmService {
     await this.prisma.crmShare.update({ where: { id: shareId }, data: { isActive: false } })
   }
 
+  // ─── Acesso compartilhado (consumido pelo token SHARED, escopo = 1 campanha) ──
+
+  /** Leads da campanha do share, para o Kanban externo. */
+  async getSharedLeads(campaignId: string) {
+    return this.prisma.campaignLead.findMany({
+      where:   { campaignId },
+      include: { campaign: { select: { id: true, name: true } } },
+      orderBy: { updatedAt: 'desc' },
+    })
+  }
+
+  /** Move um lead de coluna no Kanban — restrito à campanha do share. */
+  async updateSharedLeadKanban(leadId: string, campaignId: string, kanbanColumn: string) {
+    const lead = await this.prisma.campaignLead.findFirst({ where: { id: leadId, campaignId } })
+    if (!lead) throw new NotFoundException('Lead não encontrado')
+    return this.prisma.campaignLead.update({
+      where:   { id: leadId },
+      data:    { kanbanColumn },
+      include: { campaign: { select: { id: true, name: true } } },
+    })
+  }
+
   // ─── Integração Automações ─────────────────────────────────────────────────
 
   /** Cria ou avança um card para um lead na jornada de automação (fire-and-forget safe). */

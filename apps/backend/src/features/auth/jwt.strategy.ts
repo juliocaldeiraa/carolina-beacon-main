@@ -7,6 +7,7 @@ interface JwtPayload {
   sub: string
   role: string
   tenantId: string
+  campaignId?: string // presente apenas em tokens de acesso compartilhado (role SHARED)
 }
 
 @Injectable()
@@ -20,6 +21,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   validate(payload: JwtPayload) {
-    return { userId: payload.sub, role: payload.role, tenantId: payload.tenantId }
+    return {
+      userId: payload.sub,
+      role: payload.role,
+      tenantId: payload.tenantId,
+      campaignId: payload.campaignId,
+    }
   }
 }

@@ -59,6 +59,33 @@ export class AuthService {
     return { id: user.id, email: user.email, role: user.role, tenantId: user.tenantId }
   }
 
+  /**
+   * Login de acesso compartilhado ao CRM (externo, sem usuário do sistema).
+   * Valida as credenciais do crm_share e emite um JWT com role SHARED, carregando
+   * o tenantId e o campaignId — o token passa pelo JwtGuard normal, mas só libera
+   * os endpoints /crm/shared-leads (que exigem role SHARED + campaignId).
+   */
+  async sharedLogin(username: string, password: string) {
+    const share = await this.prisma.crmShare.findUnique({
+      where: { username },
+      include: { campaign: { select: { id: true, tenantId: true } } },
+    })
+    if (!share || !share.isActive || !(await bcrypt.compare(password, share.passwordHash))) {
+      throw new UnauthorizedException('Credenciais inválidas')
+    }
+    const payload = {
+      sub:        share.id,
+      role:       'SHARED',
+      tenantId:   share.campaign.tenantId,
+      campaignId: share.campaignId,
+    }
+    return {
+      accessToken: this.jwt.sign(payload, { expiresIn: '30d' }),
+      campaignId:  share.campaignId,
+      label:       share.label,
+    }
+  }
+
   async listTenants(userId: string) {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } })
     // Admin vê todos os tenants não deletados, outros veem só o deles

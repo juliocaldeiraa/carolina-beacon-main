@@ -18,6 +18,14 @@ class RefreshDto {
   refreshToken!: string
 }
 
+class SharedLoginDto {
+  @IsString()
+  username!: string
+
+  @IsString()
+  password!: string
+}
+
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -30,6 +38,12 @@ export class AuthController {
   @Post('refresh')
   refresh(@Body() dto: RefreshDto) {
     return this.authService.refresh(dto.refreshToken)
+  }
+
+  // Acesso externo ao CRM (sem usuário do sistema) — público
+  @Post('shared-login')
+  sharedLogin(@Body() dto: SharedLoginDto) {
+    return this.authService.sharedLogin(dto.username, dto.password)
   }
 
   @Post('logout')

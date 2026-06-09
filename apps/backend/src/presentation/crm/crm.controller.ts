@@ -1,6 +1,6 @@
 import {
   Controller, Get, Post, Patch, Delete,
-  Param, Query, Body, UseGuards, HttpCode, HttpStatus, Req,
+  Param, Query, Body, UseGuards, HttpCode, HttpStatus, Req, ForbiddenException,
 } from '@nestjs/common'
 import { IsString, IsOptional } from 'class-validator'
 import { JwtGuard } from '../../shared/guards/jwt.guard'
@@ -78,6 +78,22 @@ export class CrmController {
   @HttpCode(HttpStatus.NO_CONTENT)
   deleteShare(@Param('id') id: string, @Req() req: any) {
     return this.svc.deleteShare(id, tenantId(req))
+  }
+
+  // ─── Acesso compartilhado (consumido pela página /shared, role SHARED) ────────
+
+  @Get('shared-leads')
+  @Roles('SHARED')
+  getSharedLeads(@Req() req: any) {
+    if (req.user?.role !== 'SHARED' || !req.user?.campaignId) throw new ForbiddenException()
+    return this.svc.getSharedLeads(req.user.campaignId)
+  }
+
+  @Patch('shared-leads/:id/column')
+  @Roles('SHARED')
+  updateSharedLeadColumn(@Req() req: any, @Param('id') id: string, @Body() dto: UpdateLeadKanbanDto) {
+    if (req.user?.role !== 'SHARED' || !req.user?.campaignId) throw new ForbiddenException()
+    return this.svc.updateSharedLeadKanban(id, req.user.campaignId, dto.kanbanColumn)
   }
 
   // ─── Pipelines ────────────────────────────────────────────
